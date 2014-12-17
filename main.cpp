@@ -18,7 +18,7 @@
 
 using namespace jimi;
 
-typedef RingQueue2<uint64_t, QSZ> RingQueue;
+typedef RingQueue2<msg_t, QSZ> RingQueue;
 
 #ifndef USE_JIMI_RINGQUEUE
 #define USE_JIMI_RINGQUEUE     1
@@ -28,14 +28,16 @@ typedef RingQueue2<uint64_t, QSZ> RingQueue;
 typedef unsigned int cpu_set_t;
 #endif // defined
 
-static struct msg_t *msgs;
-static struct msg_t *msg_list;
+static volatile struct msg_t *msgs;
+//static volatile struct msg_t *msg_list;
 
 #define POP_CNT     2
 #define PUSH_CNT    2
 
 #define MSG_CNT     (PUSH_CNT * 1000000)
 //#define MSG_CNT     (PUSH_CNT * 100000)
+
+static struct msg_t *msg_list[MSG_CNT];
 
 typedef struct thread_arg_t
 {
@@ -95,7 +97,7 @@ ringqueue_push_task(void *arg)
     if (thread_arg) {
         idx   = thread_arg->idx;
         queue = (RingQueue *)thread_arg->queue;
-        base  = (MSG_CNT / PUSH_CNT) * idx;
+        base  = idx * (MSG_CNT / PUSH_CNT);
     }
 
     if (queue == NULL)
@@ -104,7 +106,8 @@ ringqueue_push_task(void *arg)
     start = rdtsc();
 
     for (i = 0; i < MSG_CNT / PUSH_CNT; i++) {
-        while (queue->push((uint64_t *)(msgs + base + i)) == -1);
+        msg_t *msg = (msg_t *)(&msgs[base + i]);
+        while (queue->push((msg_t *)msg) == -1);
 #if 0
         //if ((i & 0x3FFFU) == 0x3FFFU) {
         if ((i & 0xFFFFU) == 0xFFFFU) {
@@ -134,7 +137,8 @@ ringqueue_pop_task(void *arg)
     RingQueue *queue;
     uint64_t start;
     int cnt = 0;
-    msg_t *msg;
+    struct msg_t *msg;
+    uint64_t *dummy;
 
     queue = (RingQueue *)arg;
     if (queue == NULL)
@@ -143,9 +147,9 @@ ringqueue_pop_task(void *arg)
     start = rdtsc();
 
     while (!quit) {
-        msg = (msg_t *)queue->pop();
+        msg = (struct msg_t *)(uint64_t *)queue->pop();
         if (msg != NULL) {
-            msg_list[cnt].dummy = msg->dummy;
+            msg_list[cnt] = (struct msg_t *)msg;
             cnt++;
         }
     }
@@ -163,8 +167,9 @@ push_task(void *arg)
     uint64_t start = rdtsc();
     int i;
 
-    for (i = 0; i < MSG_CNT / PUSH_CNT; i++)
+    for (i = 0; i < MSG_CNT / PUSH_CNT; i++) {
         while (push(q, msgs + i) == -1);
+    }
 
     push_cycles += rdtsc() - start;
     push_total += MSG_CNT / PUSH_CNT;
@@ -181,8 +186,9 @@ pop_task(void *arg)
     uint64_t start = rdtsc();
     int cnt = 0;
 
-    while (!quit)
+    while (!quit) {
         cnt += !!pop(q);
+    }
 
     pop_cycles += rdtsc() - start;
     pop_total += cnt;
@@ -266,10 +272,10 @@ q3_test(void)
     setaffinity(0);
 
     msgs     = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
-    msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
+    //msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
 
     for (i = 0; i < MSG_CNT; i++)
-        msgs[i].dummy = (uint64_t)i;
+        msgs[i].dummy = (uint64_t)(i + 1);
 
     for (i = 0; i < POP_CNT; i++)
         start_thread(i, pop_task, q, &kids[i]);
@@ -331,9 +337,9 @@ ringqueue_start_thread(int id,
 void
 RingQueue_UnitTest(void)
 {
-    RingQueue ringQueue;
+    RingQueue ringQueue(true, true);
 
-    uint64_t queue_msg = 123ULL;
+    msg_t queue_msg = { 123ULL };
 
     printf("---------------------------------------------------------------\n");
     printf("RingQueue2() test begin...\n\n");
@@ -382,10 +388,10 @@ RingQueue_Test(void)
     setaffinity(0);
 
     msgs     = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
-    msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
+    //msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
 
     for (i = 0; i < MSG_CNT; i++)
-        msgs[i].dummy = (uint64_t)i;
+        msgs[i].dummy = (uint64_t)(i + 1);
 
     for (i = 0; i < POP_CNT; i++)
         ringqueue_start_thread(i, ringqueue_pop_task, (void *)&ringQueue, &kids[i]);
@@ -406,11 +412,18 @@ RingQueue_Test(void)
     printf("push cycles/msg: %lu\n", push_cycles / MSG_CNT);
     printf("\n");
 
-    for (i = 0; i < 100; ++i) {
-        printf("msg_list[%d] = %llu\n", i, msg_list[i]);
+    for (i = 0; i <= 256; ++i) {
+        printf("msg_list[%d] = %02llu - %llu\n", i, msg_list[i]->dummy / (MSG_CNT / PUSH_CNT),
+               msg_list[i]->dummy % (MSG_CNT / PUSH_CNT));
     }
-
     printf("\n\n");
+
+#if 0
+    for (i = MSG_CNT - 128; i < MSG_CNT; ++i) {
+        printf("msg_list[%d] = %llu\n", i, msg_list[i].dummy);
+    }
+    printf("\n\n");
+#endif
 
     //getchar();
     jimi_console_readkey_newline(true, true, false);

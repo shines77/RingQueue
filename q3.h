@@ -47,7 +47,7 @@ struct queue {
     } c;
     char pad2[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
 
-    void        *msgs[0];
+    volatile void *msgs[0];
 };
 
 static inline struct queue *
@@ -61,7 +61,7 @@ qinit(void)
 }
 
 static inline int
-push(struct queue *q, void *m)
+push(struct queue *q, volatile void *m)
 {
     uint32_t head, tail, mask, next;
     uint32_t loop_cnt;
@@ -117,7 +117,7 @@ pop(struct queue *q)
     uint32_t head, tail, mask, next;
     int ok;
     uint32_t loop_cnt, loop_cnt2;
-    void *ret;
+    volatile void *ret;
 
     loop_cnt = 0;
     loop_cnt2 = 0;
@@ -167,5 +167,5 @@ pop(struct queue *q)
 
     q->c.tail = next;
 
-    return ret;
+    return (void *)ret;
 }

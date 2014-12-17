@@ -121,8 +121,6 @@ test/include/test/jemalloc_test_defs.h
 *.suo
 *.sdf
 *.opensdf
-*.layout
-*.depend
 *.sln.old
 *.sln_old
 # *.vcxproj.user
@@ -138,6 +136,10 @@ test/include/test/jemalloc_test_defs.h
 UpgradeLog.XML
 UpgradeLog.htm
 /Backup/
+
+# For CodeBlocks project files
+*.layout
+*.depend
 
 # For log file
 *.log
