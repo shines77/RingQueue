@@ -412,11 +412,26 @@ RingQueue_Test(void)
     printf("push cycles/msg: %lu\n", push_cycles / MSG_CNT);
     printf("\n");
 
+    printf("msgs ptr = 0x%08X\n\n", msgs);
+
     for (i = 0; i <= 256; ++i) {
-        printf("msg_list[%d] = %02llu - %llu\n", i, msg_list[i]->dummy / (MSG_CNT / PUSH_CNT),
+        printf("msg_list[%d] = ptr: 0x%08X, %02llu - %llu\n", i,
+               //((char *)(&msg_list[i]) - (char *)msgs) / sizeof(void *),
+               (msg_t *)(msg_list[i]),
+               msg_list[i]->dummy / (MSG_CNT / PUSH_CNT),
                msg_list[i]->dummy % (MSG_CNT / PUSH_CNT));
     }
-    printf("\n\n");
+    printf("\n");
+
+    jimi_console_readkey_newline(false, true, false);
+
+    for (i = 0; i <= 256; ++i) {
+        printf("msg_list[%d] = %02llu - %llu\n", i, msgs[i].dummy / (MSG_CNT / PUSH_CNT),
+               msgs[i].dummy % (MSG_CNT / PUSH_CNT));
+    }
+    printf("\n");
+
+    jimi_console_readkey_newline(false, true, false);
 
 #if 0
     for (i = MSG_CNT - 128; i < MSG_CNT; ++i) {

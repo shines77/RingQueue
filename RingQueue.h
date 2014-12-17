@@ -492,7 +492,7 @@ void RingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = false */)
 {
     //printf("RingQueue2::init_queue();\n\n");
 
-    value_type *newData = (value_type *)new T[kCapcity];
+    value_type *newData = new T *[kCapcity];
     if (newData != NULL) {
         this->core.queue = newData;
         if (bFillQueue) {
