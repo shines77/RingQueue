@@ -78,8 +78,8 @@ push(struct queue *q, volatile void *m)
     do {
         head = q->p.head;
         tail = q->c.tail;
-        if ((mask + tail - head) < 1U)      // 这样用表示队列最大长度为mask, 而不是(mask + 1)
-        //if ((head - tail) > mask)
+        //if ((mask + tail - head) < 1U)      // 这样用表示队列最大长度为mask, 而不是(mask + 1)
+        if ((head - tail) > mask)
         // if ((int32_t)(head - tail - mask) > 0)
         // if ((int32_t)(tail - head) <= (int32_t)-(mask + 1))
         // if ((int32_t)(tail - head) < (int32_t)-mask)
@@ -141,10 +141,10 @@ pop(struct queue *q)
     do {
         head = q->c.head;
         tail = q->p.tail;
-        if ((tail - head) < 1U)
+        //if ((tail - head) < 1U)
         //if (tail == head)
         //if (head >= tail && (tail - head) <= mask)
-        //if (head == tail || (head > tail && (tail - head) > mask))
+        if (head == tail || (head > tail && (tail - head) > mask))
             return NULL;
 #if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;

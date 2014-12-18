@@ -25,7 +25,7 @@ typedef RingQueue2<msg_t, QSZ> RingQueue;
 #endif
 
 #ifndef USE_LOCKED_RINGQUEUE
-#define USE_LOCKED_RINGQUEUE    1
+#define USE_LOCKED_RINGQUEUE    0
 #endif
 
 #if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32)
@@ -35,8 +35,8 @@ typedef unsigned int cpu_set_t;
 static volatile struct msg_t *msgs;
 //static volatile struct msg_t *msg_list;
 
-#define POP_CNT         2
-#define PUSH_CNT        2
+#define POP_CNT         4
+#define PUSH_CNT        4
 
 #if 1
 #define MAX_MSG_LENGTH  1000000
@@ -315,7 +315,7 @@ q3_test(void)
     setaffinity(0);
 
     msgs     = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
-    //msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
+    //msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t *));
 
     for (i = 0; i < MSG_CNT; i++)
         msgs[i].dummy = (uint64_t)(i + 1);
@@ -436,10 +436,16 @@ RingQueue_Test(void)
     setaffinity(0);
 
     msgs     = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
-    //msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
+    //msg_list = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t *));
 
     for (i = 0; i < MSG_CNT; i++)
         msgs[i].dummy = (uint64_t)(i + 1);
+
+    for (i = 0; i < POP_CNT; i++) {
+        for (j = 0; j < MAX_MSG_LENGTH; ++j) {
+            msg_list[i][j] = NULL;
+        }
+    }
 
     for (i = 0; i < PUSH_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
@@ -478,7 +484,7 @@ RingQueue_Test(void)
                    msg_list[j][i]->dummy % (MSG_CNT / PUSH_CNT));
         }
         printf("\n");
-        if (j == 0) {
+        if (j < (POP_CNT - 1)) {
             jimi_console_readkeyln(false, true, false);
         }
     }
