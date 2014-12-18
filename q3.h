@@ -19,6 +19,7 @@
 #define unlikely(x) __builtin_expect((x), 0)
 #endif
 
+#define USE_SLEEP_AND_LOG   0
 
 #define QSZ         (1024 * 1)
 #define QMSK        (QSZ - 1)
@@ -64,21 +65,26 @@ static inline int
 push(struct queue *q, volatile void *m)
 {
     uint32_t head, tail, mask, next;
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     uint32_t loop_cnt;
+#endif
     int ok;
 
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     loop_cnt = 0;
+#endif
     mask = q->p.mask;
 
     do {
         head = q->p.head;
         tail = q->c.tail;
-        //if ((mask + tail - head) < 1U)      // 这样用表示队列最大长度为mask, 而不是(mask + 1)
-        if ((head - tail) > mask)
+        if ((mask + tail - head) < 1U)      // 这样用表示队列最大长度为mask, 而不是(mask + 1)
+        //if ((head - tail) > mask)
         // if ((int32_t)(head - tail - mask) > 0)
         // if ((int32_t)(tail - head) <= (int32_t)-(mask + 1))
         // if ((int32_t)(tail - head) < (int32_t)-mask)
             return -1;
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;
         if (loop_cnt > 1000) {
             loop_cnt = 0;
@@ -86,6 +92,7 @@ push(struct queue *q, volatile void *m)
             printf("q->p.head = %u, head = %u\n", q->p.head, head);
             jimi_wsleep(1);
         }
+#endif
         next = head + 1;
         ok = __sync_bool_compare_and_swap(&q->p.head, head, next);
     } while (!ok);
@@ -93,9 +100,12 @@ push(struct queue *q, volatile void *m)
     q->msgs[head & mask] = m;
     asm volatile ("":::"memory");
 
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     loop_cnt = 0;
+#endif
 
     while (unlikely((q->p.tail != head))) {
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;
         if (loop_cnt > 1000) {
             loop_cnt = 0;
@@ -103,6 +113,7 @@ push(struct queue *q, volatile void *m)
             //printf("q->p.tail = %u, head = %u\n", q->p.tail, head);
             jimi_wsleep(1);
         }
+#endif
         _mm_pause();
     }
 
@@ -116,20 +127,26 @@ pop(struct queue *q)
 {
     uint32_t head, tail, mask, next;
     int ok;
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     uint32_t loop_cnt, loop_cnt2;
+#endif
     volatile void *ret;
 
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     loop_cnt = 0;
     loop_cnt2 = 0;
+#endif
     mask = q->c.mask;
 
     do {
         head = q->c.head;
         tail = q->p.tail;
-        //if ((tail - head) < 1U)
+        if ((tail - head) < 1U)
         //if (tail == head)
-        if (head >= tail && (tail - head) <= mask)
+        //if (head >= tail && (tail - head) <= mask)
+        //if (head == tail || (head > tail && (tail - head) > mask))
             return NULL;
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;
         if (loop_cnt > 1000) {
             loop_cnt = 0;
@@ -137,6 +154,7 @@ pop(struct queue *q)
             printf("q->c.head = %u, head = %u\n", q->c.head, head);
             jimi_wsleep(1);
         }
+#endif
         next = head + 1;
         ok = __sync_bool_compare_and_swap(&q->c.head, head, next);
     } while (!ok);
@@ -144,11 +162,13 @@ pop(struct queue *q)
     ret = q->msgs[head & mask];
     asm volatile ("":::"memory");
 
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     loop_cnt = 0;
     loop_cnt2 = 0;
+#endif
 
-    /*
     while (unlikely((q->c.tail != head))) {
+#if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;
         if (loop_cnt > 1000) {
             loop_cnt = 0;
@@ -161,9 +181,9 @@ pop(struct queue *q)
             }
             jimi_wsleep(1);
         }
-        //_mm_pause();
+#endif
+        _mm_pause();
     }
-    //*/
 
     q->c.tail = next;
 
