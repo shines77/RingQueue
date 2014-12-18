@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #ifdef _MSC_VER
 #include <intrin.h>     // For _ReadWriteBarrier(), InterlockedCompareExchange()
@@ -146,6 +147,13 @@ bool __internal_bool_compare_and_swap32(volatile uint32_t *destPtr,
 
 namespace jimi {
 
+#if 1
+struct RingQueueHead
+{
+    volatile uint32_t head;
+    volatile uint32_t tail;
+};
+#else
 struct RingQueueHead
 {
     volatile uint32_t head;
@@ -154,6 +162,7 @@ struct RingQueueHead
     volatile uint32_t tail;
     char padding2[JIMI_CACHELINE_SIZE - sizeof(uint32_t)];
 };
+#endif
 
 typedef struct RingQueueHead RingQueueHead;
 
@@ -173,8 +182,8 @@ public:
     static const bool kIsAllocOnHeap     = false;
 
 public:
-    RingQueueHead   info;
-    item_type       queue[kCapcityCore];
+    RingQueueHead       info;
+    volatile item_type  queue[kCapcityCore];
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -191,8 +200,8 @@ public:
     static const bool kIsAllocOnHeap = true;
 
 public:
-    RingQueueHead   info;
-    item_type *     queue;
+    RingQueueHead       info;
+    volatile item_type *queue;
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -235,6 +244,9 @@ public:
 
     int push(T * item);
     T * pop();
+
+    int locked_push(T * item, pthread_mutex_t *mutex);
+    T * locked_pop(pthread_mutex_t *mutex);
 
 public:
     core_type core;
@@ -302,7 +314,7 @@ RingQueueBase<T, Capcity, CoreTy>::sizes() const
     tail = core.info.tail;
     Jimi_ReadWriteBarrier();
 
-    return (size_type)(head - tail);
+    return (size_type)((head - tail) <= kMask) ? (head - tail) : (size_type)-1;
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
@@ -350,6 +362,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     do {
         head = core.info.head;
         tail = core.info.tail;
+        //if (tail >= head && (head - tail) <= kMask)
         if ((tail == head) || (tail > head && (head - tail) > kMask))
             return (value_type)NULL;
         next = tail + 1;
@@ -359,15 +372,78 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     do {
         head = core.info.head;
         tail = core.info.tail;
-        if (tail >= head && (head - tail) <= kMask)
+        //if (tail >= head && (head - tail) <= kMask)
+        if ((tail == head) || (tail > head && (head - tail) > kMask))
             return (value_type)NULL;
         next = tail + 1;
     } while (jimi_compare_and_swap32(&core.info.tail, tail, next) != tail);
 #endif
 
-    item = core.queue[head & kMask];
+    item = core.queue[tail & kMask];
 
     Jimi_ReadWriteBarrier();
+
+    return item;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item, pthread_mutex_t *mutex)
+{
+    index_type head, tail, next;
+
+    if (mutex == NULL) return -1;
+
+    pthread_mutex_lock(mutex);
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        pthread_mutex_unlock(mutex);
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    Jimi_ReadWriteBarrier();
+
+    core.queue[head & kMask] = item;
+
+    Jimi_ReadWriteBarrier();
+
+    pthread_mutex_unlock(mutex);
+
+    return 0;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+T * RingQueueBase<T, Capcity, CoreTy>::locked_pop(pthread_mutex_t *mutex)
+{
+    index_type head, tail, next;
+    value_type item;
+
+    if (mutex == NULL) return NULL;
+
+    pthread_mutex_lock(mutex);
+
+    head = core.info.head;
+    tail = core.info.tail;
+    //if (tail >= head && (head - tail) <= kMask)
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        pthread_mutex_unlock(mutex);
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+
+    Jimi_ReadWriteBarrier();
+
+    item = core.queue[tail & kMask];
+
+    Jimi_ReadWriteBarrier();
+
+    pthread_mutex_unlock(mutex);
 
     return item;
 }
@@ -391,18 +467,18 @@ public:
     static const size_type kCapcity = RingQueueBase<T, Capcity, SmallRingQueueCore<T, Capcity> >::kCapcity;
 
 public:
-    SmallRingQueue2(bool bFillQueue = false, bool bInitHead = false);
+    SmallRingQueue2(bool bFillQueue = true, bool bInitHead = false);
     ~SmallRingQueue2();
 
 public:
     void dump_detail();
 
 protected:
-    void init_queue(bool bFillQueue = false);
+    void init_queue(bool bFillQueue = true);
 };
 
 template <typename T, uint32_t Capcity>
-SmallRingQueue2<T, Capcity>::SmallRingQueue2(bool bFillQueue /* = false */,
+SmallRingQueue2<T, Capcity>::SmallRingQueue2(bool bFillQueue /* = true */,
                                              bool bInitHead  /* = false */)
 : RingQueueBase<T, Capcity, SmallRingQueueCore<T, Capcity> >(bInitHead)
 {
@@ -419,7 +495,7 @@ SmallRingQueue2<T, Capcity>::~SmallRingQueue2()
 
 template <typename T, uint32_t Capcity>
 inline
-void SmallRingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = false */)
+void SmallRingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = true */)
 {
     //printf("SmallRingQueue2::init_queue();\n\n");
 
@@ -456,18 +532,18 @@ public:
     static const size_type kCapcity = RingQueueBase<T, Capcity, RingQueueCore<T, Capcity> >::kCapcity;
 
 public:
-    RingQueue2(bool bFillQueue = false, bool bInitHead = false);
+    RingQueue2(bool bFillQueue = true, bool bInitHead = false);
     ~RingQueue2();
 
 public:
     void dump_detail();
 
 protected:
-    void init_queue(bool bFillQueue = false);
+    void init_queue(bool bFillQueue = true);
 };
 
 template <typename T, uint32_t Capcity>
-RingQueue2<T, Capcity>::RingQueue2(bool bFillQueue /* = false */,
+RingQueue2<T, Capcity>::RingQueue2(bool bFillQueue /* = true */,
                                    bool bInitHead  /* = false */)
 : RingQueueBase<T, Capcity, RingQueueCore<T, Capcity> >(bInitHead)
 {
@@ -488,7 +564,7 @@ RingQueue2<T, Capcity>::~RingQueue2()
 
 template <typename T, uint32_t Capcity>
 inline
-void RingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = false */)
+void RingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = true */)
 {
     //printf("RingQueue2::init_queue();\n\n");
 

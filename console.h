@@ -17,8 +17,8 @@ void jimi_cpu_warmup(int delayTime);
 int jimi_console_readkey(bool enabledCpuWarmup, bool displayTips,
                          bool echoInput);
 
-int jimi_console_readkey_newline(bool enabledCpuWarmup, bool displayTips,
-                                 bool echoInput);
+int jimi_console_readkeyln(bool enabledCpuWarmup, bool displayTips,
+                           bool echoInput);
 
 #ifdef __cplusplus
 }

@@ -69,8 +69,8 @@ int jimi_console_readkey(bool enabledCpuWarmup, bool displayTips,
     return keyCode;
 }
 
-int jimi_console_readkey_newline(bool enabledCpuWarmup, bool displayTips,
-                                 bool echoInput)
+int jimi_console_readkeyln(bool enabledCpuWarmup, bool displayTips,
+                           bool echoInput)
 {
     int keyCode;
     keyCode = jimi_console_readkey(false, displayTips, echoInput);

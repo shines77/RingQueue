@@ -31,13 +31,20 @@ typedef unsigned int cpu_set_t;
 static volatile struct msg_t *msgs;
 //static volatile struct msg_t *msg_list;
 
-#define POP_CNT     2
-#define PUSH_CNT    2
+#define POP_CNT         1
+#define PUSH_CNT        1
 
-#define MSG_CNT     (PUSH_CNT * 1000000)
-//#define MSG_CNT     (PUSH_CNT * 100000)
+#if 1
+#define MAX_MSG_LENGTH  1000000
+#else
+#define MAX_MSG_LENGTH  10000
+#endif
+
+#define MSG_CNT         (PUSH_CNT * MAX_MSG_LENGTH)
 
 static struct msg_t *msg_list[MSG_CNT];
+
+static pthread_mutex_t s_queue_rwlock = NULL;
 
 typedef struct thread_arg_t
 {
@@ -72,12 +79,19 @@ static volatile uint64_t pop_cycles = 0;
 static void
 init_globals(void)
 {
+    pthread_mutexattr_t attr;
     quit = 0;
     pop_total = 0;
     push_total = 0;
 
     push_cycles = 0;
     pop_cycles = 0;
+
+    if (s_queue_rwlock == NULL) {
+        if (!pthread_mutexattr_init(&attr)) {
+            pthread_mutex_init(&s_queue_rwlock, NULL);
+        }
+    }
 }
 
 static void *
@@ -85,6 +99,7 @@ ringqueue_push_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue *queue;
+    msg_t *msg;
     uint64_t start;
     int i, idx, base;
     int cnt = 0;
@@ -97,7 +112,7 @@ ringqueue_push_task(void *arg)
     if (thread_arg) {
         idx   = thread_arg->idx;
         queue = (RingQueue *)thread_arg->queue;
-        base  = idx * (MSG_CNT / PUSH_CNT);
+        base  = idx * MAX_MSG_LENGTH;
     }
 
     if (queue == NULL)
@@ -105,9 +120,10 @@ ringqueue_push_task(void *arg)
 
     start = rdtsc();
 
-    for (i = 0; i < MSG_CNT / PUSH_CNT; i++) {
-        msg_t *msg = (msg_t *)(&msgs[base + i]);
-        while (queue->push((msg_t *)msg) == -1);
+    for (i = 0; i < MAX_MSG_LENGTH; i++) {
+        msg = (msg_t *)(&msgs[base + i]);
+        //while (queue->push((msg_t *)msg) == -1);
+        while (queue->locked_push((msg_t *)msg, &s_queue_rwlock) == -1);
 #if 0
         //if ((i & 0x3FFFU) == 0x3FFFU) {
         if ((i & 0xFFFFU) == 0xFFFFU) {
@@ -121,7 +137,7 @@ ringqueue_push_task(void *arg)
 #endif
 
     push_cycles += rdtsc() - start;
-    push_total += MSG_CNT / PUSH_CNT;
+    push_total += MAX_MSG_LENGTH;
     if (push_total == MSG_CNT)
         quit = 1;
 
@@ -134,28 +150,45 @@ ringqueue_push_task(void *arg)
 static void *
 ringqueue_pop_task(void *arg)
 {
+    thread_arg_t *thread_arg;
     RingQueue *queue;
-    uint64_t start;
-    int cnt = 0;
     struct msg_t *msg;
-    uint64_t *dummy;
+    uint64_t start;
+    int i, idx, base;
+    int cnt = 0;
 
-    queue = (RingQueue *)arg;
+    idx = 0;
+    queue = NULL;
+    base = 0;
+
+    thread_arg = (thread_arg_t *)arg;
+    if (thread_arg) {
+        idx   = thread_arg->idx;
+        queue = (RingQueue *)thread_arg->queue;
+        base  = idx * MAX_MSG_LENGTH;
+    }
+
     if (queue == NULL)
         return NULL;
 
     start = rdtsc();
 
     while (!quit) {
-        msg = (struct msg_t *)(uint64_t *)queue->pop();
+        //msg = (struct msg_t *)queue->pop();
+        msg = (struct msg_t *)queue->locked_pop(&s_queue_rwlock);
         if (msg != NULL) {
-            msg_list[cnt] = (struct msg_t *)msg;
+            msg_list[cnt * POP_CNT + idx] = (struct msg_t *)msg;
             cnt++;
+            if (cnt >= MAX_MSG_LENGTH)
+                break;
         }
     }
 
     pop_cycles += rdtsc() - start;
     pop_total += cnt;
+
+    if (thread_arg)
+        free(thread_arg);
 
     return NULL;
 }
@@ -167,7 +200,7 @@ push_task(void *arg)
     uint64_t start = rdtsc();
     int i;
 
-    for (i = 0; i < MSG_CNT / PUSH_CNT; i++) {
+    for (i = 0; i < MAX_MSG_LENGTH; i++) {
         while (push(q, msgs + i) == -1);
     }
 
@@ -291,15 +324,20 @@ q3_test(void)
     printf("push cycles/msg: %lu\n", push_cycles / MSG_CNT);
     printf("\n");
 
+    if (msgs) {
+        free((void *)msgs);
+        msgs = NULL;
+    }
+
     //getchar();
-    jimi_console_readkey_newline(false, true, false);
+    jimi_console_readkeyln(false, true, false);
 }
 
 static int
 ringqueue_start_thread(int id,
-       void *(*cb)(void *),
-       void *arg,
-       pthread_t *tid)
+                       void *(*cb)(void *),
+                       void *arg,
+                       pthread_t *tid)
 {
     pthread_t kid;
     pthread_attr_t attr;
@@ -373,7 +411,7 @@ RingQueue_UnitTest(void)
     printf("---------------------------------------------------------------\n\n");
 
     //getchar();
-    jimi_console_readkey_newline(true, true, false);
+    jimi_console_readkeyln(true, true, false);
 }
 
 void
@@ -393,14 +431,19 @@ RingQueue_Test(void)
     for (i = 0; i < MSG_CNT; i++)
         msgs[i].dummy = (uint64_t)(i + 1);
 
-    for (i = 0; i < POP_CNT; i++)
-        ringqueue_start_thread(i, ringqueue_pop_task, (void *)&ringQueue, &kids[i]);
     for (i = 0; i < PUSH_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
         thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i + POP_CNT, ringqueue_push_task, (void *)thread_arg,
-                               &kids[i + POP_CNT]);
+        ringqueue_start_thread(i, ringqueue_push_task, (void *)thread_arg,
+                               &kids[i]);
+    }
+    for (i = 0; i < POP_CNT; i++) {
+        thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
+        thread_arg->idx = i;
+        thread_arg->queue = &ringQueue;
+        ringqueue_start_thread(i + PUSH_CNT, ringqueue_pop_task, (void *)thread_arg,
+                               &kids[i + PUSH_CNT]);
     }
     for (i = 0; i < POP_CNT + PUSH_CNT; i++)
         pthread_join(kids[i], NULL);
@@ -414,8 +457,10 @@ RingQueue_Test(void)
 
     printf("msgs ptr = 0x%08X\n\n", msgs);
 
+    jimi_console_readkeyln(false, true, false);
+
     for (i = 0; i <= 256; ++i) {
-        printf("msg_list[%d] = ptr: 0x%08X, %02llu - %llu\n", i,
+        printf("msg_list[%3d] = ptr: 0x%08X, %02llu : %llu\n", i,
                //((char *)(&msg_list[i]) - (char *)msgs) / sizeof(void *),
                (msg_t *)(msg_list[i]),
                msg_list[i]->dummy / (MSG_CNT / PUSH_CNT),
@@ -423,15 +468,13 @@ RingQueue_Test(void)
     }
     printf("\n");
 
-    jimi_console_readkey_newline(false, true, false);
+    jimi_console_readkeyln(false, true, false);
 
     for (i = 0; i <= 256; ++i) {
-        printf("msg_list[%d] = %02llu - %llu\n", i, msgs[i].dummy / (MSG_CNT / PUSH_CNT),
+        printf("msg_list[%3d] = %02llu : %llu\n", i, msgs[i].dummy / (MSG_CNT / PUSH_CNT),
                msgs[i].dummy % (MSG_CNT / PUSH_CNT));
     }
     printf("\n");
-
-    jimi_console_readkey_newline(false, true, false);
 
 #if 0
     for (i = MSG_CNT - 128; i < MSG_CNT; ++i) {
@@ -440,8 +483,13 @@ RingQueue_Test(void)
     printf("\n\n");
 #endif
 
+    if (msgs) {
+        free((void *)msgs);
+        msgs = NULL;
+    }
+
     //getchar();
-    jimi_console_readkey_newline(true, true, false);
+    jimi_console_readkeyln(true, true, false);
 }
 
 int
@@ -456,6 +504,11 @@ main(void)
     q3_test();
 #endif // defined
 
-    //jimi_console_readkey_newline(false, true, false);
+    if (s_queue_rwlock) {
+        pthread_mutex_destroy(&s_queue_rwlock);
+        s_queue_rwlock = NULL;
+    }
+
+    //jimi_console_readkeyln(false, true, false);
     return 0;
 }
