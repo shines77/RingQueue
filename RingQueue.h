@@ -353,6 +353,10 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
     //printf("push(): start: cnt = %d\n", cnt);
     //printf("push(): head = %u, tail = %u\n", core.info.head, core.info.tail);
 
+    ///
+    /// GCC 提供的原子操作 (From GCC 4.1.2)
+    /// See: http://www.cnblogs.com/FrankTan/archive/2010/12/11/1903377.html
+    ///
     __sync_lock_test_and_set(&s_shared_lock.lock, 1U);
 #endif
 
@@ -363,7 +367,8 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
     } while (!ok);
 #else
     while (__sync_val_compare_and_swap(&s_shared_lock.lock, 0U, 1U) != 0U) {
-        jimi_mm_pause;
+        //jimi_mm_pause;
+        jimi_wsleep(0);
     }
 #endif
 
@@ -453,7 +458,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     } while (!ok);
 #else
     while (__sync_val_compare_and_swap(&s_shared_lock.lock, 0U, 1U) != 0U) {
-        jimi_mm_pause;
+        //jimi_mm_pause;
+        jimi_wsleep(0);
     }
 #endif
 

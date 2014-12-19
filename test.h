@@ -5,8 +5,8 @@
 #define QSIZE           (1 << 10)
 #define QMASK           (QSIZE - 1)
 
-#define PUSH_CNT        3
-#define POP_CNT         3
+#define PUSH_CNT        4
+#define POP_CNT         4
 
 #if 1
 #define MAX_MSG_LENGTH  1000000
