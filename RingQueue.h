@@ -196,7 +196,7 @@ template <typename T, uint32_t Capcity>
 class RingQueueCore
 {
 public:
-    typedef T *     item_type;
+    typedef T *         item_type;
 
 public:
     static const bool kIsAllocOnHeap = true;
@@ -251,8 +251,14 @@ public:
     T * locked_pop(pthread_mutex_t *mutex);
 
 public:
+    static volatile lock_t s_shared_lock;
+
+protected:
     core_type core;
 };
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+volatile lock_t RingQueueBase<T, Capcity, CoreTy>::s_shared_lock = { 0 };
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 RingQueueBase<T, Capcity, CoreTy>::RingQueueBase(bool bInitHead  /* = false */)
@@ -326,13 +332,62 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
 {
     index_type head, tail, next;
     bool ok = false;
+    int cnt;
+
+    cnt = 0;
+#if 0
+    while (s_shared_lock.lock != 0) {
+        //jimi_mm_pause;
+        cnt++;
+        if (cnt > 8000) {
+            cnt = 0;
+            //jimi_wsleep(1);
+            //printf("push(): shared_lock = %d\n", s_shared_lock.lock);
+        }
+        Jimi_ReadWriteBarrier();
+    }
+
+    Jimi_ReadWriteBarrier();
+
+    //printf("push(): shared_lock = %d\n", s_shared_lock.lock);
+    //printf("push(): start: cnt = %d\n", cnt);
+    //printf("push(): head = %u, tail = %u\n", core.info.head, core.info.tail);
+
+    __sync_lock_test_and_set(&s_shared_lock.lock, 1U);
+#endif
+
+#if 0
+    do {
+        //jimi_mm_pause;
+        ok = jimi_bool_compare_and_swap32(&s_shared_lock.lock, 0U, 1U);
+    } while (!ok);
+#else
+    while (__sync_val_compare_and_swap(&s_shared_lock.lock, 0U, 1U) != 0U) {
+        jimi_mm_pause;
+    }
+#endif
+
+    //Jimi_ReadWriteBarrier();
 
 #if 1
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
+        s_shared_lock.lock = 0;
+        //Jimi_ReadWriteBarrier();
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+#elif 1
     do {
         head = core.info.head;
         tail = core.info.tail;
-        if ((head - tail) > kMask)
+        if ((head - tail) > kMask) {
+            __sync_lock_test_and_set(&s_shared_lock.lock, 0U);
             return -1;
+        }
         next = head + 1;
         ok = jimi_bool_compare_and_swap32(&core.info.head, head, next);
     } while (!ok);
@@ -346,9 +401,16 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
     } while (jimi_compare_and_swap32(&core.info.head, head, next) != head);
 #endif
 
+    Jimi_ReadWriteBarrier();
+
     core.queue[head & kMask] = item;
 
     Jimi_ReadWriteBarrier();
+
+    //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
+    s_shared_lock.lock = 0;
+
+    //printf("s_shared_lock = %d\n", s_shared_lock.lock);
 
     return 0;
 }
@@ -360,14 +422,63 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     index_type head, tail, next;
     value_type item;
     bool ok = false;
+    int cnt;
+
+    cnt = 0;
+#if 0
+    while (s_shared_lock.lock != 0) {
+        //jimi_mm_pause;
+        cnt++;
+        if (cnt > 8000) {
+            cnt = 0;
+            //jimi_wsleep(1);
+            //printf("pop() : shared_lock = %d\n", s_shared_lock.lock);
+        }
+        Jimi_ReadWriteBarrier();
+    }
+
+    Jimi_ReadWriteBarrier();
+
+    //printf("pop() : shared_lock = %d\n", s_shared_lock.lock);
+    //printf("pop() : start: cnt = %d\n", cnt);
+    //printf("pop() : head = %u, tail = %u\n", core.info.head, core.info.tail);
+
+    __sync_lock_test_and_set(&s_shared_lock.lock, 1U);
+#endif
+
+#if 0
+    do {
+        //jimi_mm_pause;
+        ok = jimi_bool_compare_and_swap32(&s_shared_lock.lock, 0U, 1U);
+    } while (!ok);
+#else
+    while (__sync_val_compare_and_swap(&s_shared_lock.lock, 0U, 1U) != 0U) {
+        jimi_mm_pause;
+    }
+#endif
+
+    //Jimi_ReadWriteBarrier();
 
 #if 1
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
+        s_shared_lock.lock = 0;
+        //Jimi_ReadWriteBarrier();
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+#elif 1
     do {
         head = core.info.head;
         tail = core.info.tail;
         //if (tail >= head && (head - tail) <= kMask)
-        if ((tail == head) || (tail > head && (head - tail) > kMask))
+        if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+            __sync_lock_test_and_set(&s_shared_lock.lock, 0U);
             return (value_type)NULL;
+        }
         next = tail + 1;
         ok = jimi_bool_compare_and_swap32(&core.info.tail, tail, next);
     } while (!ok);
@@ -382,9 +493,16 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     } while (jimi_compare_and_swap32(&core.info.tail, tail, next) != tail);
 #endif
 
+    Jimi_ReadWriteBarrier();
+
     item = core.queue[tail & kMask];
 
     Jimi_ReadWriteBarrier();
+
+    //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
+    s_shared_lock.lock = 0;
+
+    //Jimi_ReadWriteBarrier();
 
     return item;
 }

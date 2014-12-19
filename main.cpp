@@ -119,6 +119,7 @@ ringqueue_push_task(void *arg)
         while (queue->push((struct msg_t *)msg) == -1);
 #endif
         msg++;
+        //jimi_wsleep(10);
 #if 0
         //if ((i & 0x3FFFU) == 0x3FFFU) {
         if ((i & 0xFFFFU) == 0xFFFFU) {
@@ -133,7 +134,7 @@ ringqueue_push_task(void *arg)
 
     push_cycles += rdtsc() - start;
     push_total += MAX_MSG_LENGTH;
-    if (push_total == MSG_CNT)
+    if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
     return NULL;
@@ -202,7 +203,7 @@ push_task(void *arg)
 
     push_cycles += rdtsc() - start;
     push_total += MAX_MSG_LENGTH;
-    if (push_total == MSG_CNT)
+    if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
     return NULL;
@@ -329,6 +330,185 @@ ringqueue_start_thread(int id,
     return 0;
 }
 
+int verify_pop_list(void)
+{
+    int i, j;
+    uint32_t index;
+    uint32_t *verify_list;
+    int zero, overlay, repeat, cnt, times;
+
+    verify_list = (uint32_t *)calloc(MSG_TOTAL_CNT, sizeof(uint32_t));
+    if (verify_list == NULL)
+        return -1;
+
+    for (i = 0; i < POP_CNT; ++i) {
+        for (j = 0; j < MAX_MSG_LENGTH; ++j) {
+            index = (uint32_t)(popmsg_list[i][j]->dummy - 1);
+            if (index < MSG_TOTAL_CNT)
+                verify_list[index] = verify_list[index] + 1;
+        }
+    }
+
+    zero = 0;
+    overlay = 0;
+    repeat = 0;
+    cnt = 0;
+    for (i = 0; i < MSG_TOTAL_CNT; ++i) {
+        times = verify_list[i];
+        if (times == 0) {
+            zero++;
+        }
+        else if (times > 1) {
+            overlay++;
+            if (times >= 3) {
+                repeat++;
+                printf("verify_list[%7d] = %d\n", i, times);
+            }
+        }
+        else {
+            cnt++;
+        }
+    }
+
+    if (repeat > 0)
+        printf("\n");
+    printf("verify pop list result:\n\n");
+    printf("zero = %d, overlay = %d, cnt = %d, total = %d\n\n",
+           zero, overlay, cnt, zero + overlay + cnt);
+
+    if (verify_list)
+        free(verify_list);
+
+    //jimi_console_readkeyln(false, true, false);
+
+    return cnt;
+}
+
+void
+RingQueue_Test(void)
+{
+    RingQueue ringQueue(true, true);
+    int i, j;
+    pthread_t kids[POP_CNT + PUSH_CNT];
+    thread_arg_t *thread_arg;
+
+    init_globals();
+    setaffinity(0);
+
+    msgs = (struct msg_t *)calloc(MSG_TOTAL_CNT, sizeof(struct msg_t));
+
+    for (i = 0; i < MSG_TOTAL_CNT; i++)
+        msgs[i].dummy = (uint64_t)(i + 1);
+
+    for (i = 0; i < POP_CNT; i++) {
+        for (j = 0; j < POP_MSG_LENGTH; ++j) {
+            popmsg_list[i][j] = NULL;
+        }
+    }
+
+    for (i = 0; i < PUSH_CNT; i++) {
+        thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
+        thread_arg->idx = i;
+        thread_arg->queue = &ringQueue;
+        ringqueue_start_thread(i, ringqueue_push_task, (void *)thread_arg,
+                               &kids[i]);
+    }
+    for (i = 0; i < POP_CNT; i++) {
+        thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
+        thread_arg->idx = i;
+        thread_arg->queue = &ringQueue;
+        ringqueue_start_thread(i + PUSH_CNT, ringqueue_pop_task, (void *)thread_arg,
+                               &kids[i + PUSH_CNT]);
+    }
+    for (i = 0; i < POP_CNT + PUSH_CNT; i++)
+        pthread_join(kids[i], NULL);
+
+    printf("\n");
+    printf("pop total: %d\n", pop_total);
+    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
+    printf("push total: %d\n", push_total);
+    printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
+    printf("\n");
+
+    printf("msgs ptr = 0x%08p\n\n", (struct msg_t *)msgs);
+
+    //jimi_console_readkeyln(false, true, false);
+
+    verify_pop_list();
+
+#if 0
+    for (j = 0; j < POP_CNT; ++j) {
+        for (i = 0; i <= 256; ++i) {
+            printf("pop_list[%2d, %3d] = ptr: 0x%08p, %02"PRIuFAST64" : %"PRIuFAST64"\n", j, i,
+                   (struct msg_t *)(popmsg_list[j][i]),
+                   popmsg_list[j][i]->dummy / (MAX_MSG_LENGTH),
+                   popmsg_list[j][i]->dummy % (MAX_MSG_LENGTH));
+        }
+        printf("\n");
+        if (j < (POP_CNT - 1)) {
+            jimi_console_readkeyln(false, true, false);
+        }
+    }
+    printf("\n");
+#endif
+
+    //jimi_console_readkeyln(false, true, false);
+
+#if 0
+    for (i = 0; i <= 256; ++i) {
+        printf("msgs[%3d] = %02llu : %llu\n", i, msgs[i].dummy / MAX_MSG_LENGTH,
+               msgs[i].dummy % MAX_MSG_LENGTH);
+    }
+    printf("\n");
+#endif
+
+    if (msgs) {
+        free((void *)msgs);
+        msgs = NULL;
+    }
+
+    //getchar();
+    jimi_console_readkeyln(true, true, false);
+}
+
+void
+q3_test(void)
+{
+    struct queue *q = qinit();
+    int i;
+    pthread_t kids[POP_CNT + PUSH_CNT];
+
+    init_globals();
+    setaffinity(0);
+
+    msgs = (struct msg_t *)calloc(MSG_TOTAL_CNT, sizeof(struct msg_t));
+
+    for (i = 0; i < MSG_TOTAL_CNT; i++)
+        msgs[i].dummy = (uint64_t)(i + 1);
+
+    for (i = 0; i < PUSH_CNT; i++)
+        start_thread(i, push_task, q, &kids[i]);
+    for (i = 0; i < POP_CNT; i++)
+        start_thread(i + PUSH_CNT, pop_task, q, &kids[i + PUSH_CNT]);
+    for (i = 0; i < POP_CNT + PUSH_CNT; i++)
+        pthread_join(kids[i], NULL);
+
+    printf("\n");
+    printf("pop total: %d\n", pop_total);
+    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
+    printf("push total: %d\n", push_total);
+    printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
+    printf("\n");
+
+    if (msgs) {
+        free((void *)msgs);
+        msgs = NULL;
+    }
+
+    //getchar();
+    jimi_console_readkeyln(false, true, false);
+}
+
 void
 RingQueue_UnitTest(void)
 {
@@ -370,127 +550,6 @@ RingQueue_UnitTest(void)
 
     //getchar();
     jimi_console_readkeyln(true, true, false);
-}
-
-void
-RingQueue_Test(void)
-{
-    RingQueue ringQueue(true, true);
-    int i, j;
-    pthread_t kids[POP_CNT + PUSH_CNT];
-    thread_arg_t *thread_arg;
-
-    init_globals();
-    setaffinity(0);
-
-    msgs = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
-
-    for (i = 0; i < MSG_CNT; i++)
-        msgs[i].dummy = (uint64_t)(i + 1);
-
-    for (i = 0; i < POP_CNT; i++) {
-        for (j = 0; j < POP_MSG_LENGTH; ++j) {
-            popmsg_list[i][j] = NULL;
-        }
-    }
-
-    for (i = 0; i < PUSH_CNT; i++) {
-        thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
-        thread_arg->idx = i;
-        thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i, ringqueue_push_task, (void *)thread_arg,
-                               &kids[i]);
-    }
-    for (i = 0; i < POP_CNT; i++) {
-        thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
-        thread_arg->idx = i;
-        thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i + PUSH_CNT, ringqueue_pop_task, (void *)thread_arg,
-                               &kids[i + PUSH_CNT]);
-    }
-    for (i = 0; i < POP_CNT + PUSH_CNT; i++)
-        pthread_join(kids[i], NULL);
-
-    printf("\n");
-    printf("pop total: %d\n", pop_total);
-    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
-    printf("push total: %d\n", push_total);
-    printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_CNT);
-    printf("\n");
-
-    printf("msgs ptr = 0x%08p\n\n", (struct msg_t *)msgs);
-
-    jimi_console_readkeyln(false, true, false);
-
-    for (j = 0; j < POP_CNT; ++j) {
-        for (i = 0; i <= 256; ++i) {
-            printf("pop_list[%2d, %3d] = ptr: 0x%08p, %02"PRIuFAST64" : %"PRIuFAST64"\n", j, i,
-                   (struct msg_t *)(popmsg_list[i]),
-                   popmsg_list[j][i]->dummy / (MAX_MSG_LENGTH),
-                   popmsg_list[j][i]->dummy % (MAX_MSG_LENGTH));
-        }
-        printf("\n");
-        if (j < (POP_CNT - 1)) {
-            jimi_console_readkeyln(false, true, false);
-        }
-    }
-    printf("\n");
-
-    //jimi_console_readkeyln(false, true, false);
-
-#if 0
-    for (i = 0; i <= 256; ++i) {
-        printf("msgs[%3d] = %02llu : %llu\n", i, msgs[i].dummy / MAX_MSG_LENGTH,
-               msgs[i].dummy % MAX_MSG_LENGTH);
-    }
-    printf("\n");
-#endif
-
-    if (msgs) {
-        free((void *)msgs);
-        msgs = NULL;
-    }
-
-    //getchar();
-    jimi_console_readkeyln(true, true, false);
-}
-
-void
-q3_test(void)
-{
-    struct queue *q = qinit();
-    int i;
-    pthread_t kids[POP_CNT + PUSH_CNT];
-
-    init_globals();
-    setaffinity(0);
-
-    msgs = (struct msg_t *)calloc(MSG_CNT, sizeof(struct msg_t));
-
-    for (i = 0; i < MSG_CNT; i++)
-        msgs[i].dummy = (uint64_t)(i + 1);
-
-    for (i = 0; i < PUSH_CNT; i++)
-        start_thread(i, push_task, q, &kids[i]);
-    for (i = 0; i < POP_CNT; i++)
-        start_thread(i + PUSH_CNT, pop_task, q, &kids[i + PUSH_CNT]);
-    for (i = 0; i < POP_CNT + PUSH_CNT; i++)
-        pthread_join(kids[i], NULL);
-
-    printf("\n");
-    printf("pop total: %d\n", pop_total);
-    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
-    printf("push total: %d\n", push_total);
-    printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_CNT);
-    printf("\n");
-
-    if (msgs) {
-        free((void *)msgs);
-        msgs = NULL;
-    }
-
-    //getchar();
-    jimi_console_readkeyln(false, true, false);
 }
 
 void test_data_destory(void)
