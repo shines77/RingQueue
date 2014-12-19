@@ -5,11 +5,12 @@
 #include <xmmintrin.h>
 #include <emmintrin.h>
 
+#include "test.h"
 #include "get_char.h"
 
+#ifdef _WIN32
 #include <windows.h>
-
-#define jimi_wsleep     Sleep
+#endif
 
 #ifndef likely
 #define likely(x)   __builtin_expect((x), 1)
@@ -21,16 +22,6 @@
 
 #define USE_SLEEP_AND_LOG   0
 
-#define QSZ         (1024 * 1)
-#define QMSK        (QSZ - 1)
-
-typedef
-struct msg_t {
-    uint64_t dummy;
-} msg_t;
-
-#define CACHE_LINE_SIZE     64
-
 struct queue {
     struct {
         uint32_t mask;
@@ -38,7 +29,7 @@ struct queue {
         volatile uint32_t head;
         volatile uint32_t tail;
     } p;
-    char pad[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
+    char pad1[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
 
     struct {
         uint32_t mask;
@@ -54,9 +45,9 @@ struct queue {
 static inline struct queue *
 qinit(void)
 {
-    struct queue *q = (struct queue *)calloc(1, sizeof(*q) + QSZ * sizeof(void *));
-    q->p.size = q->c.size = QSZ;
-    q->p.mask = q->c.mask = QMSK;
+    struct queue *q = (struct queue *)calloc(1, sizeof(*q) + QSIZE * sizeof(void *));
+    q->p.size = q->c.size = QSIZE;
+    q->p.mask = q->c.mask = QMASK;
 
     return q;
 }

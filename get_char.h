@@ -34,7 +34,11 @@ int jimi_getch(void);
 /* Read 1 character with echo */
 int jimi_getche(void);
 
-void jimi_sleep(int millisec);
+/* Sleep for the platform */
+void jimi_sleep(unsigned int millisec);
+
+/* Sleep for Windows or MinGW */
+void jimi_wsleep(unsigned int millisec);
 
 #ifdef __cplusplus
 }

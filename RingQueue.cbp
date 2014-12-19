@@ -68,6 +68,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="sys_timer.h" />
+		<Unit filename="test.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

@@ -35,9 +35,14 @@ int jimi_getche(void)
     return ch;
 }
 
-void jimi_sleep(int millisec)
+void jimi_sleep(unsigned int millisec)
 {
     usleep(millisec * 1000);
+}
+
+void jimi_wsleep(unsigned int millisec)
+{
+    Sleep(millisec);
 }
 
 #elif defined(__linux__)
@@ -90,9 +95,14 @@ int jimi_getche(void)
     return jimi_getch_term(1);
 }
 
-void jimi_sleep(int millisec)
+void jimi_sleep(unsigned int millisec)
 {
     usleep(millisec * 1000);
+}
+
+void jimi_wsleep(unsigned int millisec)
+{
+    jimi_sleep(millisec);
 }
 
 #elif defined(_MSC_VER)
@@ -114,9 +124,14 @@ int jimi_getche(void)
     return ch;
 }
 
-void jimi_sleep(int millisec)
+void jimi_sleep(unsigned int millisec)
 {
     Sleep(millisec);
+}
+
+void jimi_wsleep(unsigned int millisec)
+{
+    jimi_sleep(millisec);
 }
 
 #else  /* other unknown os */
@@ -133,17 +148,22 @@ int jimi_getche(void)
     return (int)-1;
 }
 
-void jimi_sleep(int millisec)
+void jimi_sleep(unsigned int millisec)
 {
     // Do nothing !!
-    volatile int sum = 0;
-    int i, j;
-    for (i = 0; i < 50000; ++i) {
+    volatile unsigned int sum = 0;
+    unsigned int i, j;
+    for (i = 0; i < millisec; ++i) {
         sum += i;
-        for (j = 2000; j >= 0; --j) {
+        for (j = 50000; j >= 0; --j) {
             sum -= j;
         }
     }
+}
+
+void jimi_wsleep(unsigned int millisec)
+{
+    jimi_sleep(millisec);
 }
 
 #endif  /* __linux__ */
