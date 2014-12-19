@@ -15,6 +15,8 @@
 #endif
 #include <emmintrin.h>
 
+#include "dump_mem.h"
+
 #ifndef JIMI_CACHELINE_SIZE
 #define JIMI_CACHELINE_SIZE     64
 #endif
@@ -285,6 +287,7 @@ template <typename T, uint32_t Capcity, typename CoreTy>
 void RingQueueBase<T, Capcity, CoreTy>::dump_info()
 {
     //ReleaseUtils::dump(&core.info, sizeof(core.info));
+    dump_mem(&core.info, sizeof(core.info), false, 16, 0, 0);
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>

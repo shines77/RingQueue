@@ -53,6 +53,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="console.h" />
+		<Unit filename="dump_mem.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="dump_mem.h" />
 		<Unit filename="get_char.c">
 			<Option compilerVar="CC" />
 		</Unit>

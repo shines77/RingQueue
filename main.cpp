@@ -8,6 +8,9 @@
 #include <sched.h>
 #include <pthread.h>
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include "test.h"
 
 #include "q3.h"
@@ -20,23 +23,6 @@
 
 using namespace jimi;
 
-typedef RingQueue2<msg_t, QSIZE> RingQueue;
-
-#ifndef USE_JIMI_RINGQUEUE
-#define USE_JIMI_RINGQUEUE      1
-#endif
-
-#ifndef USE_LOCKED_RINGQUEUE
-#define USE_LOCKED_RINGQUEUE    0
-#endif
-
-#if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32)
-typedef unsigned int cpu_set_t;
-#endif // defined
-
-static volatile struct msg_t *msgs;
-//static volatile struct msg_t *msg_list;
-
 #define POP_CNT         4
 #define PUSH_CNT        4
 
@@ -48,9 +34,26 @@ static volatile struct msg_t *msgs;
 
 #define MSG_CNT         (PUSH_CNT * MAX_MSG_LENGTH)
 
-static struct msg_t *msg_list[POP_CNT][MAX_MSG_LENGTH];
+#ifndef USE_LOCKED_RINGQUEUE
+#define USE_LOCKED_RINGQUEUE    0
+#endif
+
+#ifndef USE_JIMI_RINGQUEUE
+#define USE_JIMI_RINGQUEUE      1
+#endif
+
+#if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32)
+typedef unsigned int cpu_set_t;
+#endif // defined
+
+static volatile struct msg_t *msgs;
+//static volatile struct msg_t *popmsg_list;
+
+static struct msg_t *popmsg_list[POP_CNT][MAX_MSG_LENGTH];
 
 static pthread_mutex_t s_queue_lock = NULL;
+
+typedef RingQueue2<msg_t, QSIZE> RingQueue;
 
 typedef struct thread_arg_t
 {
@@ -182,7 +185,7 @@ ringqueue_pop_task(void *arg)
         free(thread_arg);
 
     cnt = 0;
-    record_list = &msg_list[idx][0];
+    record_list = &popmsg_list[idx][0];
     start = rdtsc();
 
     while (true || !quit) {
@@ -405,7 +408,7 @@ RingQueue_Test(void)
 
     for (i = 0; i < POP_CNT; i++) {
         for (j = 0; j < MAX_MSG_LENGTH; ++j) {
-            msg_list[i][j] = NULL;
+            popmsg_list[i][j] = NULL;
         }
     }
 
@@ -428,22 +431,21 @@ RingQueue_Test(void)
 
     printf("\n");
     printf("pop total: %d\n", pop_total);
-    printf("pop cycles/msg: %lu\n", pop_cycles / pop_total);
+    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
-    printf("push cycles/msg: %lu\n", push_cycles / MSG_CNT);
+    printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_CNT);
     printf("\n");
 
-    printf("msgs ptr = 0x%08X\n\n", msgs);
+    printf("msgs ptr = 0x%08p\n\n", (struct msg_t *)msgs);
 
     jimi_console_readkeyln(false, true, false);
 
     for (j = 0; j < POP_CNT; ++j) {
         for (i = 0; i <= 256; ++i) {
-            printf("pop_list[%2d, %3d] = ptr: 0x%08X, %02llu : %llu\n", j, i,
-                   //((char *)(&msg_list[i]) - (char *)msgs) / sizeof(void *),
-                   (msg_t *)(msg_list[i]),
-                   msg_list[j][i]->dummy / (MSG_CNT / PUSH_CNT),
-                   msg_list[j][i]->dummy % (MSG_CNT / PUSH_CNT));
+            printf("pop_list[%2d, %3d] = ptr: 0x%08p, %02"PRIuFAST64" : %"PRIuFAST64"\n", j, i,
+                   (struct msg_t *)(popmsg_list[i]),
+                   popmsg_list[j][i]->dummy / (MAX_MSG_LENGTH),
+                   popmsg_list[j][i]->dummy % (MAX_MSG_LENGTH));
         }
         printf("\n");
         if (j < (POP_CNT - 1)) {
@@ -495,9 +497,9 @@ q3_test(void)
 
     printf("\n");
     printf("pop total: %d\n", pop_total);
-    printf("pop cycles/msg: %lu\n", pop_cycles / pop_total);
+    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
-    printf("push cycles/msg: %lu\n", push_cycles / MSG_CNT);
+    printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_CNT);
     printf("\n");
 
     if (msgs) {

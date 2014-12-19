@@ -6,6 +6,7 @@
 #if defined(__MINGW32__)
 #include <conio.h>
 #include <unistd.h>
+#include <windows.h>
 #elif defined(__linux__)
 #include <termios.h>
 #include <unistd.h>
