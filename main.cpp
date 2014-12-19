@@ -23,25 +23,6 @@
 
 using namespace jimi;
 
-#define POP_CNT         4
-#define PUSH_CNT        4
-
-#if 1
-#define MAX_MSG_LENGTH  1000000
-#else
-#define MAX_MSG_LENGTH  10000
-#endif
-
-#define MSG_CNT         (PUSH_CNT * MAX_MSG_LENGTH)
-
-#ifndef USE_LOCKED_RINGQUEUE
-#define USE_LOCKED_RINGQUEUE    0
-#endif
-
-#ifndef USE_JIMI_RINGQUEUE
-#define USE_JIMI_RINGQUEUE      1
-#endif
-
 #if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32)
 typedef unsigned int cpu_set_t;
 #endif // defined
@@ -49,7 +30,7 @@ typedef unsigned int cpu_set_t;
 static volatile struct msg_t *msgs;
 //static volatile struct msg_t *popmsg_list;
 
-static struct msg_t *popmsg_list[POP_CNT][MAX_MSG_LENGTH];
+static struct msg_t *popmsg_list[POP_CNT][POP_MSG_LENGTH];
 
 static pthread_mutex_t s_queue_lock = NULL;
 
@@ -197,7 +178,7 @@ ringqueue_pop_task(void *arg)
         if (msg != NULL) {
             *record_list++ = (struct msg_t *)msg;
             cnt++;
-            if (cnt >= MAX_MSG_LENGTH)
+            if (cnt >= POP_MSG_LENGTH)
                 break;
         }
     }
@@ -352,8 +333,9 @@ void
 RingQueue_UnitTest(void)
 {
     RingQueue ringQueue(true, true);
-
     msg_t queue_msg = { 123ULL };
+
+    init_globals();
 
     printf("---------------------------------------------------------------\n");
     printf("RingQueue2() test begin...\n\n");
@@ -393,7 +375,7 @@ RingQueue_UnitTest(void)
 void
 RingQueue_Test(void)
 {
-    RingQueue ringQueue;
+    RingQueue ringQueue(true, true);
     int i, j;
     pthread_t kids[POP_CNT + PUSH_CNT];
     thread_arg_t *thread_arg;
@@ -407,7 +389,7 @@ RingQueue_Test(void)
         msgs[i].dummy = (uint64_t)(i + 1);
 
     for (i = 0; i < POP_CNT; i++) {
-        for (j = 0; j < MAX_MSG_LENGTH; ++j) {
+        for (j = 0; j < POP_MSG_LENGTH; ++j) {
             popmsg_list[i][j] = NULL;
         }
     }
