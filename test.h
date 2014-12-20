@@ -2,27 +2,59 @@
 #ifndef _RINGQUEUE_TEST_H_
 #define _RINGQUEUE_TEST_H_
 
+/// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
 #define QSIZE           (1 << 10)
 #define QMASK           (QSIZE - 1)
 
-#define PUSH_CNT        4
-#define POP_CNT         4
+/// 分别定义push(推送)和pop(弹出)的线程数
+#define PUSH_CNT        2
+#define POP_CNT         2
 
+/// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 #if 1
-#define MAX_MSG_LENGTH  1000000
+#define MSG_TOTAL_LENGTH    8000000
 #else
-#define MAX_MSG_LENGTH  10000
+#define MSG_TOTAL_LENGTH    80000
 #endif
 
-#define MSG_TOTAL_CNT   (PUSH_CNT * MAX_MSG_LENGTH)
-#define POP_MSG_LENGTH  (MSG_TOTAL_CNT / POP_CNT)
+/// 等同于MSG_TOTAL_LENGTH
+#define MSG_TOTAL_CNT       (MSG_TOTAL_LENGTH)
 
+/// 分发给每个(push)线程的消息数量, 等同于MAX_PUSH_MSG_LENGTH
+#define MAX_PUSH_MSG_LENGTH (MSG_TOTAL_LENGTH / PUSH_CNT)
+
+/// 分发给每个(pop)线程的消息数量
+#define MAX_POP_MSG_LENGTH  (MSG_TOTAL_LENGTH / POP_CNT)
+
+/// 是否运行q3.h的测试代码
+#ifndef USE_DOUBAN_RINGQUEUE
+#define USE_DOUBAN_RINGQUEUE    0
+#endif
+
+/// 是否运行jimi:RingQueue的测试代码
 #ifndef USE_JIMI_RINGQUEUE
 #define USE_JIMI_RINGQUEUE      1
 #endif
 
-#ifndef USE_LOCKED_RINGQUEUE
-#define USE_LOCKED_RINGQUEUE    0
+///
+/// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
+///
+/// 定义为0, 表示使用豆瓣上讨论的改良型lock-free方案, 调用RingQueue.push(), RingQueue.pop();
+/// 定义为1, 表示使用细粒度的标准spin_mutex锁, 调用RingQueue.spin_push(), RingQueue.spin_pop();
+/// 定义为2, 表示使用细粒度的仿制spin_mutex锁(会死锁), 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
+/// 定义为3, 表示使用粗粒度的pthread_mutex_t锁, 调用RingQueue.locked_push(), RingQueue.locked_pop().
+///
+/// 其中只有1, 3都可以得到正确结果, 而且1速度最快;
+///
+/// 0可能会导致逻辑错误, 结果错误, 而且当(PUSH_CNT + POP_CNT) > CPU物理核心数时,
+///     有可能不能完成测试或运行时间很久(几十秒或几分钟不等, 而且结果还是错误的), 可自行验证.
+///
+/// 2可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
+///
+
+/// 取值范围是 0-3
+#ifndef RINGQUEUE_LOCK_TYPE
+#define RINGQUEUE_LOCK_TYPE     1
 #endif
 
 #define CACHE_LINE_SIZE     64
@@ -37,14 +69,14 @@ struct msg_t {
 } msg_t;
 
 typedef
-struct lock_t {
-    volatile char pad1[CACHE_LINE_SIZE];
-    volatile uint32_t lock;
-    volatile uint32_t counter;
-    volatile uint32_t spin_count;
-    volatile uint32_t ref;
-    volatile char pad2[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
-} lock_t;
+struct spin_mutex_t {
+    volatile char padding1[CACHE_LINE_SIZE];
+    volatile uint32_t locked;
+    volatile uint32_t spin_counter;
+    volatile uint32_t recurse_counter;
+    volatile uint32_t thread_id;
+    volatile char padding2[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
+} spin_mutex_t;
 
 #ifdef __cplusplus
 }

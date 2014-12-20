@@ -27,20 +27,20 @@ using namespace jimi;
 typedef unsigned int cpu_set_t;
 #endif // defined
 
-static volatile struct msg_t *msgs;
-//static volatile struct msg_t *popmsg_list;
-
-static struct msg_t *popmsg_list[POP_CNT][POP_MSG_LENGTH];
-
-static pthread_mutex_t s_queue_lock = NULL;
-
-typedef RingQueue2<msg_t, QSIZE> RingQueue;
+typedef RingQueue<msg_t, QSIZE> RingQueue_t;
 
 typedef struct thread_arg_t
 {
     int         idx;
-    RingQueue  *queue;
+    RingQueue_t *queue;
 } thread_arg_t;
+
+static volatile struct msg_t *msgs;
+//static volatile struct msg_t *popmsg_list;
+
+static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
+
+static pthread_mutex_t s_queue_mutex = NULL;
 
 static inline uint64_t
 rdtsc(void)
@@ -77,9 +77,9 @@ init_globals(void)
     push_cycles = 0;
     pop_cycles = 0;
 
-    if (s_queue_lock == NULL) {
+    if (s_queue_mutex == NULL) {
         if (!pthread_mutexattr_init(&attr)) {
-            pthread_mutex_init(&s_queue_lock, NULL);
+            pthread_mutex_init(&s_queue_mutex, NULL);
         }
     }
 }
@@ -88,7 +88,7 @@ static void *
 ringqueue_push_task(void *arg)
 {
     thread_arg_t *thread_arg;
-    RingQueue *queue;
+    RingQueue_t *queue;
     struct msg_t *msg;
     uint64_t start;
     int i, idx;
@@ -99,7 +99,7 @@ ringqueue_push_task(void *arg)
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
         idx   = thread_arg->idx;
-        queue = (RingQueue *)thread_arg->queue;
+        queue = (RingQueue_t *)thread_arg->queue;
     }
 
     if (queue == NULL)
@@ -108,18 +108,20 @@ ringqueue_push_task(void *arg)
     if (thread_arg)
         free(thread_arg);
 
-    msg = (struct msg_t *)&msgs[idx * MAX_MSG_LENGTH];
+    msg = (struct msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
     start = rdtsc();
 
-    for (i = 0; i < MAX_MSG_LENGTH; i++) {
-#if defined(USE_LOCKED_RINGQUEUE) && (USE_LOCKED_RINGQUEUE != 0)
-        while (queue->locked_push((struct msg_t *)msg,
-                                  &s_queue_lock) == -1);
+    for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+#if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
+        while (queue->spin_push(msg) == -1);
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
+        while (queue->spin2_push(msg) == -1);
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
+        while (queue->locked_push(msg) == -1);
 #else
-        while (queue->push((struct msg_t *)msg) == -1);
+        while (queue->push(msg) == -1);
 #endif
         msg++;
-        //jimi_wsleep(10);
 #if 0
         //if ((i & 0x3FFFU) == 0x3FFFU) {
         if ((i & 0xFFFFU) == 0xFFFFU) {
@@ -133,7 +135,7 @@ ringqueue_push_task(void *arg)
 #endif
 
     push_cycles += rdtsc() - start;
-    push_total += MAX_MSG_LENGTH;
+    push_total += MAX_PUSH_MSG_LENGTH;
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
@@ -144,7 +146,7 @@ static void *
 ringqueue_pop_task(void *arg)
 {
     thread_arg_t *thread_arg;
-    RingQueue *queue;
+    RingQueue_t *queue;
     struct msg_t *msg;
     struct msg_t **record_list;
     uint64_t start;
@@ -157,7 +159,7 @@ ringqueue_pop_task(void *arg)
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
         idx   = thread_arg->idx;
-        queue = (RingQueue *)thread_arg->queue;
+        queue = (RingQueue_t *)thread_arg->queue;
     }
 
     if (queue == NULL)
@@ -171,15 +173,19 @@ ringqueue_pop_task(void *arg)
     start = rdtsc();
 
     while (true || !quit) {
-#if defined(USE_LOCKED_RINGQUEUE) && (USE_LOCKED_RINGQUEUE != 0)
-        msg = (struct msg_t *)queue->locked_pop(&s_queue_lock);
+#if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
+        msg = (struct msg_t *)queue->spin_pop();
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
+        msg = (struct msg_t *)queue->spin2_pop();
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
+        msg = (struct msg_t *)queue->locked_pop();
 #else
         msg = (struct msg_t *)queue->pop();
 #endif
         if (msg != NULL) {
             *record_list++ = (struct msg_t *)msg;
             cnt++;
-            if (cnt >= POP_MSG_LENGTH)
+            if (cnt >= MAX_POP_MSG_LENGTH)
                 break;
         }
     }
@@ -197,12 +203,12 @@ push_task(void *arg)
     uint64_t start = rdtsc();
     int i;
 
-    for (i = 0; i < MAX_MSG_LENGTH; i++) {
+    for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
         while (push(q, msgs + i) == -1);
     }
 
     push_cycles += rdtsc() - start;
-    push_total += MAX_MSG_LENGTH;
+    push_total += MAX_PUSH_MSG_LENGTH;
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
@@ -335,62 +341,75 @@ int verify_pop_list(void)
     int i, j;
     uint32_t index;
     uint32_t *verify_list;
-    int zero, overlay, repeat, cnt, times;
+    int empty, overlay, correct, errors, times;
 
     verify_list = (uint32_t *)calloc(MSG_TOTAL_CNT, sizeof(uint32_t));
     if (verify_list == NULL)
         return -1;
 
     for (i = 0; i < POP_CNT; ++i) {
-        for (j = 0; j < MAX_MSG_LENGTH; ++j) {
+        for (j = 0; j < MAX_PUSH_MSG_LENGTH; ++j) {
             index = (uint32_t)(popmsg_list[i][j]->dummy - 1);
             if (index < MSG_TOTAL_CNT)
                 verify_list[index] = verify_list[index] + 1;
         }
     }
 
-    zero = 0;
+    empty = 0;
     overlay = 0;
-    repeat = 0;
-    cnt = 0;
+    correct = 0;
+    errors = 0;
     for (i = 0; i < MSG_TOTAL_CNT; ++i) {
         times = verify_list[i];
         if (times == 0) {
-            zero++;
+            empty++;
         }
         else if (times > 1) {
             overlay++;
             if (times >= 3) {
-                repeat++;
-                printf("verify_list[%7d] = %d\n", i, times);
+                if (errors == 0)
+                    printf("Serious Errors:\n");
+                errors++;
+                printf("verify_list[%8d] = %d\n", i, times);
             }
         }
         else {
-            cnt++;
+            correct++;
         }
     }
 
-    if (repeat > 0)
+    if (errors > 0)
         printf("\n");
     printf("verify pop list result:\n\n");
-    printf("zero = %d, overlay = %d, cnt = %d, total = %d\n\n",
-           zero, overlay, cnt, zero + overlay + cnt);
+    printf("empty = %d, overlay = %d, correct = %d, total = %d\n\n",
+           empty, overlay, correct, empty + overlay + correct);
 
     if (verify_list)
         free(verify_list);
 
     //jimi_console_readkeyln(false, true, false);
 
-    return cnt;
+    return correct;
 }
 
 void
 RingQueue_Test(void)
 {
-    RingQueue ringQueue(true, true);
+    RingQueue_t ringQueue(true, true);
     int i, j;
     pthread_t kids[POP_CNT + PUSH_CNT];
     thread_arg_t *thread_arg;
+
+    printf("\n");
+#if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
+    printf("This is RingQueue.spin_push() test:\n");
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
+    printf("This is RingQueue.spin2_push() test (maybe deadlock):\n");
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
+    printf("This is RingQueue.locked_push() test:\n");
+#else
+    printf("This is RingQueue.push() test (modified by q3.h):\n");
+#endif
 
     init_globals();
     setaffinity(0);
@@ -401,7 +420,7 @@ RingQueue_Test(void)
         msgs[i].dummy = (uint64_t)(i + 1);
 
     for (i = 0; i < POP_CNT; i++) {
-        for (j = 0; j < POP_MSG_LENGTH; ++j) {
+        for (j = 0; j < MAX_POP_MSG_LENGTH; ++j) {
             popmsg_list[i][j] = NULL;
         }
     }
@@ -441,8 +460,8 @@ RingQueue_Test(void)
         for (i = 0; i <= 256; ++i) {
             printf("pop_list[%2d, %3d] = ptr: 0x%08p, %02"PRIuFAST64" : %"PRIuFAST64"\n", j, i,
                    (struct msg_t *)(popmsg_list[j][i]),
-                   popmsg_list[j][i]->dummy / (MAX_MSG_LENGTH),
-                   popmsg_list[j][i]->dummy % (MAX_MSG_LENGTH));
+                   popmsg_list[j][i]->dummy / (MAX_PUSH_MSG_LENGTH),
+                   popmsg_list[j][i]->dummy % (MAX_PUSH_MSG_LENGTH));
         }
         printf("\n");
         if (j < (POP_CNT - 1)) {
@@ -456,8 +475,8 @@ RingQueue_Test(void)
 
 #if 0
     for (i = 0; i <= 256; ++i) {
-        printf("msgs[%3d] = %02llu : %llu\n", i, msgs[i].dummy / MAX_MSG_LENGTH,
-               msgs[i].dummy % MAX_MSG_LENGTH);
+        printf("msgs[%3d] = %02llu : %llu\n", i, msgs[i].dummy / MAX_PUSH_MSG_LENGTH,
+               msgs[i].dummy % MAX_PUSH_MSG_LENGTH);
     }
     printf("\n");
 #endif
@@ -477,6 +496,9 @@ q3_test(void)
     struct queue *q = qinit();
     int i;
     pthread_t kids[POP_CNT + PUSH_CNT];
+
+    printf("\n");
+    printf("This is DouBan's q3.h test:\n");
 
     init_globals();
     setaffinity(0);
@@ -512,7 +534,7 @@ q3_test(void)
 void
 RingQueue_UnitTest(void)
 {
-    RingQueue ringQueue(true, true);
+    RingQueue_t ringQueue(true, true);
     msg_t queue_msg = { 123ULL };
 
     init_globals();
@@ -554,9 +576,8 @@ RingQueue_UnitTest(void)
 
 void test_data_destory(void)
 {
-    if (s_queue_lock) {
-        pthread_mutex_destroy(&s_queue_lock);
-        s_queue_lock = NULL;
+    if (s_queue_mutex) {
+        pthread_mutex_destroy(&s_queue_mutex);
     }
 }
 
@@ -566,11 +587,11 @@ main(void)
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
     //RingQueue_UnitTest();
     RingQueue_Test();
+#endif
 
+#if defined(USE_DOUBAN_RINGQUEUE) && (USE_DOUBAN_RINGQUEUE != 0)
     q3_test();
-#else
-    q3_test();
-#endif // defined
+#endif
 
     test_data_destory();
 

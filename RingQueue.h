@@ -99,7 +99,7 @@
 #endif  /* _MSC_VER */
 
 #if defined(_MSC_VER)
-#define jimi_compare_and_swap32(destPtr, oldValue, newValue)    \
+#define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)    \
     InterlockedCompareExchange((volatile LONG *)destPtr,    \
                             (uint32_t)(newValue), (uint32_t)(oldValue))
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
@@ -107,15 +107,15 @@
                             (uint32_t)(newValue), (uint32_t)(oldValue)) \
                                 == (uint32_t)(oldValue))
 #elif defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW__) || defined(__MINGW32__)
-#define jimi_compare_and_swap32(destPtr, oldValue, newValue)    \
-    __sync_compare_and_swap((volatile uint32_t *)destPtr,       \
+#define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)    \
+    __sync_val_compare_and_swap((volatile uint32_t *)destPtr,       \
                             (uint32_t)(oldValue), (uint32_t)(newValue))
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)   \
     __sync_bool_compare_and_swap((volatile uint32_t *)destPtr,      \
                             (uint32_t)(oldValue), (uint32_t)(newValue))
 #else
-#define jimi_compare_and_swap32(destPtr, oldValue, newValue)        \
-    __internal_compare_and_swap32((volatile uint32_t *)(destPtr),   \
+#define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
+    __internal_val_compare_and_swap32((volatile uint32_t *)(destPtr),   \
                                 (uint32_t)(oldValue), (uint32_t)(newValue))
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
     __internal_bool_compare_and_swap32((volatile uint32_t *)(destPtr),  \
@@ -123,9 +123,9 @@
 #endif  /* _MSC_VER */
 
 static inline
-uint32_t __internal_compare_and_swap32(volatile uint32_t *destPtr,
-                                       uint32_t oldValue,
-                                       uint32_t newValue)
+uint32_t __internal_val_compare_and_swap32(volatile uint32_t *destPtr,
+                                           uint32_t oldValue,
+                                           uint32_t newValue)
 {
     uint32_t origValue = *destPtr;
     if (*destPtr == oldValue) {
@@ -247,18 +247,20 @@ public:
     int push(T * item);
     T * pop();
 
-    int locked_push(T * item, pthread_mutex_t *mutex);
-    T * locked_pop(pthread_mutex_t *mutex);
+    int spin_push(T * item);
+    T * spin_pop();
 
-public:
-    static volatile lock_t s_shared_lock;
+    int spin2_push(T * item);
+    T * spin2_pop();
+
+    int locked_push(T * item);
+    T * locked_pop();
 
 protected:
-    core_type core;
+    core_type       core;
+    spin_mutex_t    spin_mutex;
+    pthread_mutex_t queue_mutex;
 };
-
-template <typename T, uint32_t Capcity, typename CoreTy>
-volatile lock_t RingQueueBase<T, Capcity, CoreTy>::s_shared_lock = { 0 };
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 RingQueueBase<T, Capcity, CoreTy>::RingQueueBase(bool bInitHead  /* = false */)
@@ -272,6 +274,11 @@ template <typename T, uint32_t Capcity, typename CoreTy>
 RingQueueBase<T, Capcity, CoreTy>::~RingQueueBase()
 {
     // Do nothing!
+    Jimi_ReadWriteBarrier();
+
+    spin_mutex.locked = 0;
+
+    pthread_mutex_destroy(&queue_mutex);
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
@@ -287,6 +294,17 @@ void RingQueueBase<T, Capcity, CoreTy>::init(bool bInitHead /* = false */)
     else {
         memset((void *)&core.info, 0, sizeof(core.info));
     }
+
+    Jimi_ReadWriteBarrier();
+
+    // Initilized spin mutex
+    spin_mutex.locked = 0;
+    spin_mutex.spin_counter = 4000;
+    spin_mutex.recurse_counter = 0;
+    spin_mutex.thread_id = 0;
+
+    // Initilized mutex
+    pthread_mutex_init(&queue_mutex, NULL);
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
@@ -317,11 +335,11 @@ RingQueueBase<T, Capcity, CoreTy>::sizes() const
 {
     index_type head, tail;
 
-    head = core.info.head;
     Jimi_ReadWriteBarrier();
 
+    head = core.info.head;
+
     tail = core.info.tail;
-    Jimi_ReadWriteBarrier();
 
     return (size_type)((head - tail) <= kMask) ? (head - tail) : (size_type)-1;
 }
@@ -332,65 +350,16 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
 {
     index_type head, tail, next;
     bool ok = false;
-    int cnt;
-
-    cnt = 0;
-#if 0
-    while (s_shared_lock.lock != 0) {
-        //jimi_mm_pause;
-        cnt++;
-        if (cnt > 8000) {
-            cnt = 0;
-            //jimi_wsleep(1);
-            //printf("push(): shared_lock = %d\n", s_shared_lock.lock);
-        }
-        Jimi_ReadWriteBarrier();
-    }
 
     Jimi_ReadWriteBarrier();
 
-    //printf("push(): shared_lock = %d\n", s_shared_lock.lock);
-    //printf("push(): start: cnt = %d\n", cnt);
-    //printf("push(): head = %u, tail = %u\n", core.info.head, core.info.tail);
-
-    ///
-    /// GCC 提供的原子操作 (From GCC 4.1.2)
-    /// See: http://www.cnblogs.com/FrankTan/archive/2010/12/11/1903377.html
-    ///
-    __sync_lock_test_and_set(&s_shared_lock.lock, 1U);
-#endif
-
-#if 0
-    do {
-        //jimi_mm_pause;
-        ok = jimi_bool_compare_and_swap32(&s_shared_lock.lock, 0U, 1U);
-    } while (!ok);
-#else
-    while (__sync_val_compare_and_swap(&s_shared_lock.lock, 0U, 1U) != 0U) {
-        //jimi_mm_pause;
-        jimi_wsleep(0);
-    }
-#endif
-
-    //Jimi_ReadWriteBarrier();
-
 #if 1
-    head = core.info.head;
-    tail = core.info.tail;
-    if ((head - tail) > kMask) {
-        //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
-        s_shared_lock.lock = 0;
-        //Jimi_ReadWriteBarrier();
-        return -1;
-    }
-    next = head + 1;
-    core.info.head = next;
-#elif 1
     do {
         head = core.info.head;
         tail = core.info.tail;
         if ((head - tail) > kMask) {
-            __sync_lock_test_and_set(&s_shared_lock.lock, 0U);
+            Jimi_ReadWriteBarrier();
+            __sync_lock_test_and_set(&spin_mutex.locked, 0U);
             return -1;
         }
         next = head + 1;
@@ -406,16 +375,9 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
     } while (jimi_compare_and_swap32(&core.info.head, head, next) != head);
 #endif
 
-    Jimi_ReadWriteBarrier();
-
     core.queue[head & kMask] = item;
 
     Jimi_ReadWriteBarrier();
-
-    //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
-    s_shared_lock.lock = 0;
-
-    //printf("s_shared_lock = %d\n", s_shared_lock.lock);
 
     return 0;
 }
@@ -427,62 +389,18 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     index_type head, tail, next;
     value_type item;
     bool ok = false;
-    int cnt;
-
-    cnt = 0;
-#if 0
-    while (s_shared_lock.lock != 0) {
-        //jimi_mm_pause;
-        cnt++;
-        if (cnt > 8000) {
-            cnt = 0;
-            //jimi_wsleep(1);
-            //printf("pop() : shared_lock = %d\n", s_shared_lock.lock);
-        }
-        Jimi_ReadWriteBarrier();
-    }
 
     Jimi_ReadWriteBarrier();
 
-    //printf("pop() : shared_lock = %d\n", s_shared_lock.lock);
-    //printf("pop() : start: cnt = %d\n", cnt);
-    //printf("pop() : head = %u, tail = %u\n", core.info.head, core.info.tail);
-
-    __sync_lock_test_and_set(&s_shared_lock.lock, 1U);
-#endif
-
-#if 0
-    do {
-        //jimi_mm_pause;
-        ok = jimi_bool_compare_and_swap32(&s_shared_lock.lock, 0U, 1U);
-    } while (!ok);
-#else
-    while (__sync_val_compare_and_swap(&s_shared_lock.lock, 0U, 1U) != 0U) {
-        //jimi_mm_pause;
-        jimi_wsleep(0);
-    }
-#endif
-
-    //Jimi_ReadWriteBarrier();
-
 #if 1
-    head = core.info.head;
-    tail = core.info.tail;
-    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
-        //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
-        s_shared_lock.lock = 0;
-        //Jimi_ReadWriteBarrier();
-        return (value_type)NULL;
-    }
-    next = tail + 1;
-    core.info.tail = next;
-#elif 1
     do {
         head = core.info.head;
         tail = core.info.tail;
         //if (tail >= head && (head - tail) <= kMask)
         if ((tail == head) || (tail > head && (head - tail) > kMask)) {
-            __sync_lock_test_and_set(&s_shared_lock.lock, 0U);
+            Jimi_ReadWriteBarrier();
+            //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+            spin_mutex.locked = 0;
             return (value_type)NULL;
         }
         next = tail + 1;
@@ -499,34 +417,202 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
     } while (jimi_compare_and_swap32(&core.info.tail, tail, next) != tail);
 #endif
 
-    Jimi_ReadWriteBarrier();
-
     item = core.queue[tail & kMask];
 
     Jimi_ReadWriteBarrier();
 
-    //__sync_lock_test_and_set(&s_shared_lock.lock, 0U);
-    s_shared_lock.lock = 0;
-
-    //Jimi_ReadWriteBarrier();
+    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
 
     return item;
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
-int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item, pthread_mutex_t *mutex)
+int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
 {
     index_type head, tail, next;
+    bool ok = false;
 
-    if (mutex == NULL) return -1;
-
-    pthread_mutex_lock(mutex);
+    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+        //jimi_mm_pause;
+        jimi_wsleep(0);
+    }
 
     head = core.info.head;
     tail = core.info.tail;
     if ((head - tail) > kMask) {
-        pthread_mutex_unlock(mutex);
+        Jimi_ReadWriteBarrier();
+        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    core.queue[head & kMask] = item;
+
+    Jimi_ReadWriteBarrier();
+
+    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return 0;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
+{
+    index_type head, tail, next;
+    value_type item;
+    bool ok = false;
+
+    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+        //jimi_mm_pause;
+        jimi_wsleep(0);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        Jimi_ReadWriteBarrier();
+        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+
+    item = core.queue[tail & kMask];
+
+    Jimi_ReadWriteBarrier();
+
+    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return item;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
+{
+    index_type head, tail, next;
+    bool ok = false;
+    int cnt;
+
+    cnt = 0;
+    Jimi_ReadWriteBarrier();
+
+    while (spin_mutex.locked != 0) {
+        jimi_mm_pause;
+        cnt++;
+        if (cnt > 8000) {
+            cnt = 0;
+            jimi_wsleep(1);
+            //printf("push(): shared_lock = %d\n", spin_mutex.locked);
+        }
+    }
+
+    //printf("push(): shared_lock = %d\n", spin_mutex.locked);
+    //printf("push(): start: cnt = %d\n", cnt);
+    //printf("push(): head = %u, tail = %u\n", core.info.head, core.info.tail);
+
+    ///
+    /// GCC 提供的原子操作 (From GCC 4.1.2)
+    /// See: http://www.cnblogs.com/FrankTan/archive/2010/12/11/1903377.html
+    ///
+    __sync_lock_test_and_set(&spin_mutex.locked, 1U);
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        Jimi_ReadWriteBarrier();
+        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    core.queue[head & kMask] = item;
+
+    Jimi_ReadWriteBarrier();
+
+    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return 0;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
+{
+    index_type head, tail, next;
+    value_type item;
+    bool ok = false;
+    int cnt;
+
+    cnt = 0;
+    Jimi_ReadWriteBarrier();
+
+    while (spin_mutex.locked != 0) {
+        jimi_mm_pause;
+        cnt++;
+        if (cnt > 8000) {
+            cnt = 0;
+            jimi_wsleep(1);
+            //printf("pop() : shared_lock = %d\n", spin_mutex.locked);
+        }
+    }
+
+    //printf("pop() : shared_lock = %d\n", spin_mutex.locked);
+    //printf("pop() : start: cnt = %d\n", cnt);
+    //printf("pop() : head = %u, tail = %u\n", core.info.head, core.info.tail);
+
+    ///
+    /// GCC 提供的原子操作 (From GCC 4.1.2)
+    /// See: http://www.cnblogs.com/FrankTan/archive/2010/12/11/1903377.html
+    ///
+    __sync_lock_test_and_set(&spin_mutex.locked, 1U);
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        Jimi_ReadWriteBarrier();
+        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+
+    item = core.queue[tail & kMask];
+
+    Jimi_ReadWriteBarrier();
+
+    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return item;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item)
+{
+    index_type head, tail, next;
+
+    if (queue_mutex == NULL) return -1;
+
+    pthread_mutex_lock(&queue_mutex);
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        pthread_mutex_unlock(&queue_mutex);
         return -1;
     }
     next = head + 1;
@@ -538,27 +624,27 @@ int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item, pthread_mutex_t *mu
 
     Jimi_ReadWriteBarrier();
 
-    pthread_mutex_unlock(mutex);
+    pthread_mutex_unlock(&queue_mutex);
 
     return 0;
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capcity, CoreTy>::locked_pop(pthread_mutex_t *mutex)
+T * RingQueueBase<T, Capcity, CoreTy>::locked_pop()
 {
     index_type head, tail, next;
     value_type item;
 
-    if (mutex == NULL) return NULL;
+    if (queue_mutex == NULL) return NULL;
 
-    pthread_mutex_lock(mutex);
+    pthread_mutex_lock(&queue_mutex);
 
     head = core.info.head;
     tail = core.info.tail;
     //if (tail >= head && (head - tail) <= kMask)
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
-        pthread_mutex_unlock(mutex);
+        pthread_mutex_unlock(&queue_mutex);
         return (value_type)NULL;
     }
     next = tail + 1;
@@ -570,17 +656,17 @@ T * RingQueueBase<T, Capcity, CoreTy>::locked_pop(pthread_mutex_t *mutex)
 
     Jimi_ReadWriteBarrier();
 
-    pthread_mutex_unlock(mutex);
+    pthread_mutex_unlock(&queue_mutex);
 
     return item;
 }
 
 ///////////////////////////////////////////////////////////////////
-// class SmallRingQueue2<T, Capcity>
+// class SmallRingQueue<T, Capcity>
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capcity = 16U>
-class SmallRingQueue2 : public RingQueueBase<T, Capcity, SmallRingQueueCore<T, Capcity> >
+class SmallRingQueue : public RingQueueBase<T, Capcity, SmallRingQueueCore<T, Capcity> >
 {
 public:
     typedef uint32_t                    size_type;
@@ -594,8 +680,8 @@ public:
     static const size_type kCapcity = RingQueueBase<T, Capcity, SmallRingQueueCore<T, Capcity> >::kCapcity;
 
 public:
-    SmallRingQueue2(bool bFillQueue = true, bool bInitHead = false);
-    ~SmallRingQueue2();
+    SmallRingQueue(bool bFillQueue = true, bool bInitHead = false);
+    ~SmallRingQueue();
 
 public:
     void dump_detail();
@@ -605,26 +691,26 @@ protected:
 };
 
 template <typename T, uint32_t Capcity>
-SmallRingQueue2<T, Capcity>::SmallRingQueue2(bool bFillQueue /* = true */,
+SmallRingQueue<T, Capcity>::SmallRingQueue(bool bFillQueue /* = true */,
                                              bool bInitHead  /* = false */)
 : RingQueueBase<T, Capcity, SmallRingQueueCore<T, Capcity> >(bInitHead)
 {
-    //printf("SmallRingQueue2::SmallRingQueue2();\n\n");
+    //printf("SmallRingQueue::SmallRingQueue();\n\n");
 
     init_queue(bFillQueue);
 }
 
 template <typename T, uint32_t Capcity>
-SmallRingQueue2<T, Capcity>::~SmallRingQueue2()
+SmallRingQueue<T, Capcity>::~SmallRingQueue()
 {
     // Do nothing!
 }
 
 template <typename T, uint32_t Capcity>
 inline
-void SmallRingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = true */)
+void SmallRingQueue<T, Capcity>::init_queue(bool bFillQueue /* = true */)
 {
-    //printf("SmallRingQueue2::init_queue();\n\n");
+    //printf("SmallRingQueue::init_queue();\n\n");
 
     if (bFillQueue) {
         memset((void *)this->core.queue, 0, sizeof(value_type) * kCapcity);
@@ -632,18 +718,18 @@ void SmallRingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = true */)
 }
 
 template <typename T, uint32_t Capcity>
-void SmallRingQueue2<T, Capcity>::dump_detail()
+void SmallRingQueue<T, Capcity>::dump_detail()
 {
-    printf("SmallRingQueue2: (head = %u, tail = %u)\n",
+    printf("SmallRingQueue: (head = %u, tail = %u)\n",
            this->core.info.head, this->core.info.tail);
 }
 
 ///////////////////////////////////////////////////////////////////
-// class RingQueue2<T, Capcity>
+// class RingQueue<T, Capcity>
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capcity = 16U>
-class RingQueue2 : public RingQueueBase<T, Capcity, RingQueueCore<T, Capcity> >
+class RingQueue : public RingQueueBase<T, Capcity, RingQueueCore<T, Capcity> >
 {
 public:
     typedef uint32_t                    size_type;
@@ -659,8 +745,8 @@ public:
     static const size_type kCapcity = RingQueueBase<T, Capcity, RingQueueCore<T, Capcity> >::kCapcity;
 
 public:
-    RingQueue2(bool bFillQueue = true, bool bInitHead = false);
-    ~RingQueue2();
+    RingQueue(bool bFillQueue = true, bool bInitHead = false);
+    ~RingQueue();
 
 public:
     void dump_detail();
@@ -670,17 +756,17 @@ protected:
 };
 
 template <typename T, uint32_t Capcity>
-RingQueue2<T, Capcity>::RingQueue2(bool bFillQueue /* = true */,
+RingQueue<T, Capcity>::RingQueue(bool bFillQueue /* = true */,
                                    bool bInitHead  /* = false */)
 : RingQueueBase<T, Capcity, RingQueueCore<T, Capcity> >(bInitHead)
 {
-    //printf("RingQueue2::RingQueue2();\n\n");
+    //printf("RingQueue::RingQueue();\n\n");
 
     init_queue(bFillQueue);
 }
 
 template <typename T, uint32_t Capcity>
-RingQueue2<T, Capcity>::~RingQueue2()
+RingQueue<T, Capcity>::~RingQueue()
 {
     // If the queue is allocated on system heap, release them.
     if (RingQueueCore<T, Capcity>::kIsAllocOnHeap) {
@@ -691,9 +777,9 @@ RingQueue2<T, Capcity>::~RingQueue2()
 
 template <typename T, uint32_t Capcity>
 inline
-void RingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = true */)
+void RingQueue<T, Capcity>::init_queue(bool bFillQueue /* = true */)
 {
-    //printf("RingQueue2::init_queue();\n\n");
+    //printf("RingQueue::init_queue();\n\n");
 
     value_type *newData = new T *[kCapcity];
     if (newData != NULL) {
@@ -705,9 +791,9 @@ void RingQueue2<T, Capcity>::init_queue(bool bFillQueue /* = true */)
 }
 
 template <typename T, uint32_t Capcity>
-void RingQueue2<T, Capcity>::dump_detail()
+void RingQueue<T, Capcity>::dump_detail()
 {
-    printf("RingQueue2: (head = %u, tail = %u)\n",
+    printf("RingQueue: (head = %u, tail = %u)\n",
            this->core.info.head, this->core.info.tail);
 }
 
