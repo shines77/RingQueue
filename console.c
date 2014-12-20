@@ -10,11 +10,12 @@
 void jimi_cpu_warmup(int delayTime)
 {
 #if defined(NDEBUG) || !defined(_DEBUG)
-    jmc_timestamp startTime, stopTime;
+    jmc_timestamp_t startTime, stopTime;
+    jmc_timefloat_t elapsedTime = 0.0;
+    jmc_timefloat_t delayTimeLimit = (jmc_timefloat_t)delayTime;
     int i, j;
     volatile int sum = 0;
-    jmc_timefloat elapsedTime = 0.0;
-    jmc_timefloat delayTimeLimit = (jmc_timefloat)delayTime;
+
     printf("CPU warm up start ...\n");
     fflush(stdout);
     startTime = jmc_get_timestamp();

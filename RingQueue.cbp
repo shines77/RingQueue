@@ -68,6 +68,10 @@
 		<Unit filename="q3.h">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="sleep.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sleep.h" />
 		<Unit filename="sys_timer.c">
 			<Option compilerVar="CC" />
 		</Unit>

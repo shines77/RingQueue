@@ -15,6 +15,7 @@
 #endif
 #include <emmintrin.h>
 
+#include "sleep.h"
 #include "dump_mem.h"
 
 #ifndef JIMI_CACHELINE_SIZE
@@ -299,7 +300,7 @@ void RingQueueBase<T, Capcity, CoreTy>::init(bool bInitHead /* = false */)
 
     // Initilized spin mutex
     spin_mutex.locked = 0;
-    spin_mutex.spin_counter = 4000;
+    spin_mutex.spin_counter = MUTEX_MAX_SPIN_COUNTER;
     spin_mutex.recurse_counter = 0;
     spin_mutex.thread_id = 0;
 
@@ -432,12 +433,32 @@ inline
 int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
 {
     index_type head, tail, next;
-    bool ok = false;
+#if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
+    uint32_t pause_cnt, spin_counter, max_spin_cnt;
+#endif
+
+#if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
+    max_spin_cnt = spin_mutex.spin_counter;
+    spin_counter = 1;
 
     while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
-        //jimi_mm_pause;
+        if (spin_counter <= max_spin_cnt) {
+            for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                jimi_mm_pause();
+            }
+            spin_counter *= 2;
+        }
+        else {
+            jimi_yield();
+            spin_counter = 1;
+        }
+    }
+#else   /* !USE_SPIN_MUTEX_COUNTER */
+    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+        //jimi_yield();
         jimi_wsleep(0);
     }
+#endif   /* USE_SPIN_MUTEX_COUNTER */
 
     head = core.info.head;
     tail = core.info.tail;
@@ -466,12 +487,32 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
 {
     index_type head, tail, next;
     value_type item;
-    bool ok = false;
+#if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
+    uint32_t pause_cnt, spin_counter, max_spin_cnt;
+#endif
+
+#if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
+    max_spin_cnt = spin_mutex.spin_counter;
+    spin_counter = 1;
 
     while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
-        //jimi_mm_pause;
+        if (spin_counter <= max_spin_cnt) {
+            for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                jimi_mm_pause();
+            }
+            spin_counter *= 2;
+        }
+        else {
+            jimi_yield();
+            spin_counter = 1;
+        }
+    }
+#else   /* !USE_SPIN_MUTEX_COUNTER */
+    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+        //jimi_yield();
         jimi_wsleep(0);
     }
+#endif   /* USE_SPIN_MUTEX_COUNTER */
 
     head = core.info.head;
     tail = core.info.tail;
@@ -506,7 +547,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
     Jimi_ReadWriteBarrier();
 
     while (spin_mutex.locked != 0) {
-        jimi_mm_pause;
+        jimi_mm_pause();
         cnt++;
         if (cnt > 8000) {
             cnt = 0;
@@ -559,7 +600,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
     Jimi_ReadWriteBarrier();
 
     while (spin_mutex.locked != 0) {
-        jimi_mm_pause;
+        jimi_mm_pause();
         cnt++;
         if (cnt > 8000) {
             cnt = 0;

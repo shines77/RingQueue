@@ -57,7 +57,18 @@
 #define RINGQUEUE_LOCK_TYPE     1
 #endif
 
-#define CACHE_LINE_SIZE     64
+///
+/// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用
+///
+#define USE_SPIN_MUTEX_COUNTER  1
+
+///
+/// spin_mutex的最大spin_counter值, 默认值为16, 建议设为0或1,2, 更快! 设为0跟USE_SPIN_MUTEX_COUNTER设为0几乎等价
+///
+#define MUTEX_MAX_SPIN_COUNTER  1
+
+/// 缓存的CacheLineSize(x86上是64字节)
+#define CACHE_LINE_SIZE         64
 
 #ifdef __cplusplus
 extern "C" {

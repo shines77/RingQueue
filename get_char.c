@@ -5,16 +5,12 @@
 
 #if defined(__MINGW32__)
 #include <conio.h>
-#include <unistd.h>
-#include <windows.h>
 #elif defined(__linux__)
 #include <termios.h>
-#include <unistd.h>
 #endif  /* __MINGW32__ */
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #include <conio.h>
-#include <windows.h>
 #endif  /* _MSC_VER */
 
 #if defined(__MINGW32__)
@@ -34,16 +30,6 @@ int jimi_getche(void)
     else
         printf("EOF: (%d)", ch);
     return ch;
-}
-
-void jimi_sleep(unsigned int millisec)
-{
-    usleep(millisec * 1000);
-}
-
-void jimi_wsleep(unsigned int millisec)
-{
-    Sleep(millisec);
 }
 
 #elif defined(__linux__)
@@ -96,17 +82,7 @@ int jimi_getche(void)
     return jimi_getch_term(1);
 }
 
-void jimi_sleep(unsigned int millisec)
-{
-    usleep(millisec * 1000);
-}
-
-void jimi_wsleep(unsigned int millisec)
-{
-    jimi_sleep(millisec);
-}
-
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
 /* Read 1 character without echo */
 int jimi_getch(void)
@@ -125,16 +101,6 @@ int jimi_getche(void)
     return ch;
 }
 
-void jimi_sleep(unsigned int millisec)
-{
-    Sleep(millisec);
-}
-
-void jimi_wsleep(unsigned int millisec)
-{
-    jimi_sleep(millisec);
-}
-
 #else  /* other unknown os */
 
 /* Read 1 character without echo */
@@ -147,24 +113,6 @@ int jimi_getch(void)
 int jimi_getche(void)
 {
     return (int)-1;
-}
-
-void jimi_sleep(unsigned int millisec)
-{
-    // Do nothing !!
-    volatile unsigned int sum = 0;
-    unsigned int i, j;
-    for (i = 0; i < millisec; ++i) {
-        sum += i;
-        for (j = 50000; j >= 0; --j) {
-            sum -= j;
-        }
-    }
-}
-
-void jimi_wsleep(unsigned int millisec)
-{
-    jimi_sleep(millisec);
 }
 
 #endif  /* __linux__ */

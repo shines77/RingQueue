@@ -18,6 +18,7 @@
 //#include "qlock.h"
 
 #include "get_char.h"
+#include "sys_timer.h"
 #include "console.h"
 #include "RingQueue.h"
 
@@ -89,7 +90,7 @@ ringqueue_push_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue_t *queue;
-    struct msg_t *msg;
+    msg_t *msg;
     uint64_t start;
     int i, idx;
 
@@ -108,18 +109,18 @@ ringqueue_push_task(void *arg)
     if (thread_arg)
         free(thread_arg);
 
-    msg = (struct msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
+    msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
     start = rdtsc();
 
     for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
-        while (queue->spin_push(msg) == -1);
+        while (queue->spin_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-        while (queue->spin2_push(msg) == -1);
+        while (queue->spin2_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
-        while (queue->locked_push(msg) == -1);
+        while (queue->locked_push(msg) == -1) {};
 #else
-        while (queue->push(msg) == -1);
+        while (queue->push(msg) == -1) {};
 #endif
         msg++;
 #if 0
@@ -147,8 +148,8 @@ ringqueue_pop_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue_t *queue;
-    struct msg_t *msg;
-    struct msg_t **record_list;
+    msg_t *msg;
+    msg_t **record_list;
     uint64_t start;
     int idx;
     int cnt = 0;
@@ -174,13 +175,13 @@ ringqueue_pop_task(void *arg)
 
     while (true || !quit) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
-        msg = (struct msg_t *)queue->spin_pop();
+        msg = (msg_t *)queue->spin_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-        msg = (struct msg_t *)queue->spin2_pop();
+        msg = (msg_t *)queue->spin2_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
-        msg = (struct msg_t *)queue->locked_pop();
+        msg = (msg_t *)queue->locked_pop();
 #else
-        msg = (struct msg_t *)queue->pop();
+        msg = (msg_t *)queue->pop();
 #endif
         if (msg != NULL) {
             *record_list++ = (struct msg_t *)msg;
@@ -399,6 +400,8 @@ RingQueue_Test(void)
     int i, j;
     pthread_t kids[POP_CNT + PUSH_CNT];
     thread_arg_t *thread_arg;
+    jmc_timestamp_t startTime, stopTime;
+    jmc_timefloat_t elapsedTime = 0.0;
 
     printf("\n");
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
@@ -410,6 +413,11 @@ RingQueue_Test(void)
 #else
     printf("This is RingQueue.push() test (modified by q3.h):\n");
 #endif
+
+    printf("\n");
+    printf("PUSH_CNT         = %u\n"
+           "POP_CNT          = %u\n"
+           "MSG_TOTAL_LENGTH = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
 
     init_globals();
     setaffinity(0);
@@ -424,6 +432,8 @@ RingQueue_Test(void)
             popmsg_list[i][j] = NULL;
         }
     }
+
+    startTime = jmc_get_timestamp();
 
     for (i = 0; i < PUSH_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
@@ -442,6 +452,9 @@ RingQueue_Test(void)
     for (i = 0; i < POP_CNT + PUSH_CNT; i++)
         pthread_join(kids[i], NULL);
 
+    stopTime = jmc_get_timestamp();
+    elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
+
     printf("\n");
     printf("pop total: %d\n", pop_total);
     printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
@@ -449,6 +462,7 @@ RingQueue_Test(void)
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
     printf("\n");
 
+    printf("Elapse time: %0.3f ms\n\n", elapsedTime);
     printf("msgs ptr = 0x%08p\n\n", (struct msg_t *)msgs);
 
     //jimi_console_readkeyln(false, true, false);
@@ -486,8 +500,11 @@ RingQueue_Test(void)
         msgs = NULL;
     }
 
-    //getchar();
+#if !defined(USE_DOUBAN_RINGQUEUE) || (USE_DOUBAN_RINGQUEUE == 0)
+    jimi_console_readkeyln(false, true, false);
+#else
     jimi_console_readkeyln(true, true, false);
+#endif
 }
 
 void
@@ -496,9 +513,16 @@ q3_test(void)
     struct queue *q = qinit();
     int i;
     pthread_t kids[POP_CNT + PUSH_CNT];
+    jmc_timestamp_t startTime, stopTime;
+    jmc_timefloat_t elapsedTime = 0.0;
 
     printf("\n");
     printf("This is DouBan's q3.h test:\n");
+
+    printf("\n");
+    printf("PUSH_CNT         = %u\n"
+           "POP_CNT          = %u\n"
+           "MSG_TOTAL_LENGTH = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
 
     init_globals();
     setaffinity(0);
@@ -508,12 +532,17 @@ q3_test(void)
     for (i = 0; i < MSG_TOTAL_CNT; i++)
         msgs[i].dummy = (uint64_t)(i + 1);
 
+    startTime = jmc_get_timestamp();
+
     for (i = 0; i < PUSH_CNT; i++)
         start_thread(i, push_task, q, &kids[i]);
     for (i = 0; i < POP_CNT; i++)
         start_thread(i + PUSH_CNT, pop_task, q, &kids[i + PUSH_CNT]);
     for (i = 0; i < POP_CNT + PUSH_CNT; i++)
         pthread_join(kids[i], NULL);
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
     printf("\n");
     printf("pop total: %d\n", pop_total);
@@ -522,12 +551,13 @@ q3_test(void)
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
     printf("\n");
 
+    printf("Elapse time: %0.3f ms\n\n", elapsedTime);
+
     if (msgs) {
         free((void *)msgs);
         msgs = NULL;
     }
 
-    //getchar();
     jimi_console_readkeyln(false, true, false);
 }
 
@@ -570,7 +600,6 @@ RingQueue_UnitTest(void)
     printf("RingQueue2() test end...\n");
     printf("---------------------------------------------------------------\n\n");
 
-    //getchar();
     jimi_console_readkeyln(true, true, false);
 }
 
