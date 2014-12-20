@@ -7,8 +7,8 @@
 #define QMASK           (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT        2
-#define POP_CNT         2
+#define PUSH_CNT        4
+#define POP_CNT         4
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 #if 1
@@ -60,12 +60,12 @@
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用
 ///
-#define USE_SPIN_MUTEX_COUNTER  1
+#define USE_SPIN_MUTEX_COUNTER  0
 
 ///
 /// spin_mutex的最大spin_counter值, 默认值为16, 建议设为0或1,2, 更快! 设为0跟USE_SPIN_MUTEX_COUNTER设为0几乎等价
 ///
-#define MUTEX_MAX_SPIN_COUNTER  1
+#define MUTEX_MAX_SPIN_COUNTER  0
 
 /// 缓存的CacheLineSize(x86上是64字节)
 #define CACHE_LINE_SIZE         64

@@ -449,7 +449,8 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
             spin_counter *= 2;
         }
         else {
-            jimi_yield();
+            //jimi_yield();
+            jimi_wsleep(0);
             spin_counter = 1;
         }
     }
@@ -503,7 +504,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
             spin_counter *= 2;
         }
         else {
-            jimi_yield();
+            //jimi_yield();
+            jimi_wsleep(0);
             spin_counter = 1;
         }
     }
