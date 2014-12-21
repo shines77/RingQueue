@@ -39,10 +39,14 @@ void jimi_sleep(unsigned int millisec)
 
 void jimi_wsleep(unsigned int millisec)
 {
+#if 0
     if (millisec != 0)
         jimi_sleep(millisec);
     else
         usleep(250);
+#else
+    sched_yield();
+#endif
 }
 
 void jimi_yield()

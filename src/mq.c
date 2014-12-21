@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <memory.h>
 
 #include "vs_stdint.h"
 

@@ -7,6 +7,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 
 #include "vs_stdint.h"
 

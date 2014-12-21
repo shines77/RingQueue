@@ -2,7 +2,7 @@
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_CXX_COMPILER g++)
-# set(CMAKE_C_COMPILER gcc)
+set(CMAKE_C_COMPILER gcc)
 
 #
 # Use sse, sse2 in gcc
@@ -63,6 +63,8 @@ message(STATUS "This is SOURCE dir " ${PROJECT_SOURCE_DIR})
 
 # message(STATUS "This is SOURCE RingQueue dir " ${SRC_RINGQUEUE_LIST})
 
+message(STATUS "CMAKE_STANDARD_LIBRARIES = " ${CMAKE_STANDARD_LIBRARIES})
+
 #
 # cmake and lib pthread
 # See: http://stackoverflow.com/questions/5395309/cmake-and-threads
@@ -70,6 +72,7 @@ message(STATUS "This is SOURCE dir " ${PROJECT_SOURCE_DIR})
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 
 find_package(Threads REQUIRED)
+# find_package(Kernel32 REQUIRED)
 
 if (CMAKE_USE_PTHREADS_INIT)
     set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-lpthread")
@@ -81,6 +84,12 @@ add_executable(RingQueue ${SRC_RINGQUEUE_LIST})
 if (CMAKE_USE_PTHREADS_INIT)
     target_link_libraries(RingQueue ${CMAKE_THREAD_LIBS_INIT})
 endif()
+
+#if (MINGW OR CYGWIN OR MSVC_IDE)
+    # msvcrt.lib
+    target_link_libraries(RingQueue kernel32.lib user32.lib gdi32.lib
+        comdlg32.lib  shell32.lib uuid.lib winmm.lib)
+#endif()
 
 # target_link_libraries(hello util)
 

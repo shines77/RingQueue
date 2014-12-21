@@ -56,7 +56,7 @@
 
 /// È¡Öµ·¶Î§ÊÇ 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     1
+#define RINGQUEUE_LOCK_TYPE     3
 #endif
 
 ///

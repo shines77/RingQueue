@@ -138,7 +138,7 @@ jmc_timestamp_t jmc_get_millisec(void)
     result = (jmc_timestamp_t)(((double)qp_cnt.QuadPart / (double)qp_freq.QuadPart) * 1000.0);
 #elif __linux__
     struct timespec ts;
-#if JIMI_USE_ASSERT
+#if JIMIC_USE_ASSERT
     int status =
 #endif /* JIMIC_USE_ASSERT */
         clock_gettime(CLOCK_REALTIME, &ts);
@@ -146,11 +146,11 @@ jmc_timestamp_t jmc_get_millisec(void)
     result = (jmc_timestamp_t)((int64_t)(1000UL) * (int64_t)(ts.tv_sec) + (int64_t)(ts.tv_nsec) / (int64_t)(1000000UL));
 #else /* generic Unix */
     struct timeval tv;
-#if JIMI_USE_ASSERT
+#if JIMIC_USE_ASSERT
     int status =
 #endif /* JIMIC_USE_ASSERT */
         gettimeofday(&tv, NULL);
-    JIMI_ASSERT_EX((status == 0), "gettimeofday failed");
+    JIMIC_ASSERT_EX((status == 0), "gettimeofday failed");
     result = (jmc_timestamp_t)((int64_t)(1000UL) * (int64_t)(tv.tv_sec) + (int64_t)(tv.tv_usec) / (int64_t)(1000UL));
 #endif /*(choice of OS) */
 
