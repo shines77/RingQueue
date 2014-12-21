@@ -1,5 +1,4 @@
 
-#include "stdint.h"
 #include <stdlib.h>
 
 #include <xmmintrin.h>
@@ -7,6 +6,7 @@
 
 #include "test.h"
 #include "port.h"
+#include "vs_stdint.h"
 #include "get_char.h"
 
 #ifdef _WIN32

@@ -6,7 +6,7 @@
 #pragma once
 #endif
 
-#include "stdint.h"
+#include "vs_stdint.h"
 
 #ifndef JMC_INLINE
 #ifdef _MSC_VER

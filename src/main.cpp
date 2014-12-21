@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "stdint.h""
+#include "vs_stdint.h"
 
 #ifndef _MSC_VER
 #include <sched.h>
@@ -20,7 +20,7 @@
 #endif  // _MSC_VER
 
 #define __STDC_FORMAT_MACROS
-#include "inttypes.h"
+#include "vs_inttypes.h"
 
 #include "test.h"
 

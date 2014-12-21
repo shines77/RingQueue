@@ -57,13 +57,19 @@
 		<Unit filename="include/RingQueue/dump_mem.h" />
 		<Unit filename="include/RingQueue/get_char.h" />
 		<Unit filename="include/RingQueue/mq.h" />
+		<Unit filename="include/RingQueue/msvc/inttypes.h" />
 		<Unit filename="include/RingQueue/msvc/pthread.h" />
+		<Unit filename="include/RingQueue/msvc/stdbool.h" />
+		<Unit filename="include/RingQueue/msvc/stdint.h" />
 		<Unit filename="include/RingQueue/port.h" />
 		<Unit filename="include/RingQueue/q.h" />
 		<Unit filename="include/RingQueue/q3.h" />
 		<Unit filename="include/RingQueue/sleep.h" />
 		<Unit filename="include/RingQueue/sys_timer.h" />
 		<Unit filename="include/RingQueue/test.h" />
+		<Unit filename="include/RingQueue/vs_inttypes.h" />
+		<Unit filename="include/RingQueue/vs_stdbool.h" />
+		<Unit filename="include/RingQueue/vs_stdint.h" />
 		<Unit filename="src/console.c">
 			<Option compilerVar="CC" />
 		</Unit>

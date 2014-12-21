@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.4)
+cmake_minimum_required(VERSION 2.8.8)
 
 set(JLANG_CMAKE_SHOW_DETAIL 0)
 set(JLANG_CMAKE_SHOW_MSVC_DETAIL 0)
@@ -52,7 +52,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     message(STATUS "COMPILER_TOOLSET = ${COMPILER_TOOLSET}")
     message(STATUS "")
 
-    include(ComplierEnvCheck)
+    include(DisplayComplierEnv)
 
     # Check Compiler Environment Values
     CheckCompilerEnvironment()
@@ -109,9 +109,25 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     endif()
     link_directories("${JLVM_LIBRARY_DIR}")
 
+    #
+    # In CMake, how do I work around the Debug and Release directories Visual Studio 2010 tries to add?
+    #
+    # See: http://stackoverflow.com/questions/7747857/in-cmake-how-do-i-work-around-the-debug-and-release-directories-visual-studio-2
+    #
+
+    # First for the generic no-config case (e.g. with mingw)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+    # Second, for multi-config builds (e.g. msvc)
+    foreach (OUTPUT_CONFIG ${CMAKE_CONFIGURATION_TYPES})
+        #string(TOUPPER ${OUTPUT_CONFIG} OUTPUT_CONFIG)
+        string(TOLOWER ${OUTPUT_CONFIG} OUTPUT_CONFIG)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUT_CONFIG} ${CMAKE_BINARY_DIR}/bin/${OUTPUT_CONFIG})
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUT_CONFIG} ${CMAKE_BINARY_DIR}/lib/${OUTPUT_CONFIG})
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUT_CONFIG} ${CMAKE_BINARY_DIR}/lib/${OUTPUT_CONFIG})
+    endforeach(OUTPUT_CONFIG CMAKE_CONFIGURATION_TYPES)
 endif()
 
 set(JLANG_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})

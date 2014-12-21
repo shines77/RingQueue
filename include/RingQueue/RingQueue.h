@@ -6,8 +6,9 @@
 #pragma once
 #endif
 
-#include "stdint.h"
 #include <stdio.h>
+
+#include "vs_stdint.h"
 
 #ifndef _MSC_VER
 #include <pthread.h>

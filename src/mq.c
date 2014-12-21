@@ -1,8 +1,9 @@
 
-#include "stdint.h"
 #include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+
+#include "vs_stdint.h"
 
 #include "mq.h"
 #include "port.h"

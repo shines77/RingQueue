@@ -2,6 +2,8 @@
 #ifndef _RINGQUEUE_TEST_H_
 #define _RINGQUEUE_TEST_H_
 
+#include "vs_stdint.h"
+
 /// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
 #define QSIZE           (1 << 10)
 #define QMASK           (QSIZE - 1)

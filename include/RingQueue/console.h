@@ -6,7 +6,7 @@
 #pragma once
 #endif
 
-#include "stdbool.h"
+#include "vs_stdbool.h"
 
 #ifdef __cplusplus
 extern "C" {

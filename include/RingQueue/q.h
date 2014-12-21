@@ -1,8 +1,8 @@
 
-#include "stdint.h"
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include "vs_stdint.h"
 
 struct msg {
     struct msg *next;

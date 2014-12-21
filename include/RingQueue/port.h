@@ -6,8 +6,8 @@
 #pragma once
 #endif
 
-#include "stdint.h"
-#include "stdbool.h"
+#include "vs_stdint.h"
+#include "vs_stdbool.h"
 #include <emmintrin.h>
 
 #ifndef jimi_mm_pause
