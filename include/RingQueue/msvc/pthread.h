@@ -27,7 +27,7 @@
 #endif  // PTW32_CDECL
 
 #ifndef PTW32_API
-#define PTW32_API   __cdecl
+#define PTW32_API   __stdcall
 #endif  // PTW32_API
 
 /*
@@ -67,13 +67,14 @@ typedef HANDLE   handle_t;
 typedef handle_t pthread_t;
 typedef handle_t pthread_attr_t;
 
-typedef handle_t pthread_mutex_t;
+typedef CRITICAL_SECTION pthread_mutex_t;
 typedef handle_t pthread_mutexattr_t;
 
 typedef handle_t pthread_spinlock_t;
 typedef handle_t pthread_spinlock_attr_t;
 
-typedef void (PTW32_API *pthread_proc_t)(void *);
+typedef void *(PTW32_API *lpthread_proc_t)(void *);
+typedef unsigned int (PTW32_API *pthread_proc_t)(void *);
 
 int PTW32_CDECL pthread_attr_init(pthread_attr_t * attr);
 int PTW32_CDECL pthread_attr_destroy(pthread_attr_t * attr);
@@ -84,7 +85,7 @@ int PTW32_CDECL pthread_attr_destroy(pthread_attr_t * attr);
 int PTW32_CDECL pthread_create(pthread_t * tid,
                                const pthread_attr_t * attr,
                                void *(PTW32_API *start)(void *),
-                               void *arg);
+                               void * arg);
 
 int PTW32_CDECL pthread_detach(pthread_t tid);
 
@@ -131,5 +132,18 @@ int PTW32_CDECL pthread_spin_unlock(pthread_spinlock_t * lock);
 
 #endif  /* !_JIMIC_PTHREAD_H_ */
 
-#endif  /* !(defined(_MSC_VER) || defined(__INTEL_COMPILER)) */
-#endif  /* !PTHREAD_H */
+#else  /* !(defined(_MSC_VER) || defined(__INTEL_COMPILER)) */
+
+#ifndef PTW32_API
+#define PTW32_API
+#endif
+
+#endif  /* (defined(_MSC_VER) || defined(__INTEL_COMPILER)) */
+
+#else  /* !PTHREAD_H */
+
+#ifndef PTW32_API
+#define PTW32_API
+#endif
+
+#endif  /* PTHREAD_H */

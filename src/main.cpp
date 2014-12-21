@@ -14,6 +14,7 @@
 #ifndef _MSC_VER
 #include <sched.h>
 #include <pthread.h>
+#include "msvc/pthread.h"
 #else
 #include "msvc/pthread.h"
 #endif  // _MSC_VER
@@ -68,9 +69,9 @@ read_rdtsc(void)
         "=d" (tsc.hi_32));
 #else
     __asm {
-        mov eax, tsc.lo_32
-        mov edx, tsc.hi_32
         rdtsc
+        mov tsc.lo_32, eax
+        mov tsc.hi_32, edx
     }
 #endif
 
@@ -96,6 +97,7 @@ init_globals(void)
 }
 
 static void *
+PTW32_API
 ringqueue_push_task(void *arg)
 {
     thread_arg_t *thread_arg;
@@ -154,6 +156,7 @@ ringqueue_push_task(void *arg)
 }
 
 static void *
+PTW32_API
 ringqueue_pop_task(void *arg)
 {
     thread_arg_t *thread_arg;
@@ -207,9 +210,8 @@ ringqueue_pop_task(void *arg)
     return NULL;
 }
 
-#ifndef _MSC_VER
-
 static void *
+PTW32_API
 push_task(void *arg)
 {
     struct queue *q = (struct queue *)arg;
@@ -229,6 +231,7 @@ push_task(void *arg)
 }
 
 static void *
+PTW32_API
 pop_task(void *arg)
 {
     struct queue *q = (struct queue *)arg;
@@ -245,8 +248,6 @@ pop_task(void *arg)
     return NULL;
 }
 
-#endif  /* _MSC_VER */
-
 /* topology for Xeon E5-2670 Sandybridge */
 static const int socket_top[] = {
   1,  2,  3,  4,  5,  6,  7,
@@ -259,7 +260,7 @@ static const int socket_top[] = {
 
 static int
 start_thread(int id,
-       void *(*cb)(void *),
+       void *(PTW32_API *cb)(void *),
        void *arg,
        pthread_t *tid)
 {
@@ -314,7 +315,7 @@ setaffinity(int core_id)
 
 static int
 ringqueue_start_thread(int id,
-                       void *(*cb)(void *),
+                       void *(PTW32_API *cb)(void *),
                        void *arg,
                        pthread_t *tid)
 {
@@ -412,7 +413,7 @@ RingQueue_Test(void)
 {
     RingQueue_t ringQueue(true, true);
     int i, j;
-    pthread_t kids[POP_CNT + PUSH_CNT];
+    pthread_t kids[POP_CNT + PUSH_CNT] = { 0 };
     thread_arg_t *thread_arg;
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;

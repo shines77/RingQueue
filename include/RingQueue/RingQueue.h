@@ -11,6 +11,7 @@
 
 #ifndef _MSC_VER
 #include <pthread.h>
+#include "msvc/pthread.h"
 #else
 #include "msvc/pthread.h"
 #endif
