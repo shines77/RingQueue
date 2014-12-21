@@ -147,7 +147,9 @@ UpgradeLog.htm
 # For text file
 !ReadMe.txt
 !readme.txt
-*.txt
+!CMakeLists.txt
+!cmakelists.txt
+!*.txt
 
 # For Intel C++ Compiler Log File & Project File
 IcUpdateLog.htm

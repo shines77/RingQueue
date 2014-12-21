@@ -2,9 +2,9 @@
 #ifndef _RINGQUEUE_DUMP_MEM_H_
 #define _RINGQUEUE_DUMP_MEM_H_
 
-#include <stdint.h>
+#include "stdint.h"
 #include <stddef.h>
-#include <stdbool.h>
+#include "stdbool.h"
 
 #ifdef __cplusplus
 extern "C" {

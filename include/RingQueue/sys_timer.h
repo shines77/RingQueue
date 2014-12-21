@@ -6,7 +6,7 @@
 #pragma once
 #endif
 
-#include <stdint.h>
+#include "stdint.h"
 
 #ifndef JMC_INLINE
 #ifdef _MSC_VER
@@ -15,6 +15,11 @@
 #define JMC_INLINE  inline
 #endif // _MSC_VER
 #endif // JMC_INLINE
+
+#define JIMI_USE_ASSERT         1
+#define JIMIC_USE_ASSERT        1
+
+#define JIMIC_ASSERT_EX(expr, msg)  (!!(expr) ? ((void)0) : ((void)0))
 
 #if _WIN32 || _WIN64
 #include <time.h>
@@ -80,7 +85,7 @@ jmc_timestamp_t jmc_get_timestamp(void)
 #endif  /* JIMIC_USE_ASSERT */
         gettimeofday(&tv, NULL);
     JIMIC_ASSERT_EX(status == 0, "gettimeofday failed");
-    result = (jmc_timestamp_t)((int64_t)(1000000UL) * (int64_t)(tv.tv_sec) + (int64_t)(tv.tv_usec);
+    result = (jmc_timestamp_t)((int64_t)(1000000UL) * (int64_t)(tv.tv_sec) + (int64_t)(tv.tv_usec));
 #endif  /*(choice of OS) */
 
     return result;
@@ -145,7 +150,7 @@ jmc_timestamp_t jmc_get_millisec(void)
     int status =
 #endif /* JIMIC_USE_ASSERT */
         gettimeofday(&tv, NULL);
-    JIMI_ASSERT_EX(status == 0, "gettimeofday failed");
+    JIMI_ASSERT_EX((status == 0), "gettimeofday failed");
     result = (jmc_timestamp_t)((int64_t)(1000UL) * (int64_t)(tv.tv_sec) + (int64_t)(tv.tv_usec) / (int64_t)(1000UL));
 #endif /*(choice of OS) */
 

@@ -6,7 +6,7 @@
 #pragma once
 #endif
 
-#include <stdint.h>
+#include "stdint.h"
 #include <stdio.h>
 
 #ifndef _MSC_VER
