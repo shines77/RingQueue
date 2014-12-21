@@ -19,6 +19,8 @@
 					<Add option="-D__SSE__" />
 					<Add option="-D__SSE2__" />
 					<Add option="-D__SSE3__" />
+					<Add directory="include/RingQueue" />
+					<Add directory="src" />
 				</Compiler>
 				<Linker>
 					<Add library="pthread" />
@@ -37,6 +39,8 @@
 					<Add option="-D__SSE__" />
 					<Add option="-D__SSE2__" />
 					<Add option="-D__SSE3__" />
+					<Add directory="include/RingQueue" />
+					<Add directory="src" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -48,35 +52,40 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="RingQueue.h" />
-		<Unit filename="console.c">
+		<Unit filename="include/RingQueue/RingQueue.h" />
+		<Unit filename="include/RingQueue/console.h" />
+		<Unit filename="include/RingQueue/dump_mem.h" />
+		<Unit filename="include/RingQueue/get_char.h" />
+		<Unit filename="include/RingQueue/mq.h" />
+		<Unit filename="include/RingQueue/msvc/pthread.h" />
+		<Unit filename="include/RingQueue/port.h" />
+		<Unit filename="include/RingQueue/q.h" />
+		<Unit filename="include/RingQueue/q3.h" />
+		<Unit filename="include/RingQueue/sleep.h" />
+		<Unit filename="include/RingQueue/sys_timer.h" />
+		<Unit filename="include/RingQueue/test.h" />
+		<Unit filename="src/console.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="console.h" />
-		<Unit filename="dump_mem.c">
+		<Unit filename="src/dump_mem.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="dump_mem.h" />
-		<Unit filename="get_char.c">
+		<Unit filename="src/get_char.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="get_char.h" />
-		<Unit filename="main.cpp" />
-		<Unit filename="mq.c">
+		<Unit filename="src/main.cpp" />
+		<Unit filename="src/mq.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="q3.h">
+		<Unit filename="src/msvc/pthead.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="sleep.c">
+		<Unit filename="src/sleep.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="sleep.h" />
-		<Unit filename="sys_timer.c">
+		<Unit filename="src/sys_timer.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="sys_timer.h" />
-		<Unit filename="test.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

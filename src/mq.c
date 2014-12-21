@@ -4,6 +4,9 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mq.h"
+#include "port.h"
+
 #define QSZ     (1 << 10)
 #define QMSK    (QSZ - 1)
 
@@ -31,7 +34,7 @@ queue_push(struct queue *q, void *m) {
 		if (head + QSZ == tail) {
 			return NULL;
 		}
-	} while (!__sync_bool_compare_and_swap(&q->tail, tail, tail+1));
+	} while (!jimi_bool_compare_and_swap32(&q->tail, tail, tail+1));
 	q->q[tail & QMSK] = m;
 
 	return m;
@@ -52,7 +55,7 @@ queue_pop(struct queue *q) {
 		if (m == NULL) {
 			return NULL;
 		}
-	} while (!__sync_bool_compare_and_swap(&q->q[masked], m, NULL));
+	} while (!jimi_bool_compare_and_swap32(&q->q[masked], m, NULL));
 	q->head ++;
 	return m;
 }

@@ -188,7 +188,7 @@ Thumbs.db
 /.metadata
 /169.254.0.1
 /ipch/
-/cmake/
+# /cmake/
 /Simulator/
 /Simulator-Coverage/
 /Simulator-Profile/

@@ -1,12 +1,22 @@
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+
+#ifndef _MSC_VER
 #include <sched.h>
 #include <pthread.h>
+#else
+#include "msvc/pthread.h"
+#endif  // _MSC_VER
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -24,7 +34,7 @@
 
 using namespace jimi;
 
-#if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32)
+#if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER)
 typedef unsigned int cpu_set_t;
 #endif // defined
 
@@ -41,22 +51,29 @@ static volatile struct msg_t *msgs;
 
 static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
 
-static pthread_mutex_t s_queue_mutex = NULL;
-
 static inline uint64_t
-rdtsc(void)
+read_rdtsc(void)
 {
-  union {
-    uint64_t tsc_64;
-    struct {
-      uint32_t lo_32;
-      uint32_t hi_32;
-    };
-  } tsc;
+    union {
+        uint64_t tsc_64;
+        struct {
+            uint32_t lo_32;
+            uint32_t hi_32;
+        };
+    } tsc;
 
-  asm volatile("rdtsc" :
-    "=a" (tsc.lo_32),
-    "=d" (tsc.hi_32));
+#ifndef _MSC_VER
+    __asm __volatile__ ("rdtsc" :
+        "=a" (tsc.lo_32),
+        "=d" (tsc.hi_32));
+#else
+    __asm {
+        mov eax, tsc.lo_32
+        mov edx, tsc.hi_32
+        rdtsc
+    }
+#endif
+
   return tsc.tsc_64;
 }
 
@@ -70,19 +87,12 @@ static volatile uint64_t pop_cycles = 0;
 static void
 init_globals(void)
 {
-    pthread_mutexattr_t attr;
     quit = 0;
     pop_total = 0;
     push_total = 0;
 
     push_cycles = 0;
     pop_cycles = 0;
-
-    if (s_queue_mutex == NULL) {
-        if (!pthread_mutexattr_init(&attr)) {
-            pthread_mutex_init(&s_queue_mutex, NULL);
-        }
-    }
 }
 
 static void *
@@ -110,7 +120,7 @@ ringqueue_push_task(void *arg)
         free(thread_arg);
 
     msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
-    start = rdtsc();
+    start = read_rdtsc();
 
     for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
@@ -135,7 +145,7 @@ ringqueue_push_task(void *arg)
     printf("thread [%d] have push %d\n", idx, i);
 #endif
 
-    push_cycles += rdtsc() - start;
+    push_cycles += read_rdtsc() - start;
     push_total += MAX_PUSH_MSG_LENGTH;
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
@@ -171,7 +181,7 @@ ringqueue_pop_task(void *arg)
 
     cnt = 0;
     record_list = &popmsg_list[idx][0];
-    start = rdtsc();
+    start = read_rdtsc();
 
     while (true || !quit) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
@@ -191,24 +201,26 @@ ringqueue_pop_task(void *arg)
         }
     }
 
-    pop_cycles += rdtsc() - start;
+    pop_cycles += read_rdtsc() - start;
     pop_total += cnt;
 
     return NULL;
 }
 
+#ifndef _MSC_VER
+
 static void *
 push_task(void *arg)
 {
     struct queue *q = (struct queue *)arg;
-    uint64_t start = rdtsc();
+    uint64_t start = read_rdtsc();
     int i;
 
     for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
         while (push(q, msgs + i) == -1);
     }
 
-    push_cycles += rdtsc() - start;
+    push_cycles += read_rdtsc() - start;
     push_total += MAX_PUSH_MSG_LENGTH;
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
@@ -220,18 +232,20 @@ static void *
 pop_task(void *arg)
 {
     struct queue *q = (struct queue *)arg;
-    uint64_t start = rdtsc();
+    uint64_t start = read_rdtsc();
     int cnt = 0;
 
     while (!quit) {
         cnt += !!pop(q);
     }
 
-    pop_cycles += rdtsc() - start;
+    pop_cycles += read_rdtsc() - start;
     pop_total += cnt;
 
     return NULL;
 }
+
+#endif  /* _MSC_VER */
 
 /* topology for Xeon E5-2670 Sandybridge */
 static const int socket_top[] = {
@@ -254,7 +268,7 @@ start_thread(int id,
     cpu_set_t cpuset;
     int core_id;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -262,7 +276,7 @@ start_thread(int id,
     if (pthread_attr_init(&attr))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     CPU_ZERO(&cpuset);
     core_id = CORE_ID(id);
     CPU_SET(core_id, &cpuset);
@@ -271,7 +285,7 @@ start_thread(int id,
     if (pthread_create(&kid, &attr, cb, arg))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -285,7 +299,7 @@ start_thread(int id,
 static int
 setaffinity(int core_id)
 {
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     cpu_set_t cpuset;
     pthread_t me = pthread_self();
 
@@ -309,7 +323,7 @@ ringqueue_start_thread(int id,
     cpu_set_t cpuset;
     int core_id;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -317,7 +331,7 @@ ringqueue_start_thread(int id,
     if (pthread_attr_init(&attr))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     CPU_ZERO(&cpuset);
     core_id = CORE_ID(id);
     CPU_SET(core_id, &cpuset);
@@ -326,7 +340,7 @@ ringqueue_start_thread(int id,
     if (pthread_create(&kid, &attr, cb, arg))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -507,6 +521,8 @@ RingQueue_Test(void)
 #endif
 }
 
+#ifndef _MSC_VER
+
 void
 q3_test(void)
 {
@@ -561,6 +577,8 @@ q3_test(void)
     jimi_console_readkeyln(false, true, false);
 }
 
+#endif  /* _MSC_VER */
+
 void
 RingQueue_UnitTest(void)
 {
@@ -605,21 +623,21 @@ RingQueue_UnitTest(void)
 
 void test_data_destory(void)
 {
-    if (s_queue_mutex) {
-        pthread_mutex_destroy(&s_queue_mutex);
-    }
+    //
 }
 
 int
 main(void)
 {
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
-    //RingQueue_UnitTest();
     RingQueue_Test();
+    //RingQueue_UnitTest();
 #endif
 
 #if defined(USE_DOUBAN_RINGQUEUE) && (USE_DOUBAN_RINGQUEUE != 0)
+#ifndef _MSC_VER
     q3_test();
+#endif  /* _MSC_VER */
 #endif
 
     test_data_destory();

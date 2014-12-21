@@ -8,22 +8,24 @@
 
 #include <stdint.h>
 #include <stdio.h>
+
+#ifndef _MSC_VER
 #include <pthread.h>
+#else
+#include "msvc/pthread.h"
+#endif
 
 #ifdef _MSC_VER
 #include <intrin.h>     // For _ReadWriteBarrier(), InterlockedCompareExchange()
 #endif
 #include <emmintrin.h>
 
+#include "port.h"
 #include "sleep.h"
 #include "dump_mem.h"
 
 #ifndef JIMI_CACHELINE_SIZE
 #define JIMI_CACHELINE_SIZE     64
-#endif
-
-#ifndef jimi_mm_pause
-#define jimi_mm_pause       _mm_pause
 #endif
 
 #ifndef JIMI_MIN
@@ -58,95 +60,6 @@
 #else
 #define JIMI_ROUND_TO_POW2(N)   jimi_next_power_of_2(N)
 #endif
-
-#if defined(_MSC_VER)
-
-#ifndef jimi_likely
-#define jimi_likely(x)      (x)
-#endif
-
-#ifndef jimi_unlikely
-#define jimi_unlikely(x)    (x)
-#endif
-
-///
-/// _ReadWriteBarrier
-///
-/// See: http://msdn.microsoft.com/en-us/library/f20w0x5e%28VS.80%29.aspx
-///
-/// See: http://en.wikipedia.org/wiki/Memory_ordering
-///
-#define Jimi_ReadWriteBarrier()  _ReadWriteBarrier();
-
-#else  /* !_MSC_VER */
-
-#ifndef jimi_likely
-#define jimi_likely(x)      __builtin_expect((x), 1)
-#endif
-
-#ifndef jimi_unlikely
-#define jimi_unlikely(x)    __builtin_expect((x), 0)
-#endif
-
-///
-/// See: http://en.wikipedia.org/wiki/Memory_ordering
-///
-/// See: http://bbs.csdn.net/topics/310025520
-///
-
-#define Jimi_ReadWriteBarrier()     asm volatile ("":::"memory");
-//#define Jimi_ReadWriteBarrier()     __asm__ __volatile__ ("":::"memory");
-
-#endif  /* _MSC_VER */
-
-#if defined(_MSC_VER)
-#define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)    \
-    InterlockedCompareExchange((volatile LONG *)destPtr,    \
-                            (uint32_t)(newValue), (uint32_t)(oldValue))
-#define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
-    (InterlockedCompareExchange((volatile LONG *)destPtr,           \
-                            (uint32_t)(newValue), (uint32_t)(oldValue)) \
-                                == (uint32_t)(oldValue))
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW__) || defined(__MINGW32__)
-#define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)    \
-    __sync_val_compare_and_swap((volatile uint32_t *)destPtr,       \
-                            (uint32_t)(oldValue), (uint32_t)(newValue))
-#define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)   \
-    __sync_bool_compare_and_swap((volatile uint32_t *)destPtr,      \
-                            (uint32_t)(oldValue), (uint32_t)(newValue))
-#else
-#define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
-    __internal_val_compare_and_swap32((volatile uint32_t *)(destPtr),   \
-                                (uint32_t)(oldValue), (uint32_t)(newValue))
-#define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
-    __internal_bool_compare_and_swap32((volatile uint32_t *)(destPtr),  \
-                                (uint32_t)(oldValue), (uint32_t)(newValue))
-#endif  /* _MSC_VER */
-
-static inline
-uint32_t __internal_val_compare_and_swap32(volatile uint32_t *destPtr,
-                                           uint32_t oldValue,
-                                           uint32_t newValue)
-{
-    uint32_t origValue = *destPtr;
-    if (*destPtr == oldValue) {
-        *destPtr = newValue;
-    }
-    return origValue;
-}
-
-static inline
-bool __internal_bool_compare_and_swap32(volatile uint32_t *destPtr,
-                                            uint32_t oldValue,
-                                            uint32_t newValue)
-{
-    if (*destPtr == oldValue) {
-        *destPtr = newValue;
-        return 1;
-    }
-    else
-        return 0;
-}
 
 namespace jimi {
 
@@ -360,7 +273,6 @@ int RingQueueBase<T, Capcity, CoreTy>::push(T * item)
         tail = core.info.tail;
         if ((head - tail) > kMask) {
             Jimi_ReadWriteBarrier();
-            __sync_lock_test_and_set(&spin_mutex.locked, 0U);
             return -1;
         }
         next = head + 1;
@@ -400,8 +312,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
         //if (tail >= head && (head - tail) <= kMask)
         if ((tail == head) || (tail > head && (head - tail) > kMask)) {
             Jimi_ReadWriteBarrier();
-            //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
-            spin_mutex.locked = 0;
             return (value_type)NULL;
         }
         next = tail + 1;
@@ -422,7 +332,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::pop()
 
     Jimi_ReadWriteBarrier();
 
-    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return item;
@@ -455,7 +365,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
         }
     }
 #else   /* !USE_SPIN_MUTEX_COUNTER */
-    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+    while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U) {
         //jimi_yield();
         jimi_wsleep(0);
     }
@@ -465,7 +375,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
     tail = core.info.tail;
     if ((head - tail) > kMask) {
         Jimi_ReadWriteBarrier();
-        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return -1;
     }
@@ -476,7 +386,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
 
     Jimi_ReadWriteBarrier();
 
-    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return 0;
@@ -510,7 +420,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
         }
     }
 #else   /* !USE_SPIN_MUTEX_COUNTER */
-    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+    while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U) {
         //jimi_yield();
         jimi_wsleep(0);
     }
@@ -520,7 +430,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
     tail = core.info.tail;
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
         Jimi_ReadWriteBarrier();
-        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return (value_type)NULL;
     }
@@ -531,7 +441,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
 
     Jimi_ReadWriteBarrier();
 
-    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return item;
@@ -566,13 +476,13 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
     /// GCC 提供的原子操作 (From GCC 4.1.2)
     /// See: http://www.cnblogs.com/FrankTan/archive/2010/12/11/1903377.html
     ///
-    __sync_lock_test_and_set(&spin_mutex.locked, 1U);
+    jimi_lock_test_and_set32(&spin_mutex.locked, 1U);
 
     head = core.info.head;
     tail = core.info.tail;
     if ((head - tail) > kMask) {
         Jimi_ReadWriteBarrier();
-        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return -1;
     }
@@ -583,7 +493,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
 
     Jimi_ReadWriteBarrier();
 
-    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return 0;
@@ -619,13 +529,13 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
     /// GCC 提供的原子操作 (From GCC 4.1.2)
     /// See: http://www.cnblogs.com/FrankTan/archive/2010/12/11/1903377.html
     ///
-    __sync_lock_test_and_set(&spin_mutex.locked, 1U);
+    jimi_lock_test_and_set32(&spin_mutex.locked, 1U);
 
     head = core.info.head;
     tail = core.info.tail;
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
         Jimi_ReadWriteBarrier();
-        //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return (value_type)NULL;
     }
@@ -636,7 +546,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
 
     Jimi_ReadWriteBarrier();
 
-    //__sync_lock_test_and_set(&spin_mutex.locked, 0U);
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return item;

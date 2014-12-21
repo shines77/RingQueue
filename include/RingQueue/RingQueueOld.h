@@ -1,6 +1,6 @@
 
-#ifndef _JIMI_UTIL_RINGQUEUE_H_
-#define _JIMI_UTIL_RINGQUEUE_H_
+#ifndef _JIMI_UTIL_RINGQUEUEEX_H_
+#define _JIMI_UTIL_RINGQUEUEEX_H_
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 #pragma once
@@ -558,4 +558,4 @@ void RingQueue2<T, Capcity>::dump_detail()
 
 #undef JIMI_CACHELINE_SIZE
 
-#endif  /* _JIMI_UTIL_RINGQUEUE_H_ */
+#endif  /* _JIMI_UTIL_RINGQUEUEEX_H_ */

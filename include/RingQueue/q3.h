@@ -6,6 +6,7 @@
 #include <emmintrin.h>
 
 #include "test.h"
+#include "port.h"
 #include "get_char.h"
 
 #ifdef _WIN32
@@ -85,17 +86,21 @@ push(struct queue *q, volatile void *m)
         }
 #endif
         next = head + 1;
-        ok = __sync_bool_compare_and_swap(&q->p.head, head, next);
+        ok = jimi_bool_compare_and_swap32(&q->p.head, head, next);
     } while (!ok);
 
     q->msgs[head & mask] = m;
+#ifdef _MSC_VER
+    Jimi_ReadWriteBarrier();
+#else
     asm volatile ("":::"memory");
+#endif
 
 #if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     loop_cnt = 0;
 #endif
 
-    while (unlikely((q->p.tail != head))) {
+    while (jimi_unlikely((q->p.tail != head))) {
 #if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;
         if (loop_cnt > 1000) {
@@ -105,7 +110,7 @@ push(struct queue *q, volatile void *m)
             jimi_wsleep(1);
         }
 #endif
-        _mm_pause();
+        jimi_mm_pause();
     }
 
     q->p.tail = next;
@@ -147,18 +152,22 @@ pop(struct queue *q)
         }
 #endif
         next = head + 1;
-        ok = __sync_bool_compare_and_swap(&q->c.head, head, next);
+        ok = jimi_bool_compare_and_swap32(&q->c.head, head, next);
     } while (!ok);
 
     ret = q->msgs[head & mask];
+#ifdef _MSC_VER
+    Jimi_ReadWriteBarrier();
+#else
     asm volatile ("":::"memory");
+#endif
 
 #if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
     loop_cnt = 0;
     loop_cnt2 = 0;
 #endif
 
-    while (unlikely((q->c.tail != head))) {
+    while (jimi_unlikely((q->c.tail != head))) {
 #if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)
         loop_cnt++;
         if (loop_cnt > 1000) {
@@ -173,7 +182,7 @@ pop(struct queue *q)
             jimi_wsleep(1);
         }
 #endif
-        _mm_pause();
+        jimi_mm_pause();
     }
 
     q->c.tail = next;
