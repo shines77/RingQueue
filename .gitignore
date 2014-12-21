@@ -170,7 +170,7 @@ IcUpdateLog.htm
 /tmp/
 /temp/
 !/build/ReadMe.txt
-# /build/
+/build/*/
 
 # For Visual Studio 2013 temp files on Windows
 *.tlog
