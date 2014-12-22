@@ -146,6 +146,7 @@ UpgradeLog.htm
 
 # For obj file in GCC
 *.pic.d
+*.jet.d
 
 # For stackdump file on Linux
 *.stackdump
