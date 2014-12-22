@@ -561,7 +561,10 @@ int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item)
 {
     index_type head, tail, next;
 
-    if (queue_mutex == NULL) return -1;
+#if !defined(__linux__)
+    if (queue_mutex == NULL)
+        return -1;
+#endif
 
     pthread_mutex_lock(&queue_mutex);
 
@@ -592,7 +595,10 @@ T * RingQueueBase<T, Capcity, CoreTy>::locked_pop()
     index_type head, tail, next;
     value_type item;
 
-    if (queue_mutex == NULL) return NULL;
+#if !defined(__linux__)
+    if (queue_mutex == NULL)
+        return NULL;
+#endif
 
     pthread_mutex_lock(&queue_mutex);
 

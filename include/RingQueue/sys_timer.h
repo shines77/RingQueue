@@ -19,6 +19,7 @@
 #define JIMI_USE_ASSERT         1
 #define JIMIC_USE_ASSERT        1
 
+#define JIMI_ASSERT_EX(expr, msg)   (!!(expr) ? ((void)0) : ((void)0))
 #define JIMIC_ASSERT_EX(expr, msg)  (!!(expr) ? ((void)0) : ((void)0))
 
 #if _WIN32 || _WIN64
@@ -142,7 +143,7 @@ jmc_timestamp_t jmc_get_millisec(void)
     int status =
 #endif /* JIMIC_USE_ASSERT */
         clock_gettime(CLOCK_REALTIME, &ts);
-    JIMI_ASSERT_EX(status == 0, "CLOCK_REALTIME not supported");
+    JIMIC_ASSERT_EX(status == 0, "CLOCK_REALTIME not supported");
     result = (jmc_timestamp_t)((int64_t)(1000UL) * (int64_t)(ts.tv_sec) + (int64_t)(ts.tv_nsec) / (int64_t)(1000000UL));
 #else /* generic Unix */
     struct timeval tv;

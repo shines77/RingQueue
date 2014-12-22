@@ -477,7 +477,7 @@ RingQueue_Test(void)
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
     printf("\n");
 
-    printf("Elapse time: %0.3f ms\n\n", elapsedTime);
+    printf("Elapsed time: %0.3f ms\n\n", elapsedTime);
     printf("msgs ptr = 0x%016p\n\n", (void *)(struct msg_t *)msgs);
 
     //jimi_console_readkeyln(false, true, false);
@@ -566,7 +566,7 @@ q3_test(void)
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
     printf("\n");
 
-    printf("Elapse time: %0.3f ms\n\n", elapsedTime);
+    printf("Elapsed time: %0.3f ms\n\n", elapsedTime);
 
     if (msgs) {
         free((void *)msgs);
