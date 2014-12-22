@@ -30,7 +30,7 @@
 
 /// 是否运行q3.h的测试代码
 #ifndef USE_DOUBAN_RINGQUEUE
-#define USE_DOUBAN_RINGQUEUE    0
+#define USE_DOUBAN_RINGQUEUE    1
 #endif
 
 /// 是否运行jimi:RingQueue的测试代码
@@ -56,7 +56,7 @@
 
 /// 取值范围是 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     3
+#define RINGQUEUE_LOCK_TYPE     1
 #endif
 
 ///

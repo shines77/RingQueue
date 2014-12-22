@@ -55,7 +55,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     include(DisplayComplierEnv)
 
     # Check Compiler Environment Values
-    CheckCompilerEnvironment()
+    DisplayCompilerEnvironment()
 
     if (JLANG_CMAKE_SHOW_DETAIL)
         message(STATUS "Create the real project files.")
@@ -145,8 +145,8 @@ endif()
 if (JLVM_COMPILER_IS_GCC_COMPATIBLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-common -Woverloaded-virtual -Wcast-qual -fno-strict-aliasing")
 
-    # Enable -pedantic for Clang even if it's not enabled for JVPU.
-    if (NOT JVPU_ENABLE_PEDANTIC)
+    # Enable -pedantic for Clang even if it's not enabled for JLVM.
+    if (NOT JLVM_ENABLE_PEDANTIC)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wno-long-long")
     endif ()
 

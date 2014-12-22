@@ -36,12 +36,12 @@ endif()
 
 # set(SRC_RINGQUEUE_LIST main.cpp console.c dump_mem.c get_char.c sleep.c sys_timer.c ${SRC_RINGQUEUE_COLMAJOR_LIST} ${SRC_RINGQUEUE_ROWMAJOR_LIST})
 
-file(GLOB_RECURSE SRC_RINGQUEUE_LIST "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.c" "${PROJECT_SOURCE_DIR}/include/RingQueue/*.h")
+file(GLOB_RECURSE SRC_RINGQUEUE_LIST "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.c")
 
 # aux_source_directory(. SRC_RINGQUEUE_LIST)
 # aux_source_directory(./msvc SRC_RINGQUEUE_MSVC_LIST)
 
-# file(GLOB_RECURSE SRC_RINGQUEUE_INCLUDE_LIST "${PROJECT_SOURCE_DIR}/include/RingQueue/*.h")
+file(GLOB_RECURSE SRC_RINGQUEUE_INCLUDE_LIST "${PROJECT_SOURCE_DIR}/include/RingQueue/*.h")
 
 # list(APPEND SRC_RINGQUEUE_LIST ${SRC_RINGQUEUE_MSVC_LIST} ${SRC_RINGQUEUE_INCLUDE_LIST})
 
@@ -63,7 +63,7 @@ message(STATUS "This is SOURCE dir " ${PROJECT_SOURCE_DIR})
 
 # message(STATUS "This is SOURCE RingQueue dir " ${SRC_RINGQUEUE_LIST})
 
-message(STATUS "CMAKE_STANDARD_LIBRARIES = " ${CMAKE_STANDARD_LIBRARIES})
+# message(STATUS "CMAKE_STANDARD_LIBRARIES = " ${CMAKE_STANDARD_LIBRARIES})
 
 #
 # cmake and lib pthread
@@ -78,7 +78,7 @@ if (CMAKE_USE_PTHREADS_INIT)
     set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-lpthread")
 endif()
 
-add_executable(RingQueue ${SRC_RINGQUEUE_LIST})
+add_executable(RingQueue ${SRC_RINGQUEUE_LIST} ${SRC_RINGQUEUE_INCLUDE_LIST})
 # add_executable(RingQueue ${SRC_RINGQUEUE_LIST} ${SRC_RINGQUEUE_COLMAJOR_LIST} ${SRC_RINGQUEUE_ROWMAJOR_LIST})
 
 if (CMAKE_USE_PTHREADS_INIT)
@@ -87,14 +87,14 @@ endif()
 
 #if (MINGW OR CYGWIN OR MSVC_IDE)
     # msvcrt.lib
-    target_link_libraries(RingQueue kernel32.lib user32.lib gdi32.lib
-        comdlg32.lib  shell32.lib uuid.lib winmm.lib)
+    target_link_libraries(RingQueue kernel32 user32 gdi32 comdlg32 shell32 uuid winmm)
 #endif()
 
 # target_link_libraries(hello util)
 
 #
 # See: http://yang3wei.github.io/blog/2013/02/15/cmake-xue-xi-bi-ji-1/
+#
 # See: http://blog.csdn.net/dbzhang800/article/details/6314073
 #
 # set_target_properties(libhello PROPERTIES OUTPUT_NAME "hello")

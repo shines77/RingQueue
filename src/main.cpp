@@ -418,7 +418,7 @@ RingQueue_Test(void)
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;
 
-    printf("\n");
+    //printf("\n");
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
     printf("This is RingQueue.spin_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
@@ -522,8 +522,6 @@ RingQueue_Test(void)
 #endif
 }
 
-#ifndef _MSC_VER
-
 void
 q3_test(void)
 {
@@ -533,7 +531,7 @@ q3_test(void)
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;
 
-    printf("\n");
+    //printf("\n");
     printf("This is DouBan's q3.h test:\n");
 
     printf("\n");
@@ -577,8 +575,6 @@ q3_test(void)
 
     jimi_console_readkeyln(false, true, false);
 }
-
-#endif  /* _MSC_VER */
 
 void
 RingQueue_UnitTest(void)
@@ -630,15 +626,15 @@ void test_data_destory(void)
 int
 main(void)
 {
+    jimi_cpu_warmup(500);
+
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
     RingQueue_Test();
     //RingQueue_UnitTest();
 #endif
 
 #if defined(USE_DOUBAN_RINGQUEUE) && (USE_DOUBAN_RINGQUEUE != 0)
-#ifndef _MSC_VER
     q3_test();
-#endif  /* _MSC_VER */
 #endif
 
     test_data_destory();
