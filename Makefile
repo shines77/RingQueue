@@ -19,7 +19,7 @@ objroot :=
 
 # Build parameters.
 CPPFLAGS := -D_REENTRANT -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
-CFLAGS := -std=gnu99 -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
+CFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
 LDFLAGS := 
 EXTRA_LDFLAGS := 
 LIBS :=  -lpthread
