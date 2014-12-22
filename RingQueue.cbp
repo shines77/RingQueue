@@ -70,26 +70,26 @@
 		<Unit filename="include/RingQueue/vs_inttypes.h" />
 		<Unit filename="include/RingQueue/vs_stdbool.h" />
 		<Unit filename="include/RingQueue/vs_stdint.h" />
-		<Unit filename="src/console.c">
+		<Unit filename="src/RingQueue/console.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/dump_mem.c">
+		<Unit filename="src/RingQueue/dump_mem.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/get_char.c">
+		<Unit filename="src/RingQueue/get_char.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/main.cpp" />
-		<Unit filename="src/mq.c">
+		<Unit filename="src/RingQueue/main.cpp" />
+		<Unit filename="src/RingQueue/mq.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/msvc/pthead.c">
+		<Unit filename="src/RingQueue/msvc/pthead.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/sleep.c">
+		<Unit filename="src/RingQueue/sleep.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/sys_timer.c">
+		<Unit filename="src/RingQueue/sys_timer.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Extensions>
