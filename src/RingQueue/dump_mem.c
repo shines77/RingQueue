@@ -61,7 +61,7 @@ void dump_mem(void *p, size_t size, bool alignedTo /* = false */,
     lineTotal = ((size_t)endAddr - (size_t)startAddr + (alignment - 1)) / alignment;
 
     printf("--------------------------------------------------------------\n");
-    printf("  Addr = 0x%08X, Size = %u bytes\n", (unsigned int)p, (unsigned int)size);
+    printf("  Addr = 0x%016p, Size = %u bytes\n", p, (unsigned int)size);
     printf("--------------------------------------------------------------\n");
     printf("\n");
 

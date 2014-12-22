@@ -478,7 +478,7 @@ RingQueue_Test(void)
     printf("\n");
 
     printf("Elapse time: %0.3f ms\n\n", elapsedTime);
-    printf("msgs ptr = 0x%08p\n\n", (struct msg_t *)msgs);
+    printf("msgs ptr = 0x%016p\n\n", (void *)(struct msg_t *)msgs);
 
     //jimi_console_readkeyln(false, true, false);
 
