@@ -36,7 +36,7 @@ endif()
 
 # set(SRC_RINGQUEUE_LIST main.cpp console.c dump_mem.c get_char.c sleep.c sys_timer.c ${SRC_RINGQUEUE_COLMAJOR_LIST} ${SRC_RINGQUEUE_ROWMAJOR_LIST})
 
-file(GLOB_RECURSE SRC_RINGQUEUE_LIST "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.c")
+file(GLOB_RECURSE SRC_RINGQUEUE_LIST "${PROJECT_SOURCE_DIR}/src/RingQueue/*.cpp" "${PROJECT_SOURCE_DIR}/src/RingQueue/*.c")
 
 # aux_source_directory(. SRC_RINGQUEUE_LIST)
 # aux_source_directory(./msvc SRC_RINGQUEUE_MSVC_LIST)
