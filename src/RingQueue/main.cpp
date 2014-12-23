@@ -48,7 +48,6 @@ typedef struct thread_arg_t
 } thread_arg_t;
 
 static volatile struct msg_t *msgs;
-//static volatile struct msg_t *popmsg_list;
 
 static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
 
@@ -269,7 +268,8 @@ start_thread(int id,
     cpu_set_t cpuset;
     int core_id;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -277,16 +277,18 @@ start_thread(int id,
     if (pthread_attr_init(&attr))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     CPU_ZERO(&cpuset);
     core_id = CORE_ID(id);
     CPU_SET(core_id, &cpuset);
-#endif // defined
+#endif
 
     if (pthread_create(&kid, &attr, cb, arg))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -300,7 +302,8 @@ start_thread(int id,
 static int
 setaffinity(int core_id)
 {
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     cpu_set_t cpuset;
     pthread_t me = pthread_self();
 
@@ -324,7 +327,8 @@ ringqueue_start_thread(int id,
     cpu_set_t cpuset;
     int core_id;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -332,16 +336,18 @@ ringqueue_start_thread(int id,
     if (pthread_attr_init(&attr))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     CPU_ZERO(&cpuset);
     core_id = CORE_ID(id);
     CPU_SET(core_id, &cpuset);
-#endif // defined
+#endif
 
     if (pthread_create(&kid, &attr, cb, arg))
         return -1;
 
-#if !(defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -472,7 +478,10 @@ RingQueue_Test(void)
 
     printf("\n");
     printf("pop total: %d\n", pop_total);
-    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
+    if (pop_total == 0)
+        printf("pop cycles/msg: %"PRIuFAST64"\n", 0);
+    else
+        printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
     printf("\n");
@@ -501,14 +510,6 @@ RingQueue_Test(void)
 #endif
 
     //jimi_console_readkeyln(false, true, false);
-
-#if 0
-    for (i = 0; i <= 256; ++i) {
-        printf("msgs[%3d] = %02llu : %llu\n", i, msgs[i].dummy / MAX_PUSH_MSG_LENGTH,
-               msgs[i].dummy % MAX_PUSH_MSG_LENGTH);
-    }
-    printf("\n");
-#endif
 
     if (msgs) {
         free((void *)msgs);
@@ -561,7 +562,10 @@ q3_test(void)
 
     printf("\n");
     printf("pop total: %d\n", pop_total);
-    printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
+    if (pop_total == 0)
+        printf("pop cycles/msg: %"PRIuFAST64"\n", 0);
+    else
+        printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
     printf("\n");
@@ -618,11 +622,6 @@ RingQueue_UnitTest(void)
     jimi_console_readkeyln(true, true, false);
 }
 
-void test_data_destory(void)
-{
-    //
-}
-
 int
 main(void)
 {
@@ -636,8 +635,6 @@ main(void)
 #if defined(USE_DOUBAN_RINGQUEUE) && (USE_DOUBAN_RINGQUEUE != 0)
     q3_test();
 #endif
-
-    test_data_destory();
 
     //jimi_console_readkeyln(false, true, false);
     return 0;

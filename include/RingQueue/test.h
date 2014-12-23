@@ -38,6 +38,12 @@
 #define USE_JIMI_RINGQUEUE      1
 #endif
 
+/// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
+///       该选项在Windows下无效, 在虚拟机里更是不能启用)
+#ifndef USE_THREAD_AFFINITY
+#define USE_THREAD_AFFINITY     0
+#endif
+
 ///
 /// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
 ///
