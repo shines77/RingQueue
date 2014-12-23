@@ -97,7 +97,7 @@ init_globals(void)
 
 static void *
 PTW32_API
-ringqueue_push_task(void *arg)
+RingQueue_push_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue_t *queue;
@@ -156,7 +156,7 @@ ringqueue_push_task(void *arg)
 
 static void *
 PTW32_API
-ringqueue_pop_task(void *arg)
+RingQueue_pop_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue_t *queue;
@@ -460,14 +460,14 @@ RingQueue_Test(void)
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
         thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i, ringqueue_push_task, (void *)thread_arg,
+        ringqueue_start_thread(i, RingQueue_push_task, (void *)thread_arg,
                                &kids[i]);
     }
     for (i = 0; i < POP_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
         thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i + PUSH_CNT, ringqueue_pop_task, (void *)thread_arg,
+        ringqueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
                                &kids[i + PUSH_CNT]);
     }
     for (i = 0; i < POP_CNT + PUSH_CNT; i++)
@@ -516,7 +516,7 @@ RingQueue_Test(void)
         msgs = NULL;
     }
 
-#if !defined(USE_DOUBAN_RINGQUEUE) || (USE_DOUBAN_RINGQUEUE == 0)
+#if !defined(USE_DOUBAN_QUEUE) || (USE_DOUBAN_QUEUE == 0)
     jimi_console_readkeyln(false, true, false);
 #else
     jimi_console_readkeyln(true, true, false);
@@ -625,14 +625,14 @@ RingQueue_UnitTest(void)
 int
 main(void)
 {
-    jimi_cpu_warmup(500);
+    //jimi_cpu_warmup(500);
 
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
     RingQueue_Test();
     //RingQueue_UnitTest();
 #endif
 
-#if defined(USE_DOUBAN_RINGQUEUE) && (USE_DOUBAN_RINGQUEUE != 0)
+#if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     q3_test();
 #endif
 

@@ -351,7 +351,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
 #endif
 
 #if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
-    max_spin_cnt = spin_mutex.spin_counter;
+    max_spin_cnt = MUTEX_MAX_SPIN_COUNTER;
     spin_counter = 1;
 
     while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
@@ -406,7 +406,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
 #endif
 
 #if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
-    max_spin_cnt = spin_mutex.spin_counter;
+    max_spin_cnt = MUTEX_MAX_SPIN_COUNTER;
     spin_counter = 1;
 
     while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {

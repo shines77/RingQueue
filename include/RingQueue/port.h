@@ -78,7 +78,11 @@
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     InterlockedExchange((volatile LONG *)(destPtr), (uint32_t)(newValue))
 
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW__) || defined(__MINGW32__)
+#define jimi_fetch_and_add(destPtr, addValue)                           \
+    InterlockedAdd((volatile LONG *)(destPtr), (uint32_t)(addValue))
+
+#elif defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW32__)
+
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     __sync_val_compare_and_swap((volatile uint32_t *)(destPtr),         \
                             (uint32_t)(oldValue), (uint32_t)(newValue))
@@ -90,7 +94,11 @@
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     __sync_lock_test_and_set((volatile uint32_t *)(destPtr), (uint32_t)(newValue))
 
+#define jimi_fetch_and_add(destPtr, addValue)                           \
+    __sync_fetch_and_add((volatile uint32_t *)(destPtr), (uint32_t)(addValue))
+
 #else
+
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     __internal_val_compare_and_swap32((volatile uint32_t *)(destPtr),   \
                                 (uint32_t)(oldValue), (uint32_t)(newValue))
@@ -102,6 +110,10 @@
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     __internal_lock_test_and_set32((volatile uint32_t *)(destPtr),      \
                                 (uint32_t)(newValue))
+
+#define jimi_fetch_and_add(destPtr, addValue)                           \
+    __internal_fetch_and_add((volatile uint32_t *)(destPtr),            \
+                                (uint32_t)(addValue))
 #endif  /* _MSC_VER */
 
 #ifdef __cplusplus
@@ -139,6 +151,15 @@ uint32_t __internal_lock_test_and_set32(volatile uint32_t *destPtr,
 {
     uint32_t origValue = *destPtr;
     *destPtr = newValue;
+    return origValue;
+}
+
+static JIMIC_INLINE
+uint32_t __internal_fetch_and_add(volatile uint32_t *destPtr,
+                                  uint32_t addValue)
+{
+    uint32_t origValue = *destPtr;
+    *destPtr += addValue;
     return origValue;
 }
 

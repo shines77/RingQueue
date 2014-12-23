@@ -79,6 +79,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread, unsigned int size,
 int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
                                    const pthread_mutexattr_t * attr)
 {
+#if 0
     DWORD dwSpinCounter;
     BOOL bResult;
     if (attr == NULL)
@@ -87,6 +88,11 @@ int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
         dwSpinCounter = (DWORD)*attr;
     bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCounter);
     return bResult;
+#else
+    BOOL bResult;
+    bResult = InitializeCriticalSection(mutex);
+    return bResult;
+#endif
 }
 
 int PTW32_CDECL pthread_mutex_destroy(pthread_mutex_t * mutex)
