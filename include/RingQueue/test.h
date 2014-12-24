@@ -41,39 +41,40 @@
 /// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
 ///       该选项在Windows下无效, 在虚拟机里更是不能启用)
 #ifndef USE_THREAD_AFFINITY
-#define USE_THREAD_AFFINITY     0
+#define USE_THREAD_AFFINITY     1
 #endif
 
 ///
 /// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
 ///
-/// 定义为0, 表示使用豆瓣上讨论的改良型lock-free方案, 调用RingQueue.push(), RingQueue.pop();
+/// 定义为0, 表示使用豆瓣上q3.h的lock-free改良型方案, 调用RingQueue.push(), RingQueue.pop();
 /// 定义为1, 表示使用细粒度的标准spin_mutex锁, 调用RingQueue.spin_push(), RingQueue.spin_pop();
-/// 定义为2, 表示使用细粒度的仿制spin_mutex锁(会死锁), 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
-/// 定义为3, 表示使用粗粒度的pthread_mutex_t锁, 调用RingQueue.locked_push(), RingQueue.locked_pop().
+/// 定义为2, 表示使用细粒度的改进型spin_mutex锁, 调用RingQueue.spin1_push(), RingQueue.spin1_pop();
+/// 定义为3, 表示使用细粒度的仿制spin_mutex锁(会死锁), 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
+/// 定义为4, 表示使用粗粒度的pthread_mutex_t锁, 调用RingQueue.locked_push(), RingQueue.locked_pop().
 ///
-/// 其中只有1, 3都可以得到正确结果, 而且1速度最快;
+/// 其中只有1, 2, 4都可以得到正确结果, 而且1速度最快;
 ///
 /// 0可能会导致逻辑错误, 结果错误, 而且当(PUSH_CNT + POP_CNT) > CPU物理核心数时,
 ///     有可能不能完成测试或运行时间很久(几十秒或几分钟不等, 而且结果还是错误的), 可自行验证.
 ///
-/// 2可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
+/// 3可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
 ///
 
 /// 取值范围是 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     1
+#define RINGQUEUE_LOCK_TYPE     2
 #endif
 
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用
 ///
-#define USE_SPIN_MUTEX_COUNTER  0
+#define USE_SPIN_MUTEX_COUNTER  1
 
 ///
-/// spin_mutex的最大spin_counter值, 默认值为16, 建议设为0或1,2, 更快! 设为0跟USE_SPIN_MUTEX_COUNTER设为0几乎等价
+/// spin_mutex的最大spin_count值, 默认值为16, 建议设为0或1,2, 更快! 设为0则跟USE_SPIN_MUTEX_COUNTER设为0等价
 ///
-#define MUTEX_MAX_SPIN_COUNTER  0
+#define MUTEX_MAX_SPIN_COUNT    1
 
 /// 缓存的CacheLineSize(x86上是64字节)
 #define CACHE_LINE_SIZE         64

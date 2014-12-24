@@ -14,7 +14,7 @@
 #define jimi_mm_pause       _mm_pause
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__INTER_COMPILER)
 
 #ifndef jimi_likely
 #define jimi_likely(x)      (x)
@@ -62,8 +62,11 @@
 
 #endif  /* _MSC_VER */
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__INTER_COMPILER)
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <intrin.h>
 
@@ -80,12 +83,12 @@
     InterlockedExchange((volatile LONG *)(destPtr), (uint32_t)(newValue))
 
 #define jimi_fetch_and_add32(destPtr, addValue)                         \
-    InterlockedAdd((volatile LONG *)(destPtr), (uint32_t)(addValue))
+    InterlockedExchangeAdd((volatile LONG *)(destPtr), (uint32_t)(addValue))
 
 #define jimi_fetch_and_add64(destPtr, addValue)                         \
-    InterlockedAdd64((volatile LONGLONG *)(destPtr), (uint64_t)(addValue))
+    InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), (uint64_t)(addValue))
 
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW32__)
+#elif defined(__GUNC__) || defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW32__)
 
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     __sync_val_compare_and_swap((volatile uint32_t *)(destPtr),         \
@@ -129,11 +132,38 @@
     __internal_fetch_and_add64((volatile uint32_t *)(destPtr),          \
                                 (uint32_t)(addValue))
 
-#endif  /* _MSC_VER */
+#endif  /* defined(_MSC_VER) || defined(__INTER_COMPILER) */
+
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__CYGWIN__)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#elif defined(__linux__) || defined(__GUNC__)
+#include <unistd.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static JIMIC_INLINE
+int jimi_get_processor_num(void)
+{
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__CYGWIN__)
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    return si.dwNumberOfProcessors;
+#elif defined(__linux__) || defined(__GUNC__)
+    int nprocs = -1;
+  #ifdef _SC_NPROCESSORS_ONLN
+    nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+  #endif
+    return nprocs;
+#else
+    return 1;
+#endif
+}
 
 static JIMIC_INLINE
 uint32_t __internal_val_compare_and_swap32(volatile uint32_t *destPtr,

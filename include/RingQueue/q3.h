@@ -40,7 +40,7 @@ struct queue {
     } c;
     char pad2[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
 
-    volatile void *msgs[0];
+    void *msgs[0];
 };
 
 static inline struct queue *
@@ -54,7 +54,7 @@ qinit(void)
 }
 
 static inline int
-push(struct queue *q, volatile void *m)
+push(struct queue *q, void *m)
 {
     uint32_t head, tail, mask, next;
 #if defined(USE_SLEEP_AND_LOG) && (USE_SLEEP_AND_LOG != 0)

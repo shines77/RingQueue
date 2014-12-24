@@ -14,8 +14,10 @@
 #ifndef _MSC_VER
 #include <sched.h>
 #include <pthread.h>
-#include "msvc/pthread.h"
+#include "msvc/sched.h"
+#include "msvc/pthread.h"   // For define PTW32_API
 #else
+#include "msvc/sched.h"
 #include "msvc/pthread.h"
 #endif  // _MSC_VER
 
@@ -35,10 +37,6 @@
 
 using namespace jimi;
 
-#if defined(__MINGW__) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER)
-typedef unsigned int cpu_set_t;
-#endif // defined
-
 typedef RingQueue<msg_t, QSIZE> RingQueue_t;
 
 typedef struct thread_arg_t
@@ -47,7 +45,7 @@ typedef struct thread_arg_t
     RingQueue_t *queue;
 } thread_arg_t;
 
-static volatile struct msg_t *msgs;
+static volatile struct msg_t *msgs = NULL;
 
 static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
 
@@ -127,8 +125,10 @@ RingQueue_push_task(void *arg)
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
         while (queue->spin_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-        while (queue->spin2_push(msg) == -1) {};
+        while (queue->spin1_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
+        while (queue->spin2_push(msg) == -1) {};
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
         while (queue->locked_push(msg) == -1) {};
 #else
         while (queue->push(msg) == -1) {};
@@ -191,8 +191,10 @@ RingQueue_pop_task(void *arg)
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
         msg = (msg_t *)queue->spin_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-        msg = (msg_t *)queue->spin2_pop();
+        msg = (msg_t *)queue->spin1_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
+        msg = (msg_t *)queue->spin2_pop();
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
         msg = (msg_t *)queue->locked_pop();
 #else
         msg = (msg_t *)queue->pop();
@@ -222,7 +224,7 @@ push_task(void *arg)
     int i;
 
     for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-        while (push(q, msgs + i) == -1);
+        while (push(q, (void *)(msgs + i)) == -1);
     }
 
     push_cycles += read_rdtsc() - start;
@@ -269,11 +271,14 @@ start_thread(int id,
 {
     pthread_t kid;
     pthread_attr_t attr;
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     cpu_set_t cpuset;
     int core_id;
+#endif
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -282,9 +287,10 @@ start_thread(int id,
         return -1;
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     CPU_ZERO(&cpuset);
-    core_id = CORE_ID(id);
+    //core_id = CORE_ID(id);
+    core_id = id % jimi_get_processor_num();
     CPU_SET(core_id, &cpuset);
 #endif
 
@@ -292,7 +298,7 @@ start_thread(int id,
         return -1;
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -307,7 +313,7 @@ static int
 setaffinity(int core_id)
 {
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     cpu_set_t cpuset;
     pthread_t me = pthread_self();
 
@@ -321,18 +327,21 @@ setaffinity(int core_id)
 }
 
 static int
-ringqueue_start_thread(int id,
+RingQueue_start_thread(int id,
                        void *(PTW32_API *cb)(void *),
                        void *arg,
                        pthread_t *tid)
 {
     pthread_t kid;
     pthread_attr_t attr;
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     cpu_set_t cpuset;
     int core_id;
+#endif
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -341,9 +350,10 @@ ringqueue_start_thread(int id,
         return -1;
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     CPU_ZERO(&cpuset);
-    core_id = CORE_ID(id);
+    //core_id = CORE_ID(id);
+    core_id = id % jimi_get_processor_num();
     CPU_SET(core_id, &cpuset);
 #endif
 
@@ -351,7 +361,7 @@ ringqueue_start_thread(int id,
         return -1;
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -406,7 +416,7 @@ int verify_pop_list(void)
 
     if (errors > 0)
         printf("\n");
-    printf("verify pop list result:\n\n");
+    printf("verify pop-list result:\n\n");
     printf("empty = %d, overlay = %d, correct = %d, totals = %d.\n\n",
            empty, overlay, correct, empty + overlay + correct);
 
@@ -432,17 +442,16 @@ RingQueue_Test(void)
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
     printf("This is RingQueue.spin_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-    printf("This is RingQueue.spin2_push() test (maybe deadlock):\n");
+    printf("This is RingQueue.spin1_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
+    printf("This is RingQueue.spin2_push() test (maybe deadlock):\n");
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
     printf("This is RingQueue.locked_push() test:\n");
 #else
     printf("This is RingQueue.push() test (modified by q3.h):\n");
 #endif
 
-    printf("\n");
-    printf("PUSH_CNT         = %u\n"
-           "POP_CNT          = %u\n"
-           "MSG_TOTAL_LENGTH = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
+    printf("------------------------------------------------------\n");
 
     init_globals();
     setaffinity(0);
@@ -464,14 +473,14 @@ RingQueue_Test(void)
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
         thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i, RingQueue_push_task, (void *)thread_arg,
+        RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg,
                                &kids[i]);
     }
     for (i = 0; i < POP_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
         thread_arg->queue = &ringQueue;
-        ringqueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
+        RingQueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
                                &kids[i + PUSH_CNT]);
     }
     for (i = 0; i < POP_CNT + PUSH_CNT; i++)
@@ -481,17 +490,18 @@ RingQueue_Test(void)
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
     printf("\n");
-    printf("pop total: %d\n", pop_total);
-    if (pop_total == 0)
-        printf("pop cycles/msg: %"PRIuFAST64"\n", 0ULL);
-    else
-        printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
+    printf("pop  total: %d\n", pop_total);
+    if (pop_total == 0)
+        printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
+    else
+        printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("\n");
 
+    printf("------------------------------------------------------\n");
+
     printf("Elapsed time: %0.3f ms\n\n", elapsedTime);
-    printf("msgs ptr = 0x%016p\n\n", (void *)(struct msg_t *)msgs);
 
     //jimi_console_readkeyln(false, true, false);
 
@@ -538,16 +548,10 @@ q3_test(void)
 
     //printf("\n");
     printf("This is DouBan's q3.h test:\n");
-
-    printf("\n");
-    printf("PUSH_CNT         = %u\n"
-           "POP_CNT          = %u\n"
-           "MSG_TOTAL_LENGTH = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
+    printf("------------------------------------------------------\n");
 
     init_globals();
     setaffinity(0);
-
-    msgs = (struct msg_t *)calloc(MSG_TOTAL_CNT, sizeof(struct msg_t));
 
     for (i = 0; i < MSG_TOTAL_CNT; i++)
         msgs[i].dummy = (uint64_t)(i + 1);
@@ -565,21 +569,18 @@ q3_test(void)
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
     printf("\n");
-    printf("pop total: %d\n", pop_total);
-    if (pop_total == 0)
-        printf("pop cycles/msg: %"PRIuFAST64"\n", 0ULL);
-    else
-        printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
+    printf("pop  total: %d\n", pop_total);
+    if (pop_total == 0)
+        printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
+    else
+        printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("\n");
 
-    printf("Elapsed time: %0.3f ms\n\n", elapsedTime);
+    printf("------------------------------------------------------\n");
 
-    if (msgs) {
-        free((void *)msgs);
-        msgs = NULL;
-    }
+    printf("Elapsed time: %0.3f ms\n\n", elapsedTime);
 
     jimi_console_readkeyln(false, true, false);
 }
@@ -627,9 +628,68 @@ RingQueue_UnitTest(void)
 }
 
 int
-main(void)
+test_msg_init(void)
 {
-    //jimi_cpu_warmup(500);
+    unsigned int i;
+    if (msgs != NULL)
+        return -1;
+
+    msgs = (struct msg_t *)calloc(MSG_TOTAL_CNT, sizeof(struct msg_t));
+    if (msgs != NULL) {
+        for (i = 0; i < MSG_TOTAL_CNT; i++)
+            msgs[i].dummy = (uint64_t)(i + 1);
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+void
+test_msg_destory(void)
+{
+    if (msgs) {
+        free((void *)msgs);
+        msgs = NULL;
+    }
+}
+
+void
+display_test_info(void)
+{
+    //printf("\n");
+    printf("PUSH_CNT         = %u\n"
+           "POP_CNT          = %u\n"
+           "MSG_TOTAL_LENGTH = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
+    printf("\n");
+
+#if 0
+#if defined(__linux__)
+#if defined(_M_X64) || defined(_WIN64)
+    printf("msgs ptr         = %016p\n", (void *)msgs);
+#else
+    printf("msgs ptr         = %08p\n", (void *)msgs);
+#endif
+#else  /* !__linux__ */
+#if defined(_M_X64) || defined(_WIN64)
+    printf("msgs ptr         = 0x%016p\n", (void *)msgs);
+#else
+    printf("msgs ptr         = 0x%08p\n", (void *)msgs);
+#endif  /* _M_X64 || _WIN64 */
+#endif  /* __linux__ */
+
+    printf("\n");
+#endif
+}
+
+int
+main(int argn, char * argv[])
+{
+    jimi_cpu_warmup(500);
+
+    test_msg_init();
+
+    display_test_info();
 
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
     RingQueue_Test();
@@ -639,6 +699,8 @@ main(void)
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     q3_test();
 #endif
+
+    test_msg_destory();
 
     //jimi_console_readkeyln(false, true, false);
     return 0;

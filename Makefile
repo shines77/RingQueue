@@ -43,7 +43,7 @@ header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include
     include/RingQueue/RingQueue.h include/RingQueue/sleep.h include/RingQueue/sys_timer.h \
     include/RingQueue/test.h include/RingQueue/vs_inttypes.h include/RingQueue/vs_stdbool.h \
     include/RingQueue/vs_stdint.h include/RingQueue/msvc/inttypes.h include/RingQueue/msvc/stdbool.h \
-    include/RingQueue/msvc/stdint.h include/RingQueue/msvc/pthread.h
+    include/RingQueue/msvc/stdint.h include/RingQueue/msvc/pthread.h include/RingQueue/msvc/sched.h
 
 enable_autogen := 0
 enable_code_coverage := 0
@@ -73,12 +73,13 @@ C_HDRS := $(objroot)include/RingQueue/console.h $(objroot)include/RingQueue/dump
 	$(objroot)include/RingQueue/test.h $(objroot)include/RingQueue/vs_inttypes.h \
 	$(objroot)include/RingQueue/vs_stdbool.h $(objroot)include/RingQueue/vs_stdint.h \
 	$(objroot)include/RingQueue/msvc/inttypes.h $(objroot)include/RingQueue/msvc/stdbool.h \
-	$(objroot)include/RingQueue/msvc/stdint.h $(objroot)include/RingQueue/msvc/pthread.h
+	$(objroot)include/RingQueue/msvc/stdint.h $(objroot)include/RingQueue/msvc/pthread.h \
+    $(objroot)include/RingQueue/msvc/sched.h
 
 C_SRCS := $(srcroot)src/RingQueue/console.c \
 	$(srcroot)src/RingQueue/dump_mem.c $(srcroot)src/RingQueue/get_char.c $(srcroot)src/RingQueue/mq.c \
 	$(srcroot)src/RingQueue/sleep.c $(srcroot)src/RingQueue/sys_timer.c \
-    $(srcroot)src/RingQueue/msvc/pthead.c
+    $(srcroot)src/RingQueue/msvc/pthead.c $(srcroot)src/RingQueue/msvc/sched.c
     # $(srcroot)src/RingQueue/msvc/pthead.c $(srcroot)src/RingQueue/main.c
 
 # CPP_SRCS :=

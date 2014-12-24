@@ -1,5 +1,9 @@
 
-#ifndef PTHREAD_H
+#undef  PTW32_API_HAVE_DEFINED
+#define PTW32_API_HAVE_DEFINED      0
+
+#if !(defined(PTHREAD_H) && defined(_PTHREAD_H))
+
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 
 #ifndef _JIMIC_PTHREAD_H_
@@ -7,6 +11,13 @@
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 #pragma once
+#endif
+
+#include "msvc/sched.h"
+#include "vs_stdint.h"
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 
 #include <windows.h>
@@ -23,12 +34,17 @@
  * Remember that pthread.h (this file) is used for both the DLL and application builds.
  */
 #ifndef PTW32_CDECL
-#define PTW32_CDECL __cdecl
+#define PTW32_CDECL     __cdecl
 #endif  // PTW32_CDECL
 
+#undef  PTW32_API
+
 #ifndef PTW32_API
-#define PTW32_API   __stdcall
+#define PTW32_API       __stdcall
 #endif  // PTW32_API
+
+#undef  PTW32_API_HAVE_DEFINED
+#define PTW32_API_HAVE_DEFINED      1
 
 /*
  * To avoid including windows.h we define only those things that we
@@ -79,6 +95,9 @@ typedef unsigned int (PTW32_API *pthread_proc_t)(void *);
 int PTW32_CDECL pthread_attr_init(pthread_attr_t * attr);
 int PTW32_CDECL pthread_attr_destroy(pthread_attr_t * attr);
 
+pthread_t PTW32_CDECL pthread_process_self(void);
+pthread_t PTW32_CDECL pthread_self(void);
+
 /*
  * PThread Functions
  */
@@ -91,8 +110,14 @@ int PTW32_CDECL pthread_detach(pthread_t tid);
 
 int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr);
 
-int PTW32_CDECL pthread_setaffinity_np(pthread_t thread, unsigned int size,
-                                       void * data);
+/*
+ * About the thread affinity
+ */
+int PTW32_CDECL pthread_getaffinity_np(pthread_t thread, size_t cpuset_size,
+                                       cpu_set_t * cpuset);
+
+int PTW32_CDECL pthread_setaffinity_np(pthread_t thread, size_t cpuset_size,
+                                       const cpu_set_t * cpuset);
 
 /*
  * Mutex Functions
@@ -132,18 +157,42 @@ int PTW32_CDECL pthread_spin_unlock(pthread_spinlock_t * lock);
 
 #endif  /* !_JIMIC_PTHREAD_H_ */
 
-#else  /* !(defined(_MSC_VER) || defined(__INTEL_COMPILER)) */
-
-#ifndef PTW32_API
-#define PTW32_API
-#endif
-
 #endif  /* (defined(_MSC_VER) || defined(__INTEL_COMPILER)) */
 
-#else  /* !PTHREAD_H */
+#endif  /* !(PTHREAD_H && _PTHREAD_H) */
+
+#if (!defined(PTW32_API_HAVE_DEFINED)) || (PTW32_API_HAVE_DEFINED == 0)
 
 #ifndef PTW32_API
 #define PTW32_API
 #endif
 
-#endif  /* PTHREAD_H */
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+
+#ifndef PTW32_CDECL
+#define PTW32_CDECL     __cdecl
+#endif  // PTW32_CDECL
+
+#include "vs_stdint.h"
+#include "msvc/sched.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * About the thread affinity
+ */
+int PTW32_CDECL pthread_getaffinity_np(pthread_t thread, size_t cpuset_size,
+                                       cpu_set_t * cpuset);
+
+int PTW32_CDECL pthread_setaffinity_np(pthread_t thread, size_t cpuset_size,
+                                       const cpu_set_t * cpuset);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
+
+#endif  /* PTW32_API_HAVE_DEFINED */

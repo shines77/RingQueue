@@ -210,6 +210,10 @@
 					RelativePath="..\..\..\src\RingQueue\msvc\pthead.c"
 					>
 				</File>
+				<File
+					RelativePath="..\..\..\src\RingQueue\msvc\sched.c"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter
@@ -282,6 +286,10 @@
 				</File>
 				<File
 					RelativePath="..\..\..\include\RingQueue\msvc\pthread.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\..\include\RingQueue\msvc\sched.h"
 					>
 				</File>
 				<File

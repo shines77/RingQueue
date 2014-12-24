@@ -27,8 +27,8 @@
 #include "sleep.h"
 #include "dump_mem.h"
 
-#ifndef JIMI_CACHELINE_SIZE
-#define JIMI_CACHELINE_SIZE     64
+#ifndef JIMI_CACHE_LINE_SIZE
+#define JIMI_CACHE_LINE_SIZE    64
 #endif
 
 #ifndef JIMI_MIN
@@ -76,10 +76,10 @@ struct RingQueueHead
 struct RingQueueHead
 {
     volatile uint32_t head;
-    char padding1[JIMI_CACHELINE_SIZE - sizeof(uint32_t)];
+    char padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
 
     volatile uint32_t tail;
-    char padding2[JIMI_CACHELINE_SIZE - sizeof(uint32_t)];
+    char padding2[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
 };
 #endif
 
@@ -167,8 +167,14 @@ public:
     int spin_push(T * item);
     T * spin_pop();
 
+    int spin1_push(T * item);
+    T * spin1_pop();
+
     int spin2_push(T * item);
     T * spin2_pop();
+
+    int spin3_push(T * item);
+    T * spin3_pop();
 
     int locked_push(T * item);
     T * locked_pop();
@@ -216,7 +222,7 @@ void RingQueueBase<T, Capcity, CoreTy>::init(bool bInitHead /* = false */)
 
     // Initilized spin mutex
     spin_mutex.locked = 0;
-    spin_mutex.spin_counter = MUTEX_MAX_SPIN_COUNTER;
+    spin_mutex.spin_counter = MUTEX_MAX_SPIN_COUNT;
     spin_mutex.recurse_counter = 0;
     spin_mutex.thread_id = 0;
 
@@ -351,12 +357,15 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
 #endif
 
 #if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
-    max_spin_cnt = MUTEX_MAX_SPIN_COUNTER;
+    max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
     spin_counter = 1;
 
-    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+    while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U) {
         if (spin_counter <= max_spin_cnt) {
             for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
                 jimi_mm_pause();
             }
             spin_counter *= 2;
@@ -364,7 +373,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
         else {
             //jimi_yield();
             jimi_wsleep(0);
-            spin_counter = 1;
+            //spin_counter = 1;
         }
     }
 #else   /* !USE_SPIN_MUTEX_COUNTER */
@@ -406,12 +415,15 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
 #endif
 
 #if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
-    max_spin_cnt = MUTEX_MAX_SPIN_COUNTER;
+    max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
     spin_counter = 1;
 
-    while (__sync_val_compare_and_swap(&spin_mutex.locked, 0U, 1U) != 0U) {
+    while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U) {
         if (spin_counter <= max_spin_cnt) {
             for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
                 jimi_mm_pause();
             }
             spin_counter *= 2;
@@ -419,7 +431,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
         else {
             //jimi_yield();
             jimi_wsleep(0);
-            spin_counter = 1;
+            //spin_counter = 1;
         }
     }
 #else   /* !USE_SPIN_MUTEX_COUNTER */
@@ -452,7 +464,223 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
+int RingQueueBase<T, Capcity, CoreTy>::spin1_push(T * item)
+{
+    index_type head, tail, next;
+    uint32_t pause_cnt, spin_counter;
+    static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
+
+    /* atomic_exchange usually takes less instructions than
+       atomic_compare_and_exchange.  On the other hand,
+       atomic_compare_and_exchange potentially generates less bus traffic
+       when the lock is locked.
+       We assume that the first try mostly will be successful, and we use
+       atomic_exchange.  For the subsequent tries we use
+       atomic_compare_and_exchange.  */
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        spin_counter = 1;
+        do {
+            if (spin_counter <= max_spin_cnt) {
+                for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                    //jimi_mm_pause();
+                }
+                spin_counter *= 2;
+            }
+            else {
+                //jimi_yield();
+                jimi_wsleep(0);
+                //spin_counter = 1;
+            }
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        Jimi_ReadWriteBarrier();
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    core.queue[head & kMask] = item;
+
+    Jimi_ReadWriteBarrier();
+
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return 0;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+T * RingQueueBase<T, Capcity, CoreTy>::spin1_pop()
+{
+    index_type head, tail, next;
+    value_type item;
+    uint32_t pause_cnt, spin_counter;
+    static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
+
+    /* atomic_exchange usually takes less instructions than
+       atomic_compare_and_exchange.  On the other hand,
+       atomic_compare_and_exchange potentially generates less bus traffic
+       when the lock is locked.
+       We assume that the first try mostly will be successful, and we use
+       atomic_exchange.  For the subsequent tries we use
+       atomic_compare_and_exchange.  */
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        spin_counter = 1;
+        do {
+            if (spin_counter <= max_spin_cnt) {
+                for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                    //jimi_mm_pause();
+                }
+                spin_counter *= 2;
+            }
+            else {
+                //jimi_yield();
+                jimi_wsleep(0);
+                //spin_counter = 1;
+            }
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        Jimi_ReadWriteBarrier();
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+
+    item = core.queue[tail & kMask];
+
+    Jimi_ReadWriteBarrier();
+
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return item;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
 int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
+{
+    index_type head, tail, next;
+    uint32_t counter, pause_cnt, spin_counter;
+    static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
+
+    /* atomic_exchange usually takes less instructions than
+       atomic_compare_and_exchange.  On the other hand,
+       atomic_compare_and_exchange potentially generates less bus traffic
+       when the lock is locked.
+       We assume that the first try mostly will be successful, and we use
+       atomic_exchange.  For the subsequent tries we use
+       atomic_compare_and_exchange.  */
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        counter = 1;
+        do {
+            if (spin_counter <= max_spin_cnt) {
+                for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                    //jimi_mm_pause();
+                }
+                spin_counter *= 2;
+            }
+            else {
+                //jimi_yield();
+                jimi_wsleep(1);
+                //spin_counter = 1;
+            }
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        Jimi_ReadWriteBarrier();
+        spin_mutex.locked = 0;
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    core.queue[head & kMask] = item;
+
+    Jimi_ReadWriteBarrier();
+
+    spin_mutex.locked = 0;
+
+    return 0;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
+{
+    index_type head, tail, next;
+    value_type item;
+    static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
+    uint32_t pause_cnt, spin_counter;
+
+    /* atomic_exchange usually takes less instructions than
+       atomic_compare_and_exchange.  On the other hand,
+       atomic_compare_and_exchange potentially generates less bus traffic
+       when the lock is locked.
+       We assume that the first try mostly will be successful, and we use
+       atomic_exchange.  For the subsequent tries we use
+       atomic_compare_and_exchange.  */
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        spin_counter = 1;
+        do {
+            if (spin_counter <= max_spin_cnt) {
+                for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                    //jimi_mm_pause();
+                }
+                spin_counter *= 2;
+            }
+            else {
+                //jimi_yield();
+                jimi_wsleep(1);
+                //spin_counter = 1;
+            }
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        Jimi_ReadWriteBarrier();
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+
+    item = core.queue[tail & kMask];
+
+    Jimi_ReadWriteBarrier();
+
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return item;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+int RingQueueBase<T, Capcity, CoreTy>::spin3_push(T * item)
 {
     index_type head, tail, next;
     bool ok = false;
@@ -504,7 +732,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
+T * RingQueueBase<T, Capcity, CoreTy>::spin3_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -761,6 +989,6 @@ void RingQueue<T, Capcity>::dump_detail()
 
 }  /* namespace jimi */
 
-#undef JIMI_CACHELINE_SIZE
+#undef JIMI_CACHE_LINE_SIZE
 
 #endif  /* _JIMI_UTIL_RINGQUEUE_H_ */

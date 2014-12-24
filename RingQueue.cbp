@@ -59,6 +59,7 @@
 		<Unit filename="include/RingQueue/mq.h" />
 		<Unit filename="include/RingQueue/msvc/inttypes.h" />
 		<Unit filename="include/RingQueue/msvc/pthread.h" />
+		<Unit filename="include/RingQueue/msvc/sched.h" />
 		<Unit filename="include/RingQueue/msvc/stdbool.h" />
 		<Unit filename="include/RingQueue/msvc/stdint.h" />
 		<Unit filename="include/RingQueue/port.h" />
@@ -84,6 +85,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/RingQueue/msvc/pthead.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/msvc/sched.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/RingQueue/sleep.c">
