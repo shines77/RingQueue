@@ -192,7 +192,8 @@ int PTW32_CDECL pthread_spin_unlock(pthread_spinlock_t * lock)
 #include <pthread.h>
 #include "msvc/pthread.h"
 #include "port.h"
-#endif
+#include <assert.h>
+#endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
 
 pthread_t PTW32_CDECL pthread_process_self(void)
 {
@@ -241,7 +242,7 @@ int PTW32_CDECL pthread_getaffinity_np(pthread_t thread, size_t cpuset_size,
 int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
                                         const cpu_set_t * cpuset)
 {
-    static const int echo = 1;
+    static const int echo = 0;
     HANDLE hCurrentProcess;
     HANDLE hTargetThread, thread;
     DWORD dwProcessAffinity, dwSystemAffinity;
@@ -259,9 +260,9 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     thread = thread_in;
 #endif
 
-    //assert(thread != NULL && thread != INVALID_HANDLE_VALUE);
-    //assert(cpuset != NULL);
-    //assert(cpuset_size != 0);
+    assert(thread != NULL && thread != INVALID_HANDLE_VALUE);
+    assert(cpuset != NULL);
+    assert(cpuset_size != 0);
 
     if (thread == NULL || thread == INVALID_HANDLE_VALUE) {
         return -1;

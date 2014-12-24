@@ -42,10 +42,10 @@
     <ClCompile Include="..\..\..\src\RingQueue\sys_timer.c">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\RingQueue\msvc\pthead.c">
+    <ClCompile Include="..\..\..\src\RingQueue\msvc\sched.c">
       <Filter>src\msvc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\RingQueue\msvc\sched.c">
+    <ClCompile Include="..\..\..\src\RingQueue\msvc\pthread.c">
       <Filter>src\msvc</Filter>
     </ClCompile>
   </ItemGroup>

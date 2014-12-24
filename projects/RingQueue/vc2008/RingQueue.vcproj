@@ -207,7 +207,7 @@
 				Name="msvc"
 				>
 				<File
-					RelativePath="..\..\..\src\RingQueue\msvc\pthead.c"
+					RelativePath="..\..\..\src\RingQueue\msvc\pthread.c"
 					>
 				</File>
 				<File

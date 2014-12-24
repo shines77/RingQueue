@@ -80,7 +80,7 @@ C_SRCS := $(srcroot)src/RingQueue/console.c \
 	$(srcroot)src/RingQueue/dump_mem.c $(srcroot)src/RingQueue/get_char.c $(srcroot)src/RingQueue/mq.c \
 	$(srcroot)src/RingQueue/sleep.c $(srcroot)src/RingQueue/sys_timer.c \
     $(srcroot)src/RingQueue/msvc/pthead.c $(srcroot)src/RingQueue/msvc/sched.c
-    # $(srcroot)src/RingQueue/msvc/pthead.c $(srcroot)src/RingQueue/main.c
+    # $(srcroot)src/RingQueue/msvc/pthread.c $(srcroot)src/RingQueue/main.c
 
 # CPP_SRCS :=
 CPP_SRCS := $(srcroot)src/RingQueue/main.cpp

@@ -84,7 +84,7 @@
 		<Unit filename="src/RingQueue/mq.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="src/RingQueue/msvc/pthead.c">
+		<Unit filename="src/RingQueue/msvc/pthread.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/RingQueue/msvc/sched.c">
