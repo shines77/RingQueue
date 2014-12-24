@@ -78,8 +78,8 @@ read_rdtsc(void)
 }
 
 static volatile int quit = 0;
-static volatile int pop_total = 0;
-static volatile int push_total = 0;
+static volatile unsigned int pop_total = 0;
+static volatile unsigned int push_total = 0;
 
 static volatile uint64_t push_cycles = 0;
 static volatile uint64_t pop_cycles = 0;
@@ -146,8 +146,10 @@ RingQueue_push_task(void *arg)
     printf("thread [%d] have push %d\n", idx, i);
 #endif
 
-    push_cycles += read_rdtsc() - start;
-    push_total += MAX_PUSH_MSG_LENGTH;
+    //push_cycles += read_rdtsc() - start;
+    jimi_fetch_and_add64(&push_cycles, read_rdtsc() - start);
+    //push_total += MAX_PUSH_MSG_LENGTH;
+    jimi_fetch_and_add32(&push_total, MAX_PUSH_MSG_LENGTH);
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
@@ -203,8 +205,10 @@ RingQueue_pop_task(void *arg)
         }
     }
 
-    pop_cycles += read_rdtsc() - start;
-    pop_total += cnt;
+    //pop_cycles += read_rdtsc() - start;
+    jimi_fetch_and_add64(&pop_cycles, read_rdtsc() - start);
+    //pop_total += cnt;
+    jimi_fetch_and_add32(&pop_total, cnt);
 
     return NULL;
 }
@@ -403,7 +407,7 @@ int verify_pop_list(void)
     if (errors > 0)
         printf("\n");
     printf("verify pop list result:\n\n");
-    printf("empty = %d, overlay = %d, correct = %d, total = %d\n\n",
+    printf("empty = %d, overlay = %d, correct = %d, totals = %d.\n\n",
            empty, overlay, correct, empty + overlay + correct);
 
     if (verify_list)
@@ -479,7 +483,7 @@ RingQueue_Test(void)
     printf("\n");
     printf("pop total: %d\n", pop_total);
     if (pop_total == 0)
-        printf("pop cycles/msg: %"PRIuFAST64"\n", 0);
+        printf("pop cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);
@@ -563,7 +567,7 @@ q3_test(void)
     printf("\n");
     printf("pop total: %d\n", pop_total);
     if (pop_total == 0)
-        printf("pop cycles/msg: %"PRIuFAST64"\n", 0);
+        printf("pop cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("push total: %d\n", push_total);

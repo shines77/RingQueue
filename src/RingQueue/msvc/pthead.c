@@ -15,7 +15,7 @@ int PTW32_CDECL pthread_attr_init(pthread_attr_t * attr)
         return 0;
     }
     else
-        return 1;
+        return -1;
 }
 
 int PTW32_CDECL pthread_attr_destroy(pthread_attr_t * attr)
@@ -52,7 +52,7 @@ int PTW32_CDECL pthread_detach(pthread_t tid)
     bResult = TerminateThread((HANDLE)tid, -1);
     if (bResult && tid != NULL)
         bResult = CloseHandle((HANDLE)tid);
-    return bResult;
+    return (int)(!bResult);
 }
 
 int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
@@ -87,11 +87,10 @@ int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
     else
         dwSpinCounter = (DWORD)*attr;
     bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCounter);
-    return bResult;
+    return (int)(!bResult);
 #else
-    BOOL bResult;
-    bResult = InitializeCriticalSection(mutex);
-    return bResult;
+    InitializeCriticalSection(mutex);
+    return 0;
 #endif
 }
 
@@ -105,14 +104,14 @@ int PTW32_CDECL pthread_mutex_destroy(pthread_mutex_t * mutex)
 int PTW32_CDECL pthread_mutex_lock(pthread_mutex_t * mutex)
 {
     EnterCriticalSection(mutex);
-    return (int)(mutex != NULL);
+    return (int)(mutex == NULL);
 }
 
 int PTW32_CDECL pthread_mutex_timedlock(pthread_mutex_t * mutex,
                                         const struct timespec *abstime)
 {
     EnterCriticalSection(mutex);
-    return (int)(mutex != NULL);
+    return (int)(mutex == NULL);
 }
 
 int PTW32_CDECL pthread_mutex_trylock(pthread_mutex_t * mutex)
@@ -126,7 +125,7 @@ int PTW32_CDECL pthread_mutex_trylock(pthread_mutex_t * mutex)
 int PTW32_CDECL pthread_mutex_unlock(pthread_mutex_t * mutex)
 {
     LeaveCriticalSection(mutex);
-    return (int)(mutex != NULL);
+    return (int)(mutex == NULL);
 }
 
 int PTW32_CDECL pthread_mutex_consistent(pthread_mutex_t * mutex)

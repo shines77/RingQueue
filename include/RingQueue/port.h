@@ -75,11 +75,15 @@
     (InterlockedCompareExchange((volatile LONG *)(destPtr),             \
                             (uint32_t)(newValue), (uint32_t)(oldValue)) \
                                 == (uint32_t)(oldValue))
+
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     InterlockedExchange((volatile LONG *)(destPtr), (uint32_t)(newValue))
 
-#define jimi_fetch_and_add(destPtr, addValue)                           \
+#define jimi_fetch_and_add32(destPtr, addValue)                         \
     InterlockedAdd((volatile LONG *)(destPtr), (uint32_t)(addValue))
+
+#define jimi_fetch_and_add64(destPtr, addValue)                         \
+    InterlockedAdd64((volatile LONGLONG *)(destPtr), (uint64_t)(addValue))
 
 #elif defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW32__)
 
@@ -92,10 +96,16 @@
                             (uint32_t)(oldValue), (uint32_t)(newValue))
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
-    __sync_lock_test_and_set((volatile uint32_t *)(destPtr), (uint32_t)(newValue))
+    __sync_lock_test_and_set((volatile uint32_t *)(destPtr),            \
+                             (uint32_t)(newValue))
 
-#define jimi_fetch_and_add(destPtr, addValue)                           \
-    __sync_fetch_and_add((volatile uint32_t *)(destPtr), (uint32_t)(addValue))
+#define jimi_fetch_and_add32(destPtr, addValue)                         \
+    __sync_fetch_and_add((volatile uint32_t *)(destPtr),                \
+                         (uint32_t)(addValue))
+
+#define jimi_fetch_and_add64(destPtr, addValue)                         \
+    __sync_fetch_and_add((volatile uint64_t *)(destPtr),                \
+                         (uint64_t)(addValue))
 
 #else
 
@@ -111,9 +121,14 @@
     __internal_lock_test_and_set32((volatile uint32_t *)(destPtr),      \
                                 (uint32_t)(newValue))
 
-#define jimi_fetch_and_add(destPtr, addValue)                           \
-    __internal_fetch_and_add((volatile uint32_t *)(destPtr),            \
+#define jimi_fetch_and_add32(destPtr, addValue)                         \
+    __internal_fetch_and_add32((volatile uint32_t *)(destPtr),          \
                                 (uint32_t)(addValue))
+
+#define jimi_fetch_and_add64(destPtr, addValue)                         \
+    __internal_fetch_and_add64((volatile uint32_t *)(destPtr),          \
+                                (uint32_t)(addValue))
+
 #endif  /* _MSC_VER */
 
 #ifdef __cplusplus
@@ -155,10 +170,19 @@ uint32_t __internal_lock_test_and_set32(volatile uint32_t *destPtr,
 }
 
 static JIMIC_INLINE
-uint32_t __internal_fetch_and_add(volatile uint32_t *destPtr,
-                                  uint32_t addValue)
+uint32_t __internal_fetch_and_add32(volatile uint32_t *destPtr,
+                                    uint32_t addValue)
 {
     uint32_t origValue = *destPtr;
+    *destPtr += addValue;
+    return origValue;
+}
+
+static JIMIC_INLINE
+uint64_t __internal_fetch_and_add64(volatile uint64_t *destPtr,
+                                    uint64_t addValue)
+{
+    uint64_t origValue = *destPtr;
     *destPtr += addValue;
     return origValue;
 }
