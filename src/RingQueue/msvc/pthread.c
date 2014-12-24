@@ -249,13 +249,13 @@ int PTW32_CDECL pthread_getaffinity_np(pthread_t thread, size_t cpuset_size,
 }
 
 int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
-                                        const cpu_set_t * cpuset)
+                                       const cpu_set_t * cpuset)
 {
     static const int echo = 0;
     HANDLE hCurrentProcess;
     HANDLE hTargetThread, thread;
     DWORD dwProcessAffinity, dwSystemAffinity;
-    DWORD dwAffinityMask, dwAffinityMaskNew;
+    DWORD dwAffinityMask, dwAffinityMaskOld;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
     ptw32_thread_t *sp;
     pthread_t threadTmp;
@@ -293,6 +293,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
         dwAffinityMask = 0xFFFFFFFFU;
     }
 
+#if 1
     // Check and set dwProcessAffinity to dwSystemAffinity
     loop_cnt = 0;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
@@ -325,6 +326,21 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     else {
         return -1;
     }
+#else
+    loop_cnt = 0;
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+    threadTmp = pthread_process_self();
+    hCurrentProcess = (HANDLE)threadTmp.p;
+#else
+    hCurrentProcess = pthread_process_self();
+#endif
+    dwProcessAffinity = 0; dwSystemAffinity = 0;
+    bAffResult = GetProcessAffinityMask(hCurrentProcess, &dwProcessAffinity, &dwSystemAffinity);
+#endif
+
+    if (echo) {
+        printf("dwProcessMask = %d, dwSystemMask = %d\n", dwProcessAffinity, dwSystemAffinity);
+    }
 
     // Adjust dwAffinityMask
     dwAffinityMask = dwAffinityMask & dwProcessAffinity;
@@ -336,16 +352,25 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 #else
     hTargetThread = thread;
 #endif
-    dwAffinityMaskNew = SetThreadAffinityMask(hTargetThread, dwAffinityMask);
+    dwAffinityMaskOld = SetThreadAffinityMask(hTargetThread, dwAffinityMask);
+    if (echo) {
+        printf("dwMask = %d, dwOldMask = %d\n", dwAffinityMask, dwAffinityMaskOld);
+    }
 
     if (echo) {
         printf("\n");
     }
 
-    if (dwAffinityMaskNew == 0)
+    if (dwAffinityMaskOld != 0) {
+        if (echo)
+            printf("pthread_setaffinity_np() ok.\n");
+        return 0;
+    }
+    else {
+        if (echo)
+            printf("pthread_setaffinity_np() failed.\n");
         return -1;
-
-    return 0;
+    }
 }
 
 #if 0

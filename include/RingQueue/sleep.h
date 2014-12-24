@@ -17,6 +17,9 @@ __declspec(dllimport) int __stdcall SwitchToThread(void);
 /* Sleep for the platform */
 void jimi_sleep(unsigned int millisec);
 
+/* Sleep for Linux or MinGW */
+void jimi_usleep(unsigned int usec);
+
 /* Sleep for Windows or MinGW */
 void jimi_wsleep(unsigned int millisec);
 

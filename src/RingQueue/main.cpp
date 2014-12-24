@@ -82,6 +82,16 @@ static volatile unsigned int push_total = 0;
 static volatile uint64_t push_cycles = 0;
 static volatile uint64_t pop_cycles = 0;
 
+/* topology for Xeon E5-2670 Sandybridge */
+static const int socket_top[] = {
+  1,  2,  3,  4,  5,  6,  7,
+  16, 17, 18, 19, 20, 21, 22, 23,
+  8,  9,  10, 11, 12, 13, 14, 15,
+  24, 25, 26, 27, 28, 29, 30, 31
+};
+
+#define CORE_ID(i)    socket_top[(i)]
+
 static void
 init_globals(void)
 {
@@ -215,6 +225,53 @@ RingQueue_pop_task(void *arg)
     return NULL;
 }
 
+static int
+RingQueue_start_thread(int id,
+                       void *(PTW32_API *cb)(void *),
+                       void *arg,
+                       pthread_t *tid)
+{
+    pthread_t kid;
+    pthread_attr_t attr;
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    cpu_set_t cpuset;
+    int core_id;
+#endif
+
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
+        return -1;
+#endif
+
+    if (pthread_attr_init(&attr))
+        return -1;
+
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    CPU_ZERO(&cpuset);
+    //core_id = CORE_ID(id);
+    core_id = id % jimi_get_processor_num();
+    //printf("id = %d, core_id = %d.\n", core_id, id);
+    CPU_SET(core_id, &cpuset);
+#endif
+
+    if (pthread_create(&kid, &attr, cb, arg))
+        return -1;
+
+    if (tid)
+        *tid = kid;
+
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
+        return -1;
+#endif
+
+    return 0;
+}
+
 static void *
 PTW32_API
 push_task(void *arg)
@@ -253,16 +310,6 @@ pop_task(void *arg)
     return NULL;
 }
 
-/* topology for Xeon E5-2670 Sandybridge */
-static const int socket_top[] = {
-  1,  2,  3,  4,  5,  6,  7,
-  16, 17, 18, 19, 20, 21, 22, 23,
-  8,  9,  10, 11, 12, 13, 14, 15,
-  24, 25, 26, 27, 28, 29, 30, 31
-};
-
-#define CORE_ID(i)    socket_top[(i)]
-
 static int
 start_thread(int id,
        void *(PTW32_API *cb)(void *),
@@ -291,6 +338,7 @@ start_thread(int id,
     CPU_ZERO(&cpuset);
     //core_id = CORE_ID(id);
     core_id = id % jimi_get_processor_num();
+    //printf("core_id = %d, id = %d.\n", core_id, id);
     CPU_SET(core_id, &cpuset);
 #endif
 
@@ -324,52 +372,6 @@ setaffinity(int core_id)
     if (pthread_setaffinity_np(me, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
-    return 0;
-}
-
-static int
-RingQueue_start_thread(int id,
-                       void *(PTW32_API *cb)(void *),
-                       void *arg,
-                       pthread_t *tid)
-{
-    pthread_t kid;
-    pthread_attr_t attr;
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
-    cpu_set_t cpuset;
-    int core_id;
-#endif
-
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
-    if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
-        return -1;
-#endif
-
-    if (pthread_attr_init(&attr))
-        return -1;
-
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
-    CPU_ZERO(&cpuset);
-    //core_id = CORE_ID(id);
-    core_id = id % jimi_get_processor_num();
-    CPU_SET(core_id, &cpuset);
-#endif
-
-    if (pthread_create(&kid, &attr, cb, arg))
-        return -1;
-
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
-    if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
-        return -1;
-#endif
-
-    if (tid)
-        *tid = kid;
-
     return 0;
 }
 
@@ -445,7 +447,9 @@ RingQueue_Test(void)
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
     printf("This is RingQueue.spin1_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
-    printf("This is RingQueue.spin2_push() test (maybe deadlock):\n");
+    printf("This is RingQueue.spin2_push() test:\n");
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 6)
+    printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
     printf("This is RingQueue.locked_push() test:\n");
 #else

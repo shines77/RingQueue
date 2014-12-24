@@ -365,8 +365,8 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
             for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                 jimi_mm_pause();
                 jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
+                //jimi_mm_pause();
+                //jimi_mm_pause();
             }
             spin_counter *= 2;
         }
@@ -423,8 +423,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
             for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                 jimi_mm_pause();
                 jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
+                //jimi_mm_pause();
+                //jimi_mm_pause();
             }
             spin_counter *= 2;
         }
@@ -578,6 +578,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
     index_type head, tail, next;
     uint32_t counter, pause_cnt, spin_counter;
     static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
+    static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -588,8 +589,9 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
         counter = 1;
+        spin_counter = 1;
         do {
-            if (spin_counter <= max_spin_cnt) {
+            if (counter <= YIELD_THRESHOLD) {
                 for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                     //jimi_mm_pause();
@@ -597,10 +599,27 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
                 spin_counter *= 2;
             }
             else {
-                //jimi_yield();
-                jimi_wsleep(1);
-                //spin_counter = 1;
+                pause_cnt = counter - YIELD_THRESHOLD;
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+                if ((pause_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    jimi_yield();
+                }
+#else
+                if ((pause_cnt & 15) == 15) {
+                    jimi_wsleep(1);
+                }
+                else if ((pause_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    jimi_yield();
+                }
+#endif
             }
+            counter++;
         } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
     }
 
@@ -629,8 +648,9 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
 {
     index_type head, tail, next;
     value_type item;
+    uint32_t counter, pause_cnt, spin_counter;
     static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
-    uint32_t pause_cnt, spin_counter;
+    static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -640,9 +660,10 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
        atomic_exchange.  For the subsequent tries we use
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        counter = 1;
         spin_counter = 1;
         do {
-            if (spin_counter <= max_spin_cnt) {
+            if (counter <= YIELD_THRESHOLD) {
                 for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                     //jimi_mm_pause();
@@ -650,10 +671,27 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
                 spin_counter *= 2;
             }
             else {
-                //jimi_yield();
-                jimi_wsleep(1);
-                //spin_counter = 1;
+                pause_cnt = counter - YIELD_THRESHOLD;
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+                if ((pause_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    jimi_yield();
+                }
+#else
+                if ((pause_cnt & 15) == 15) {
+                    jimi_wsleep(1);
+                }
+                else if ((pause_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    jimi_yield();
+                }
+#endif
             }
+            counter++;
         } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
     }
 

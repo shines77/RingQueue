@@ -9,8 +9,8 @@
 #define QMASK           (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT        4
-#define POP_CNT         4
+#define PUSH_CNT        2
+#define POP_CNT         2
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 #if 1
@@ -28,6 +28,12 @@
 /// 分发给每个(pop)线程的消息数量
 #define MAX_POP_MSG_LENGTH  (MSG_TOTAL_LENGTH / POP_CNT)
 
+/// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
+///       该选项在Windows下无效, 在虚拟机里更是不能启用)
+#ifndef USE_THREAD_AFFINITY
+#define USE_THREAD_AFFINITY     0
+#endif
+
 /// 是否运行q3.h的测试代码
 #ifndef USE_DOUBAN_QUEUE
 #define USE_DOUBAN_QUEUE        0
@@ -36,12 +42,6 @@
 /// 是否运行jimi:RingQueue的测试代码
 #ifndef USE_JIMI_RINGQUEUE
 #define USE_JIMI_RINGQUEUE      1
-#endif
-
-/// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
-///       该选项在Windows下无效, 在虚拟机里更是不能启用)
-#ifndef USE_THREAD_AFFINITY
-#define USE_THREAD_AFFINITY     0
 #endif
 
 ///
@@ -63,7 +63,7 @@
 
 /// 取值范围是 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     4
+#define RINGQUEUE_LOCK_TYPE     3
 #endif
 
 ///
@@ -75,6 +75,8 @@
 /// spin_mutex的最大spin_count值, 默认值为16, 建议设为0或1,2, 更快! 设为0则跟USE_SPIN_MUTEX_COUNTER设为0等价
 ///
 #define MUTEX_MAX_SPIN_COUNT    1
+
+#define SPIN_YIELD_THRESHOLD    1
 
 /// 缓存的CacheLineSize(x86上是64字节)
 #define CACHE_LINE_SIZE         64
