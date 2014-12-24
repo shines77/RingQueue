@@ -97,7 +97,7 @@
     <ClCompile Include="..\..\..\src\RingQueue\get_char.c" />
     <ClCompile Include="..\..\..\src\RingQueue\main.cpp" />
     <ClCompile Include="..\..\..\src\RingQueue\mq.c" />
-    <ClCompile Include="..\..\..\src\RingQueue\msvc\pthead.c" />
+    <ClCompile Include="..\..\..\src\RingQueue\msvc\pthread.c" />
     <ClCompile Include="..\..\..\src\RingQueue\msvc\sched.c" />
     <ClCompile Include="..\..\..\src\RingQueue\sleep.c" />
     <ClCompile Include="..\..\..\src\RingQueue\sys_timer.c" />

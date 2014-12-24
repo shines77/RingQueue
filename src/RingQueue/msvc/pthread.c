@@ -193,6 +193,15 @@ int PTW32_CDECL pthread_spin_unlock(pthread_spinlock_t * lock)
 #include "msvc/pthread.h"
 #include "port.h"
 #include <assert.h>
+
+typedef struct ptw32_thread_t_       ptw32_thread_t;
+
+struct ptw32_thread_t_
+{
+  unsigned __int64 seqNumber;   /* Process-unique thread sequence number */
+  HANDLE threadH;               /* Win32 thread handle - POSIX thread is invalid if threadH == 0 */
+  pthread_t ptHandle;           /* This thread's permanent pthread_t handle */
+};
 #endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
 
 pthread_t PTW32_CDECL pthread_process_self(void)
@@ -248,6 +257,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     DWORD dwProcessAffinity, dwSystemAffinity;
     DWORD dwAffinityMask, dwAffinityMaskNew;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
+    ptw32_thread_t *sp;
     pthread_t threadTmp;
 #endif
     BOOL bAffResult;
@@ -255,7 +265,8 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     unsigned int loop_cnt;
 
 #if defined(__MINGW32__) || defined(__CYGWIN__)
-    thread = thread_in.p;
+    sp = (ptw32_thread_t *)thread_in.p;
+    thread = sp->threadH;
 #else
     thread = thread_in;
 #endif
@@ -320,7 +331,8 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 
     // Set the affinity mask
 #if defined(__MINGW32__) || defined(__CYGWIN__)
-    hTargetThread = thread_in.p;
+    sp = (ptw32_thread_t *)thread_in.p;
+    hTargetThread = sp->threadH;
 #else
     hTargetThread = thread;
 #endif

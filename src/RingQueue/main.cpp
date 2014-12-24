@@ -297,14 +297,15 @@ start_thread(int id,
     if (pthread_create(&kid, &attr, cb, arg))
         return -1;
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
-    if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
-        return -1;
-#endif
-
     if (tid)
         *tid = kid;
+
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
+    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+    if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset)) {
+        return -1;
+    }
+#endif
 
     return 0;
 }

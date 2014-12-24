@@ -41,7 +41,7 @@
 /// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
 ///       该选项在Windows下无效, 在虚拟机里更是不能启用)
 #ifndef USE_THREAD_AFFINITY
-#define USE_THREAD_AFFINITY     1
+#define USE_THREAD_AFFINITY     0
 #endif
 
 ///
@@ -63,7 +63,7 @@
 
 /// 取值范围是 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     2
+#define RINGQUEUE_LOCK_TYPE     4
 #endif
 
 ///
