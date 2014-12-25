@@ -9,8 +9,8 @@
 #define QMASK           (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT        2
-#define POP_CNT         2
+#define PUSH_CNT        4
+#define POP_CNT         4
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 #if 1
@@ -48,11 +48,11 @@
 /// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
 ///
 /// 定义为0, 表示使用豆瓣上q3.h的lock-free改良型方案, 调用RingQueue.push(), RingQueue.pop();
-/// 定义为1, 表示使用细粒度的标准spin_mutex自旋锁, 调用RingQueue.spin_push(), RingQueue.spin_pop();
+/// 定义为1, 表示使用细粒度的标准spin_mutex自旋锁,   调用RingQueue.spin_push(),  RingQueue.spin_pop();
 /// 定义为2, 表示使用细粒度的改进型spin_mutex自旋锁, 调用RingQueue.spin1_push(), RingQueue.spin1_pop();
 /// 定义为3, 表示使用细粒度的通用型spin_mutex自旋锁, 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
 /// 定义为4, 表示使用粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t),
-///          调用RingQueue.locked_push(), RingQueue.locked_pop();
+///          调用RingQueue.mutex_push(), RingQueue.mutex_pop();
 /// 定义为9, 表示使用细粒度的仿制spin_mutex自旋锁(会死锁), 调用RingQueue.spin3_push(), RingQueue.spin3_pop();
 ///
 /// 其中只有1, 2, 3, 4都可以得到正确结果, 2的速度最快;
@@ -68,9 +68,9 @@
 #define RINGQUEUE_LOCK_TYPE     4
 #endif
 
-//#ifndef USE_FUNC_TYPE
+#ifndef USE_FUNC_TYPE
 #define USE_FUNC_TYPE           1
-//#endif
+#endif
 
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用

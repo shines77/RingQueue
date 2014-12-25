@@ -165,7 +165,7 @@ RingQueue_push_task(void *arg)
     else if (funcType == 4) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->locked_push(msg) == -1) {};
+            while (queue->mutex_push(msg) == -1) {};
             msg++;
         }
     }
@@ -194,7 +194,7 @@ RingQueue_push_task(void *arg)
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
         while (queue->spin2_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
-        while (queue->locked_push(msg) == -1) {};
+        while (queue->mutex_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
         while (queue->spin3_push(msg) == -1) {};
 #else
@@ -298,7 +298,7 @@ RingQueue_pop_task(void *arg)
     else if (funcType == 4) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         while (true) {
-            msg = (msg_t *)queue->locked_pop();
+            msg = (msg_t *)queue->mutex_pop();
             if (msg != NULL) {
                 *record_list++ = (struct msg_t *)msg;
                 cnt++;
@@ -342,7 +342,7 @@ RingQueue_pop_task(void *arg)
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
         msg = (msg_t *)queue->spin2_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
-        msg = (msg_t *)queue->locked_pop();
+        msg = (msg_t *)queue->mutex_pop();
 #else
         msg = (msg_t *)queue->pop();
 #endif
@@ -597,7 +597,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
     }
     else if (funcType == 4) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
-        printf("This is RingQueue.locked_push() test:\n");
+        printf("This is RingQueue.mutex_push() test:\n");
     }
     else if (funcType == 9) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
@@ -617,7 +617,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
     printf("This is RingQueue.spin2_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
-    printf("This is RingQueue.locked_push() test:\n");
+    printf("This is RingQueue.mutex_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
     printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
 #else
@@ -640,8 +640,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         thread_arg->idx = i;
         thread_arg->funcType = funcType;
         thread_arg->queue = &ringQueue;
-        RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg,
-                               &kids[i]);
+        RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg, &kids[i]);
     }
     for (i = 0; i < POP_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
@@ -666,7 +665,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
-    printf("\n");
+    //printf("\n");
 #endif
 
     //printf("---------------------------------------------------------------\n");

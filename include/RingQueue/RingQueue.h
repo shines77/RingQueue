@@ -143,8 +143,8 @@ public:
     int spin3_push(T * item);
     T * spin3_pop();
 
-    int locked_push(T * item);
-    T * locked_pop();
+    int mutex_push(T * item);
+    T * mutex_pop();
 
 protected:
     core_type       core;
@@ -194,7 +194,8 @@ void RingQueueBase<T, Capcity, CoreTy>::init(bool bInitHead /* = false */)
     spin_mutex.thread_id = 0;
 
     // Initilized mutex
-    pthread_mutex_init(&queue_mutex, NULL);
+    uint32_t spin_count = 1;
+    pthread_mutex_init(&queue_mutex, (pthread_mutexattr_t *)&spin_count);
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
@@ -790,7 +791,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin3_pop()
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
-int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item)
+int RingQueueBase<T, Capcity, CoreTy>::mutex_push(T * item)
 {
     index_type head, tail, next;
 
@@ -818,7 +819,7 @@ int RingQueueBase<T, Capcity, CoreTy>::locked_push(T * item)
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capcity, CoreTy>::locked_pop()
+T * RingQueueBase<T, Capcity, CoreTy>::mutex_pop()
 {
     index_type head, tail, next;
     value_type item;

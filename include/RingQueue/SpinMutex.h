@@ -144,7 +144,7 @@ void SpinMutex<Helper>::lock()
     uint32_t loop_count, spin_count, yield_cnt;
     int32_t pause_cnt;
 
-    printf("SpinMutex<T>::lock(): Enter().\n");
+    //printf("SpinMutex<T>::lock(): Enter().\n");
 
     Jimi_ReadWriteBarrier();
 
@@ -220,13 +220,13 @@ void SpinMutex<Helper>::lock()
         } while (jimi_val_compare_and_swap32(&core.Status, kUnlocked, kLocked) != kUnlocked);
     }
 
-    printf("SpinMutex<T>::lock(): Leave().\n");
+    //printf("SpinMutex<T>::lock(): Leave().\n");
 }
 
 template <typename Helper>
 bool SpinMutex<Helper>::tryLock(int nSpinCount /* = 4000 */)
 {
-    printf("SpinMutex<T>::tryLock(): Enter().\n");
+    //printf("SpinMutex<T>::tryLock(): Enter().\n");
 
     Jimi_ReadWriteBarrier();
 
@@ -242,24 +242,24 @@ bool SpinMutex<Helper>::tryLock(int nSpinCount /* = 4000 */)
             jimi_mm_pause();
         }
         bool isLocked = (jimi_val_compare_and_swap32(&core.Status, kUnlocked, kLocked) != kUnlocked);
-        printf("SpinMutex<T>::tryLock(): Leave().\n");
+        //printf("SpinMutex<T>::tryLock(): Leave().\n");
         return isLocked;
     }
 
-    printf("SpinMutex<T>::ltryLockock(): Leave().\n");
+    //printf("SpinMutex<T>::ltryLockock(): Leave().\n");
     return kLocked;
 }
 
 template <typename Helper>
 void SpinMutex<Helper>::unlock()
 {
-    printf("SpinMutex<T>::unlock(): Enter().\n");
+    //printf("SpinMutex<T>::unlock(): Enter().\n");
 
     Jimi_ReadWriteBarrier();
 
     core.Status = kUnlocked;
 
-    printf("SpinMutex<T>::unlock(): Leave().\n");
+    //printf("SpinMutex<T>::unlock(): Leave().\n");
 }
 
 }  /* namespace jimi */
