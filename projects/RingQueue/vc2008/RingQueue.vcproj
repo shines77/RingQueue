@@ -258,6 +258,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\include\RingQueue\SpinMutex.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\include\RingQueue\sys_timer.h"
 				>
 			</File>

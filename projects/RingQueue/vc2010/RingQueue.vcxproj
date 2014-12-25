@@ -115,6 +115,7 @@
     <ClInclude Include="..\..\..\include\RingQueue\q3.h" />
     <ClInclude Include="..\..\..\include\RingQueue\RingQueue.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sleep.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\SpinMutex.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sys_timer.h" />
     <ClInclude Include="..\..\..\include\RingQueue\test.h" />
     <ClInclude Include="..\..\..\include\RingQueue\vs_inttypes.h" />

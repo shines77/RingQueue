@@ -687,10 +687,35 @@ display_test_info(void)
 #endif
 }
 
+#include "SpinMutex.h"
+
 int
 main(int argn, char * argv[])
 {
     jimi_cpu_warmup(500);
+
+    SpinMutex<DefaultSMHelper> spinMutex2;
+
+    typedef SpinMutexHelper<
+        5,      // _YieldThreshold, The spin loop times
+        4000,   // _SpinCount, The initial value of spin counter
+        2,      // _A
+        1,      // _B
+        0,      // _C, Next loop: spin_count = spin_count * _A / _B + _C;
+        0       // _NeedReset? After run Sleep(1), reset the loop_count if need.
+    > MySpinMutexHelper;
+
+    SpinMutex<MySpinMutexHelper> spinMutex;
+
+    spinMutex.lock();
+    spinMutex.unlock();
+    
+    spinMutex.lock();
+    spinMutex.unlock();
+
+    spinMutex.spinWait(4000);
+
+    printf("\n");
 
     test_msg_init();
 

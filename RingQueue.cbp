@@ -53,6 +53,7 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="include/RingQueue/RingQueue.h" />
+		<Unit filename="include/RingQueue/SpinMutex.h" />
 		<Unit filename="include/RingQueue/console.h" />
 		<Unit filename="include/RingQueue/dump_mem.h" />
 		<Unit filename="include/RingQueue/get_char.h" />
