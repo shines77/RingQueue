@@ -15,6 +15,7 @@
 					<Add option="-g" />
 					<Add option="-msse" />
 					<Add option="-msse2" />
+					<Add option="-msse3" />
 					<Add option="-D__MMX__" />
 					<Add option="-D__SSE__" />
 					<Add option="-D__SSE2__" />
@@ -35,6 +36,7 @@
 					<Add option="-O2" />
 					<Add option="-msse" />
 					<Add option="-msse2" />
+					<Add option="-msse3" />
 					<Add option="-D__MMX__" />
 					<Add option="-D__SSE__" />
 					<Add option="-D__SSE2__" />

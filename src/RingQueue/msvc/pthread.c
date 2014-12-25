@@ -196,6 +196,8 @@ int PTW32_CDECL pthread_spin_unlock(pthread_spinlock_t * lock)
 #include <pthread.h>
 #include "msvc/pthread.h"
 #include "port.h"
+
+#include <stdio.h>
 #include <assert.h>
 
 typedef struct ptw32_thread_t_       ptw32_thread_t;
@@ -208,7 +210,7 @@ struct ptw32_thread_t_
 };
 #endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
 
-pthread_t PTW32_CDECL pthread_process_self(void)
+HANDLE PTW32_CDECL pthread_process_self(void)
 {
     ///
     /// 关于GetCurrentThread()的返回
@@ -216,7 +218,7 @@ pthread_t PTW32_CDECL pthread_process_self(void)
     /// See: http://www.cnblogs.com/freebird92/articles/846520.html
     ///
 #if defined(__MINGW32__) || defined(__CYGWIN__)
-    pthread_t ptw32_process = { 0, 0 };
+    //pthread_t ptw32_process = { 0, 0 };
 #endif
     HANDLE hCurrentProcess = NULL;
 
@@ -234,12 +236,14 @@ pthread_t PTW32_CDECL pthread_process_self(void)
     );
 
 #if defined(__MINGW32__) || defined(__CYGWIN__)
+    /*
     ptw32_process.p = hCurrentProcess;
     ptw32_process.x = 0;
     return ptw32_process;
+    //*/
+    return (HANDLE)hCurrentProcess;
 #else
-
-    return (pthread_t)hCurrentProcess;
+    return (HANDLE)hCurrentProcess;
 #endif
 }
 
@@ -258,8 +262,8 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     static const int echo = 0;
     HANDLE hCurrentProcess;
     HANDLE hTargetThread, thread;
-    DWORD dwProcessAffinity, dwSystemAffinity;
-    DWORD dwAffinityMask, dwAffinityMaskOld;
+    DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+    DWORD_PTR dwAffinityMask, dwAffinityMaskOld;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
     ptw32_thread_t *sp;
     pthread_t threadTmp;
@@ -269,8 +273,14 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     unsigned int loop_cnt;
 
 #if defined(__MINGW32__) || defined(__CYGWIN__)
+  #if defined(PTW32_VERSION) && defined(PTW32_VERSION_STRING)
     sp = (ptw32_thread_t *)thread_in.p;
-    thread = sp->threadH;
+    hTargetThread = sp->threadH;
+  #elif defined(__MSYS__) || defined(__CYGWIN__)
+    hTargetThread = (HANDLE)thread_in;
+  #else
+    hTargetThread = (thread_t)NULL;
+  #endif
 #else
     thread = thread_in;
 #endif
@@ -300,12 +310,8 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 #if 1
     // Check and set dwProcessAffinity to dwSystemAffinity
     loop_cnt = 0;
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-    threadTmp = pthread_process_self();
-    hCurrentProcess = (HANDLE)threadTmp.p;
-#else
     hCurrentProcess = pthread_process_self();
-#endif
+
     dwProcessAffinity = 0; dwSystemAffinity = 0;
     bAffResult = GetProcessAffinityMask(hCurrentProcess, &dwProcessAffinity, &dwSystemAffinity);
     if (bAffResult) {
@@ -332,12 +338,8 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     }
 #else
     loop_cnt = 0;
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-    threadTmp = pthread_process_self();
-    hCurrentProcess = (HANDLE)threadTmp.p;
-#else
     hCurrentProcess = pthread_process_self();
-#endif
+
     dwProcessAffinity = 0; dwSystemAffinity = 0;
     bAffResult = GetProcessAffinityMask(hCurrentProcess, &dwProcessAffinity, &dwSystemAffinity);
 #endif
@@ -351,8 +353,14 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 
     // Set the affinity mask
 #if defined(__MINGW32__) || defined(__CYGWIN__)
+  #if defined(PTW32_VERSION) && defined(PTW32_VERSION_STRING)
     sp = (ptw32_thread_t *)thread_in.p;
     hTargetThread = sp->threadH;
+  #elif defined(__MSYS__) || defined(__CYGWIN__)
+    hTargetThread = (HANDLE)thread_in;
+  #else
+    hTargetThread = (thread_t)NULL;
+  #endif
 #else
     hTargetThread = thread;
 #endif

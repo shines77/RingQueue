@@ -52,24 +52,24 @@ struct SpinMutexCore
 // struct SpinMutexHelper<>
 ///////////////////////////////////////////////////////////////////
 
-template <uint32_t _YieldThreshold = 4,
-          uint32_t _SpinCount = 16,
-          uint32_t _A = 2, uint32_t _B = 1, uint32_t _C = 0,
-          bool _UseYield = true,
-          bool _NeedReset = false>
-struct SpinMutexHelper
+template < uint32_t _YieldThreshold,
+           uint32_t _SpinCount = 16U,
+           uint32_t _CoeffA = 2U, uint32_t _CoeffB = 1U, uint32_t _CoeffC = 0U,
+           uint32_t _UseYield = 1U,
+           uint32_t _NeedReset = 0U >
+class SpinMutexHelper
 {
 public:
     static const uint32_t YieldThreshold    = _YieldThreshold;
     static const uint32_t SpinCount         = _SpinCount;
-    static const uint32_t A                 = _A;
-    static const uint32_t B                 = _B;
-    static const uint32_t C                 = _C;
-    static const bool     UseYield          = _UseYield;
-    static const bool     NeedReset         = _NeedReset;
+    static const uint32_t CoeffA            = _CoeffA;
+    static const uint32_t CoeffB            = _CoeffB;
+    static const uint32_t CoeffC            = _CoeffC;
+    static const uint32_t UseYield          = _UseYield;
+    static const uint32_t NeedReset         = _NeedReset;
 };
 
-typedef SpinMutexHelper<>  DefaultSMHelper;
+typedef SpinMutexHelper< 4 >  DefaultSMHelper;
 
 /*******************************************************************************
 
@@ -93,20 +93,22 @@ typedef SpinMutexHelper<>  DefaultSMHelper;
 
 ********************************************************************************/
 
-template <typename SpinHelper>
+template < typename SpinHelper = SpinMutexHelper< 4 > >
 class SpinMutex
 {
+public:
+    typedef SpinHelper      helper_type;
 public:
     static const uint32_t kLocked   = 1U;
     static const uint32_t kUnlocked = 0U;
 
-    static const uint32_t kYieldThreshold   = SpinHelper::YieldThreshold;
-    static const uint32_t kSpinCount        = SpinHelper::SpinCount;
-    static const uint32_t kA                = SpinHelper::A;
-    static const uint32_t kB                = SpinHelper::B;
-    static const uint32_t kC                = SpinHelper::C;
-    static const bool     kUseYield         = SpinHelper::UseYield;
-    static const bool     kNeedReset        = SpinHelper::NeedReset;
+    static const uint32_t kYieldThreshold   = helper_type::YieldThreshold;
+    static const uint32_t kSpinCount        = helper_type::SpinCount;
+    static const uint32_t kA                = helper_type::CoeffA;
+    static const uint32_t kB                = helper_type::CoeffB;
+    static const uint32_t kC                = helper_type::CoeffC;
+    static const uint32_t kUseYield         = helper_type::UseYield;
+    static const uint32_t kNeedReset        = helper_type::NeedReset;
 
     static const uint32_t YIELD_THRESHOLD  = kYieldThreshold;   // When to switch over to a true yield.
     static const uint32_t SLEEP_0_INTERVAL = 4;                 // After how many yields should we Sleep(0)?

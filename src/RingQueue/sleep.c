@@ -1,7 +1,7 @@
 
 #include "sleep.h"
 
-#if defined(__MINGW32__)
+#if defined(__MINGW32__) || defined(__CYGWIN__)
 #include <unistd.h>     // For usleep()
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN

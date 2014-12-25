@@ -44,12 +44,15 @@ typedef RingQueue<msg_t, QSIZE> RingQueue_t;
 typedef struct thread_arg_t
 {
     int         idx;
+    int         funcType;
     RingQueue_t *queue;
 } thread_arg_t;
 
 static volatile struct msg_t *msgs = NULL;
 
 static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
+
+int test_msg_init(void);
 
 static inline uint64_t
 read_rdtsc(void)
@@ -113,15 +116,17 @@ RingQueue_push_task(void *arg)
     RingQueue_t *queue;
     msg_t *msg;
     uint64_t start;
-    int i, idx;
+    int i, idx, funcType;
 
     idx = 0;
+    funcType = 0;
     queue = NULL;
 
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
-        idx   = thread_arg->idx;
-        queue = (RingQueue_t *)thread_arg->queue;
+        idx         = thread_arg->idx;
+        funcType    = thread_arg->funcType;
+        queue       = (RingQueue_t *)thread_arg->queue;
     }
 
     if (queue == NULL)
@@ -133,6 +138,52 @@ RingQueue_push_task(void *arg)
     msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
     start = read_rdtsc();
 
+#if defined(USE_FUNC_TYPE) && (USE_FUNC_TYPE != 0)
+    if (funcType == 1) {
+        // 细粒度的标准spin_mutex自旋锁
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            while (queue->spin_push(msg) == -1) {};
+            msg++;
+        }
+    }
+    else if (funcType == 2) {
+        // 细粒度的改进型spin_mutex自旋锁
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            while (queue->spin1_push(msg) == -1) {};
+            msg++;
+        }
+    }
+    else if (funcType == 3) {
+        // 细粒度的通用型spin_mutex自旋锁
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            while (queue->spin2_push(msg) == -1) {};
+            msg++;
+        }
+    }
+    else if (funcType == 4) {
+        // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            while (queue->locked_push(msg) == -1) {};
+            msg++;
+        }
+    }
+    else if (funcType == 9) {
+        // 细粒度的仿制spin_mutex自旋锁(会死锁)
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            while (queue->spin3_push(msg) == -1) {};
+            msg++;
+        }
+    }
+    else {
+        // 豆瓣上q3.h的lock-free改良型方案
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            while (queue->push(msg) == -1) {};
+            msg++;
+        }
+    }
+
+#else  /* !USE_FUNC_TYPE */
+
     for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
         while (queue->spin_push(msg) == -1) {};
@@ -142,6 +193,8 @@ RingQueue_push_task(void *arg)
         while (queue->spin2_push(msg) == -1) {};
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
         while (queue->locked_push(msg) == -1) {};
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+        while (queue->spin3_push(msg) == -1) {};
 #else
         while (queue->push(msg) == -1) {};
 #endif
@@ -153,6 +206,8 @@ RingQueue_push_task(void *arg)
         }
 #endif
     }
+
+#endif  /* USE_FUNC_TYPE */
 
 #if 0
     printf("thread [%d] have push %d\n", idx, i);
@@ -177,16 +232,18 @@ RingQueue_pop_task(void *arg)
     msg_t *msg;
     msg_t **record_list;
     uint64_t start;
-    int idx;
+    int idx, funcType;
     int cnt = 0;
 
     idx = 0;
+    funcType = 0;
     queue = NULL;
 
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
-        idx   = thread_arg->idx;
-        queue = (RingQueue_t *)thread_arg->queue;
+        idx         = thread_arg->idx;
+        funcType    = thread_arg->funcType;
+        queue       = (RingQueue_t *)thread_arg->queue;
     }
 
     if (queue == NULL)
@@ -198,6 +255,82 @@ RingQueue_pop_task(void *arg)
     cnt = 0;
     record_list = &popmsg_list[idx][0];
     start = read_rdtsc();
+
+#if defined(USE_FUNC_TYPE) && (USE_FUNC_TYPE != 0)
+    if (funcType == 1) {
+        // 细粒度的标准spin_mutex自旋锁
+        while (true) {
+            msg = (msg_t *)queue->spin_pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+        }
+    }
+    else if (funcType == 2) {
+        // 细粒度的改进型spin_mutex自旋锁
+        while (true) {
+            msg = (msg_t *)queue->spin1_pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+        }
+    }
+    else if (funcType == 3) {
+        // 细粒度的通用型spin_mutex自旋锁
+        while (true) {
+            msg = (msg_t *)queue->spin2_pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+        }
+    }
+    else if (funcType == 4) {
+        // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
+        while (true) {
+            msg = (msg_t *)queue->locked_pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+        }
+    }
+    else if (funcType == 9) {
+        // 细粒度的仿制spin_mutex自旋锁(会死锁)
+        while (true) {
+            msg = (msg_t *)queue->spin3_pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+        }
+    }
+    else {
+        // 豆瓣上q3.h的lock-free改良型方案
+        while (true) {
+            msg = (msg_t *)queue->pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+        }
+    }
+
+#else  /* !USE_FUNC_TYPE */
 
     while (true || !quit) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
@@ -218,6 +351,8 @@ RingQueue_pop_task(void *arg)
                 break;
         }
     }
+
+#endif  /* USE_FUNC_TYPE */
 
     //pop_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&pop_cycles, read_rdtsc() - start);
@@ -368,6 +503,16 @@ setaffinity(int core_id)
     return 0;
 }
 
+void init_pop_list(void)
+{
+    unsigned int i, j;
+    for (i = 0; i < POP_CNT; i++) {
+        for (j = 0; j < MAX_POP_MSG_LENGTH; ++j) {
+            popmsg_list[i][j] = NULL;
+        }
+    }
+}
+
 int verify_pop_list(void)
 {
     int i, j;
@@ -412,7 +557,7 @@ int verify_pop_list(void)
 
     if (errors > 0)
         printf("\n");
-    printf("verify pop-list result:\n\n");
+    //printf("pop-list verify result:\n\n");
     printf("empty = %d, overlay = %d, correct = %d, totals = %d.\n\n",
            empty, overlay, correct, empty + overlay + correct);
 
@@ -425,15 +570,43 @@ int verify_pop_list(void)
 }
 
 void
-RingQueue_Test(void)
+RingQueue_Test(int funcType, bool bContinue = true)
 {
     RingQueue_t ringQueue(true, true);
-    int i, j;
+    int i;
     pthread_t kids[POP_CNT + PUSH_CNT] = { 0 };
     thread_arg_t *thread_arg;
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;
 
+    printf("---------------------------------------------------------------\n");
+
+    if (funcType == 1) {
+        // 细粒度的标准spin_mutex自旋锁
+        printf("This is RingQueue.spin_push() test:\n");
+    }
+    else if (funcType == 2) {
+        // 细粒度的改进型spin_mutex自旋锁
+        printf("This is RingQueue.spin1_push() test:\n");
+    }
+    else if (funcType == 3) {
+        // 细粒度的通用型spin_mutex自旋锁
+        printf("This is RingQueue.spin2_push() test:\n");
+    }
+    else if (funcType == 4) {
+        // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
+        printf("This is RingQueue.locked_push() test:\n");
+    }
+    else if (funcType == 9) {
+        // 细粒度的仿制spin_mutex自旋锁(会死锁)
+        printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
+    }
+    else {
+        // 豆瓣上q3.h的lock-free改良型方案
+        printf("This is RingQueue.push() test (modified base on q3.h):\n");
+    }
+
+#if 0
     //printf("\n");
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
     printf("This is RingQueue.spin_push() test:\n");
@@ -441,35 +614,29 @@ RingQueue_Test(void)
     printf("This is RingQueue.spin1_push() test:\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
     printf("This is RingQueue.spin2_push() test:\n");
-#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 6)
-    printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
     printf("This is RingQueue.locked_push() test:\n");
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+    printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
 #else
-    printf("This is RingQueue.push() test (modified by q3.h):\n");
+    printf("This is RingQueue.push() test (modified base on q3.h):\n");
+#endif
 #endif
 
-    printf("------------------------------------------------------\n");
+    printf("---------------------------------------------------------------\n");
 
     init_globals();
     setaffinity(0);
 
-    msgs = (struct msg_t *)calloc(MSG_TOTAL_CNT, sizeof(struct msg_t));
-
-    for (i = 0; i < MSG_TOTAL_CNT; i++)
-        msgs[i].dummy = (uint64_t)(i + 1);
-
-    for (i = 0; i < POP_CNT; i++) {
-        for (j = 0; j < MAX_POP_MSG_LENGTH; ++j) {
-            popmsg_list[i][j] = NULL;
-        }
-    }
+    test_msg_init();
+    init_pop_list();
 
     startTime = jmc_get_timestamp();
 
     for (i = 0; i < PUSH_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
+        thread_arg->funcType = funcType;
         thread_arg->queue = &ringQueue;
         RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg,
                                &kids[i]);
@@ -477,6 +644,7 @@ RingQueue_Test(void)
     for (i = 0; i < POP_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
         thread_arg->idx = i;
+        thread_arg->funcType = funcType;
         thread_arg->queue = &ringQueue;
         RingQueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
                                &kids[i + PUSH_CNT]);
@@ -487,6 +655,7 @@ RingQueue_Test(void)
     stopTime = jmc_get_timestamp();
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
+#if 0
     printf("\n");
     printf("push total: %d\n", push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
@@ -496,14 +665,18 @@ RingQueue_Test(void)
     else
         printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
     printf("\n");
+#endif
 
-    printf("------------------------------------------------------\n");
+    //printf("---------------------------------------------------------------\n");
 
-    printf("Elapsed time: %0.3f ms\n\n", elapsedTime);
+    printf("\n");
+    printf("time elapsed: %9.3f ms\n\n", elapsedTime);
 
     //jimi_console_readkeyln(false, true, false);
 
     verify_pop_list();
+
+    //printf("---------------------------------------------------------------\n\n");
 
 #if 0
     for (j = 0; j < POP_CNT; ++j) {
@@ -521,18 +694,16 @@ RingQueue_Test(void)
     printf("\n");
 #endif
 
-    //jimi_console_readkeyln(false, true, false);
-
-    if (msgs) {
-        free((void *)msgs);
-        msgs = NULL;
-    }
+    // 如果不需要"press any key to continue..."提示则直接退出
+    if (!bContinue) {
+        printf("---------------------------------------------------------------\n\n");
 
 #if !defined(USE_DOUBAN_QUEUE) || (USE_DOUBAN_QUEUE == 0)
-    jimi_console_readkeyln(false, true, false);
+        jimi_console_readkeyln(false, true, false);
 #else
-    jimi_console_readkeyln(true, true, false);
+        jimi_console_readkeyln(true, true, false);
 #endif
+    }
 }
 
 void
@@ -550,6 +721,8 @@ q3_test(void)
 
     init_globals();
     setaffinity(0);
+
+    test_msg_init();
 
     for (i = 0; i < MSG_TOTAL_CNT; i++)
         msgs[i].dummy = (uint64_t)(i + 1);
@@ -638,9 +811,7 @@ test_msg_init(void)
             msgs[i].dummy = (uint64_t)(i + 1);
         return 1;
     }
-    else {
-        return 0;
-    }
+    else return 0;
 }
 
 void
@@ -656,9 +827,14 @@ void
 display_test_info(void)
 {
     //printf("\n");
-    printf("PUSH_CNT         = %u\n"
-           "POP_CNT          = %u\n"
-           "MSG_TOTAL_LENGTH = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
+    printf("PUSH_CNT            = %u\n"
+           "POP_CNT             = %u\n"
+           "MSG_TOTAL_LENGTH    = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
+#if defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)
+    printf("USE_THREAD_AFFINITY = Yes.\n");
+#else
+    printf("USE_THREAD_AFFINITY = No.\n");
+#endif
     printf("\n");
 
 #if 0
@@ -719,11 +895,19 @@ main(int argn, char * argv[])
     display_test_info();
 
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
-    RingQueue_Test();
+  #if defined(USE_FUNC_TYPE) && (USE_FUNC_TYPE != 0)
     //RingQueue_UnitTest();
+
+    RingQueue_Test(4, true);
+    RingQueue_Test(1, true);
+    RingQueue_Test(2, true);
+    RingQueue_Test(3, false);
+  #else
+    RingQueue_Test(RINGQUEUE_LOCK_TYPE, false);
+  #endif
 #endif
 
-    SpinMutex_Test();
+    //SpinMutex_Test();
 
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     q3_test();

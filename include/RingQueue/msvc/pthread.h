@@ -97,7 +97,7 @@ typedef unsigned int (PTW32_API *pthread_proc_t)(void *);
 int PTW32_CDECL pthread_attr_init(pthread_attr_t * attr);
 int PTW32_CDECL pthread_attr_destroy(pthread_attr_t * attr);
 
-pthread_t PTW32_CDECL pthread_process_self(void);
+HANDLE PTW32_CDECL pthread_process_self(void);
 pthread_t PTW32_CDECL pthread_self(void);
 
 /*
@@ -177,6 +177,13 @@ int PTW32_CDECL pthread_spin_unlock(pthread_spinlock_t * lock);
 
 #include "vs_stdint.h"
 #include "msvc/sched.h"
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#include "msvc/targetver.h"
+#include <windows.h>
 
 #ifdef __cplusplus
 extern "C" {
