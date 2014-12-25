@@ -236,14 +236,12 @@ RingQueue_start_thread(int id,
 {
     pthread_t kid;
     pthread_attr_t attr;
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     cpu_set_t cpuset;
     int core_id;
 #endif
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -251,8 +249,7 @@ RingQueue_start_thread(int id,
     if (pthread_attr_init(&attr))
         return -1;
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     CPU_ZERO(&cpuset);
     //core_id = CORE_ID(id);
     core_id = id % jimi_get_processor_num();
@@ -266,8 +263,7 @@ RingQueue_start_thread(int id,
     if (tid)
         *tid = kid;
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
         return -1;
 #endif
@@ -321,14 +317,12 @@ start_thread(int id,
 {
     pthread_t kid;
     pthread_attr_t attr;
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     cpu_set_t cpuset;
     int core_id;
 #endif
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     if (id < 0 || id >= sizeof(socket_top) / sizeof(int))
         return -1;
 #endif
@@ -336,8 +330,7 @@ start_thread(int id,
     if (pthread_attr_init(&attr))
         return -1;
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     CPU_ZERO(&cpuset);
     //core_id = CORE_ID(id);
     core_id = id % jimi_get_processor_num();
@@ -351,8 +344,7 @@ start_thread(int id,
     if (tid)
         *tid = kid;
 
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset)) {
         return -1;
     }
@@ -364,8 +356,7 @@ start_thread(int id,
 static int
 setaffinity(int core_id)
 {
-#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)) \
-    // && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(_MSC_VER))
+#if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     cpu_set_t cpuset;
     pthread_t me = pthread_self();
 
@@ -715,6 +706,8 @@ void SpinMutex_Test(void)
     spinMutex.spinWait(4000);
 
     printf("\n");
+
+    jimi_console_readkeyln(false, true, false);
 }
 
 int
