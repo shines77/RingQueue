@@ -66,9 +66,11 @@ read_rdtsc(void)
     } tsc;
 
 #ifndef _MSC_VER
-    __asm __volatile__ ("rdtsc" :
+    __asm __volatile__ (
+        "rdtsc" :
         "=a" (tsc.lo_32),
-        "=d" (tsc.hi_32));
+        "=d" (tsc.hi_32)
+    );
 #else
     __asm {
         rdtsc
@@ -831,9 +833,9 @@ display_test_info(void)
            "POP_CNT             = %u\n"
            "MSG_TOTAL_LENGTH    = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
 #if defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)
-    printf("USE_THREAD_AFFINITY = Yes.\n");
+    printf("USE_THREAD_AFFINITY = Yes\n");
 #else
-    printf("USE_THREAD_AFFINITY = No.\n");
+    printf("USE_THREAD_AFFINITY = No\n");
 #endif
     printf("\n");
 
@@ -874,7 +876,7 @@ void SpinMutex_Test(void)
 
     spinMutex.lock();
     spinMutex.unlock();
-    
+
     spinMutex.lock();
     spinMutex.unlock();
 

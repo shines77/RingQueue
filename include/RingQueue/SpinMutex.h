@@ -124,7 +124,7 @@ public:
     bool tryLock(int nSpinCount = 4000);
     void unlock();
 
-    void spinWait(int nSpinCount = 4000);
+    static void spinWait(int nSpinCount = 4000);
 
 private:
     SpinMutexCore core;
