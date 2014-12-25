@@ -8,6 +8,7 @@
 #endif
 
 #include "msvc/targetver.h"
+#include "test.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,8 +26,6 @@
 
 #define __STDC_FORMAT_MACROS
 #include "vs_inttypes.h"
-
-#include "test.h"
 
 #include "q3.h"
 //#include "q.h"

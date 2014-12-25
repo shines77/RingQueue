@@ -6,33 +6,34 @@
 #pragma once
 #endif
 
-#include <stdio.h>
-#include <string.h>
-
 #include "vs_stdint.h"
+
+#include "test.h"
+#include "port.h"
+#include "sleep.h"
 
 #ifndef _MSC_VER
 #include <pthread.h>
 #include "msvc/pthread.h"
 #else
 #include "msvc/pthread.h"
-#endif
+#endif  // !_MSC_VER
 
 #ifdef _MSC_VER
 #include <intrin.h>     // For _ReadWriteBarrier(), InterlockedCompareExchange()
-#endif
+#endif  // _MSC_VER
 #include <emmintrin.h>
 
-#include "test.h"
-#include "port.h"
-#include "sleep.h"
-#include "dump_mem.h"
+#include <stdio.h>
+#include <string.h>
 
-namespace jimi {
+#include "dump_mem.h"
 
 #ifndef JIMI_CACHE_LINE_SIZE
 #define JIMI_CACHE_LINE_SIZE    64
 #endif
+
+namespace jimi {
 
 ///////////////////////////////////////////////////////////////////
 // struct SpinMutexCore

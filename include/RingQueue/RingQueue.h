@@ -6,62 +6,29 @@
 #pragma once
 #endif
 
-#include <stdio.h>
-#include <string.h>
-
 #include "vs_stdint.h"
+#include "port.h"
+#include "sleep.h"
 
 #ifndef _MSC_VER
 #include <pthread.h>
 #include "msvc/pthread.h"
 #else
 #include "msvc/pthread.h"
-#endif
+#endif  // !_MSC_VER
 
 #ifdef _MSC_VER
 #include <intrin.h>     // For _ReadWriteBarrier(), InterlockedCompareExchange()
-#endif
+#endif  // _MSC_VER
 #include <emmintrin.h>
 
-#include "port.h"
-#include "sleep.h"
+#include <stdio.h>
+#include <string.h>
+
 #include "dump_mem.h"
 
 #ifndef JIMI_CACHE_LINE_SIZE
 #define JIMI_CACHE_LINE_SIZE    64
-#endif
-
-#ifndef JIMI_MIN
-#define JIMI_MIN(a, b)          ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef JIMI_MAX
-#define JIMI_MAX(a, b)          ((a) > (b) ? (a) : (b))
-#endif
-
-#if defined(_WIN64) || defined(_M_X64)
-#define JIMI_SIZE_T_SIZEOF      8
-#else
-#define JIMI_SIZE_T_SIZEOF      4
-#endif
-
-/**
- * macro for round to power of 2
- */
-#define jimi_b2(x)              (        (x) | (        (x) >>  1))
-#define jimi_b4(x)              ( jimi_b2(x) | ( jimi_b2(x) >>  2))
-#define jimi_b8(x)              ( jimi_b4(x) | ( jimi_b4(x) >>  4))
-#define jimi_b16(x)             ( jimi_b8(x) | ( jimi_b8(x) >>  8))
-#define jimi_b32(x)             (jimi_b16(x) | (jimi_b16(x) >> 16))
-#define jimi_b64(x)             (jimi_b32(x) | (jimi_b32(x) >> 32))
-
-#define jimi_next_power_of_2(x)     (jimi_b32((x) - 1) + 1)
-#define jimi_next_power_of_2_64(x)  (jimi_b64((x) - 1) + 1)
-
-#if defined(JIMI_SIZE_T_SIZEOF) && (JIMI_SIZE_T_SIZEOF == 8)
-#define JIMI_ROUND_TO_POW2(N)   jimi_next_power_of_2_64(N)
-#else
-#define JIMI_ROUND_TO_POW2(N)   jimi_next_power_of_2(N)
 #endif
 
 namespace jimi {
