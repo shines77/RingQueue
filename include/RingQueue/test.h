@@ -69,7 +69,7 @@
 #endif
 
 //#ifndef USE_FUNC_TYPE
-#define USE_FUNC_TYPE           0
+#define USE_FUNC_TYPE           1
 //#endif
 
 ///

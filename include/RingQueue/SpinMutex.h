@@ -52,11 +52,11 @@ struct SpinMutexCore
 // struct SpinMutexHelper<>
 ///////////////////////////////////////////////////////////////////
 
-template < uint32_t _YieldThreshold,
+template < uint32_t _YieldThreshold = 4U,
            uint32_t _SpinCount = 16U,
            uint32_t _CoeffA = 2U, uint32_t _CoeffB = 1U, uint32_t _CoeffC = 0U,
-           uint32_t _UseYield = 1U,
-           uint32_t _NeedReset = 0U >
+           bool _UseYield = true,
+           bool _NeedReset = false >
 class SpinMutexHelper
 {
 public:
@@ -65,11 +65,11 @@ public:
     static const uint32_t CoeffA            = _CoeffA;
     static const uint32_t CoeffB            = _CoeffB;
     static const uint32_t CoeffC            = _CoeffC;
-    static const uint32_t UseYield          = _UseYield;
-    static const uint32_t NeedReset         = _NeedReset;
+    static const bool     UseYield          = _UseYield;
+    static const bool     NeedReset         = _NeedReset;
 };
 
-typedef SpinMutexHelper< 4 >  DefaultSMHelper;
+typedef SpinMutexHelper<>  DefaultSMHelper;
 
 /*******************************************************************************
 
@@ -93,11 +93,12 @@ typedef SpinMutexHelper< 4 >  DefaultSMHelper;
 
 ********************************************************************************/
 
-template < typename SpinHelper = SpinMutexHelper< 4 > >
+template < typename SpinHelper = SpinMutexHelper<> >
 class SpinMutex
 {
 public:
     typedef SpinHelper      helper_type;
+
 public:
     static const uint32_t kLocked   = 1U;
     static const uint32_t kUnlocked = 0U;
@@ -107,8 +108,8 @@ public:
     static const uint32_t kA                = helper_type::CoeffA;
     static const uint32_t kB                = helper_type::CoeffB;
     static const uint32_t kC                = helper_type::CoeffC;
-    static const uint32_t kUseYield         = helper_type::UseYield;
-    static const uint32_t kNeedReset        = helper_type::NeedReset;
+    static const bool     kUseYield         = helper_type::UseYield;
+    static const bool     kNeedReset        = helper_type::NeedReset;
 
     static const uint32_t YIELD_THRESHOLD  = kYieldThreshold;   // When to switch over to a true yield.
     static const uint32_t SLEEP_0_INTERVAL = 4;                 // After how many yields should we Sleep(0)?

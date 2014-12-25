@@ -58,7 +58,10 @@ void jimi_wsleep(unsigned int millisec)
     else
         usleep(1);
 #else
-    sched_yield();
+    if (millisec == 0)
+        sched_yield();
+    else
+        usleep(1);
 #endif
 }
 

@@ -272,18 +272,21 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     int numCore;
     unsigned int loop_cnt;
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
+#if defined(__MINGW32__) || defined(__CYGWIN__) || defined(__MSYS__)
   #if defined(PTW32_VERSION) && defined(PTW32_VERSION_STRING)
     sp = (ptw32_thread_t *)thread_in.p;
-    hTargetThread = sp->threadH;
+    thread = sp->threadH;
   #elif defined(__MSYS__) || defined(__CYGWIN__)
-    hTargetThread = (HANDLE)thread_in;
+    thread = (HANDLE)thread_in;
+    //printf("thread_in = %8p\n", thread_in);
   #else
-    hTargetThread = (thread_t)NULL;
+    thread = (thread_t)NULL;
   #endif
 #else
     thread = thread_in;
 #endif
+
+    //printf("thread = %8p\n", thread);
 
     assert(thread != NULL && thread != INVALID_HANDLE_VALUE);
     assert(cpuset != NULL);
@@ -352,12 +355,13 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
     dwAffinityMask = dwAffinityMask & dwProcessAffinity;
 
     // Set the affinity mask
-#if defined(__MINGW32__) || defined(__CYGWIN__)
+#if defined(__MINGW32__) || defined(__CYGWIN__) || defined(__MSYS__)
   #if defined(PTW32_VERSION) && defined(PTW32_VERSION_STRING)
     sp = (ptw32_thread_t *)thread_in.p;
     hTargetThread = sp->threadH;
   #elif defined(__MSYS__) || defined(__CYGWIN__)
     hTargetThread = (HANDLE)thread_in;
+    //printf("hTargetThread = %8p\n", hTargetThread);
   #else
     hTargetThread = (thread_t)NULL;
   #endif
