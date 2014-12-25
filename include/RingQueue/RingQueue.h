@@ -194,8 +194,8 @@ void RingQueueBase<T, Capcity, CoreTy>::init(bool bInitHead /* = false */)
     spin_mutex.thread_id = 0;
 
     // Initilized mutex
-    uint32_t spin_count = 1;
-    pthread_mutex_init(&queue_mutex, (pthread_mutexattr_t *)&spin_count);
+    //uint32_t spin_count = 1;
+    pthread_mutex_init(&queue_mutex, NULL);
 }
 
 template <typename T, uint32_t Capcity, typename CoreTy>
