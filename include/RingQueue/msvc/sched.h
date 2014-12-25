@@ -17,6 +17,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#include "msvc/targetver.h"
 #include <windows.h>
 #define SCHW32_INCLUDE_WINDOWS_H
 

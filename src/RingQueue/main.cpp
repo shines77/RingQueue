@@ -7,6 +7,8 @@
 #define __USE_GNU
 #endif
 
+#include "msvc/targetver.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "vs_stdint.h"
@@ -34,6 +36,7 @@
 #include "sys_timer.h"
 #include "console.h"
 #include "RingQueue.h"
+#include "SpinMutex.h"
 
 using namespace jimi;
 
@@ -687,22 +690,18 @@ display_test_info(void)
 #endif
 }
 
-#include "SpinMutex.h"
-
-int
-main(int argn, char * argv[])
+void SpinMutex_Test(void)
 {
-    jimi_cpu_warmup(500);
-
     SpinMutex<DefaultSMHelper> spinMutex2;
 
     typedef SpinMutexHelper<
-        5,      // _YieldThreshold, The spin loop times
-        4000,   // _SpinCount, The initial value of spin counter
+        5,      // _YieldThreshold, The threshold of enter yield(), the spin loop times.
+        16,     // _SpinCount, The initial value of spin counter.
         2,      // _A
         1,      // _B
         0,      // _C, Next loop: spin_count = spin_count * _A / _B + _C;
-        0       // _NeedReset? After run Sleep(1), reset the loop_count if need.
+        true,   // _UseYield? Whether use yield() function in loop.
+        false   // _NeedReset? After run Sleep(1), reset the loop_count if need.
     > MySpinMutexHelper;
 
     SpinMutex<MySpinMutexHelper> spinMutex;
@@ -716,6 +715,12 @@ main(int argn, char * argv[])
     spinMutex.spinWait(4000);
 
     printf("\n");
+}
+
+int
+main(int argn, char * argv[])
+{
+    jimi_cpu_warmup(500);
 
     test_msg_init();
 
@@ -725,6 +730,8 @@ main(int argn, char * argv[])
     RingQueue_Test();
     //RingQueue_UnitTest();
 #endif
+
+    SpinMutex_Test();
 
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     q3_test();

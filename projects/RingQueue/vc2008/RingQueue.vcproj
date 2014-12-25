@@ -304,6 +304,10 @@
 					RelativePath="..\..\..\include\RingQueue\msvc\stdint.h"
 					>
 				</File>
+				<File
+					RelativePath="..\..\..\include\RingQueue\msvc\targetver.h"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter

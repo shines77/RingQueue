@@ -48,22 +48,23 @@
 /// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
 ///
 /// 定义为0, 表示使用豆瓣上q3.h的lock-free改良型方案, 调用RingQueue.push(), RingQueue.pop();
-/// 定义为1, 表示使用细粒度的标准spin_mutex锁, 调用RingQueue.spin_push(), RingQueue.spin_pop();
-/// 定义为2, 表示使用细粒度的改进型spin_mutex锁, 调用RingQueue.spin1_push(), RingQueue.spin1_pop();
-/// 定义为3, 表示使用细粒度的仿制spin_mutex锁(会死锁), 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
+/// 定义为1, 表示使用细粒度的标准spin_mutex自旋锁, 调用RingQueue.spin_push(), RingQueue.spin_pop();
+/// 定义为2, 表示使用细粒度的改进型spin_mutex自旋锁, 调用RingQueue.spin1_push(), RingQueue.spin1_pop();
+/// 定义为2, 表示使用细粒度的通用型spin_mutex自旋锁, 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
 /// 定义为4, 表示使用粗粒度的pthread_mutex_t锁, 调用RingQueue.locked_push(), RingQueue.locked_pop().
+/// 定义为6, 表示使用细粒度的仿制spin_mutex自旋锁(会死锁), 调用RingQueue.spin3_push(), RingQueue.spin3_pop();
 ///
 /// 其中只有1, 2, 4都可以得到正确结果, 而且1速度最快;
 ///
 /// 0可能会导致逻辑错误, 结果错误, 而且当(PUSH_CNT + POP_CNT) > CPU物理核心数时,
 ///     有可能不能完成测试或运行时间很久(几十秒或几分钟不等, 而且结果还是错误的), 可自行验证.
 ///
-/// 3可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
+/// 6可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
 ///
 
 /// 取值范围是 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     2
+#define RINGQUEUE_LOCK_TYPE     3
 #endif
 
 ///

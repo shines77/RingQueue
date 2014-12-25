@@ -3,6 +3,10 @@
 
 #include "msvc/pthread.h"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include "msvc/targetver.h"
 #include <windows.h>
 #include <process.h>    /* _beginthreadex(), _endthreadex() */
 
@@ -339,7 +343,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 #endif
 
     if (echo) {
-        printf("dwProcessMask = %d, dwSystemMask = %d\n", dwProcessAffinity, dwSystemAffinity);
+        printf("dwProcessMask = %u, dwSystemMask = %u\n", dwProcessAffinity, dwSystemAffinity);
     }
 
     // Adjust dwAffinityMask
@@ -354,7 +358,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 #endif
     dwAffinityMaskOld = SetThreadAffinityMask(hTargetThread, dwAffinityMask);
     if (echo) {
-        printf("dwMask = %d, dwOldMask = %d\n", dwAffinityMask, dwAffinityMaskOld);
+        printf("dwMask = %u, dwOldMask = %u\n", dwAffinityMask, dwAffinityMaskOld);
     }
 
     if (echo) {

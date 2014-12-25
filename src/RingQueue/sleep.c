@@ -3,6 +3,10 @@
 
 #if defined(__MINGW32__)
 #include <unistd.h>     // For usleep()
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include "msvc/targetver.h"
 #include <windows.h>    // For Sleep(), SwitchToThread()
 #elif defined(__linux__) || defined(__GNUC__)
 #include <unistd.h>     // For usleep()
@@ -10,6 +14,10 @@
 #endif  /* __MINGW32__ */
 
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include "msvc/targetver.h"
 #include <windows.h>    // For Sleep(), SwitchToThread()
 #endif  /* _MSC_VER */
 

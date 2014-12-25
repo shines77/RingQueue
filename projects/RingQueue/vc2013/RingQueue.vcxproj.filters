@@ -110,6 +110,9 @@
     <ClInclude Include="..\..\..\include\RingQueue\SpinMutex.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\RingQueue\msvc\targetver.h">
+      <Filter>include\msvc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
