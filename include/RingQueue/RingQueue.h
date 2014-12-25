@@ -332,8 +332,6 @@ int RingQueueBase<T, Capcity, CoreTy>::spin_push(T * item)
         if (spin_counter <= max_spin_cnt) {
             for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                 jimi_mm_pause();
-                jimi_mm_pause();
-                //jimi_mm_pause();
                 //jimi_mm_pause();
             }
             spin_counter *= 2;
@@ -390,8 +388,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin_pop()
         if (spin_counter <= max_spin_cnt) {
             for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                 jimi_mm_pause();
-                jimi_mm_pause();
-                //jimi_mm_pause();
                 //jimi_mm_pause();
             }
             spin_counter *= 2;
@@ -437,6 +433,8 @@ int RingQueueBase<T, Capcity, CoreTy>::spin1_push(T * item)
     index_type head, tail, next;
     uint32_t pause_cnt, spin_counter;
     static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
+
+    Jimi_ReadWriteBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -493,6 +491,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin1_pop()
     uint32_t pause_cnt, spin_counter;
     static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
 
+    Jimi_ReadWriteBarrier();
+
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
        atomic_compare_and_exchange potentially generates less bus traffic
@@ -547,6 +547,8 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
     uint32_t counter, pause_cnt, spin_counter;
     static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
+
+    Jimi_ReadWriteBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -619,6 +621,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
     uint32_t counter, pause_cnt, spin_counter;
     static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
+
+    Jimi_ReadWriteBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,

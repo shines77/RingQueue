@@ -144,42 +144,54 @@ RingQueue_push_task(void *arg)
     if (funcType == 1) {
         // 细粒度的标准spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->spin_push(msg) == -1) {};
+            while (queue->spin_push(msg) == -1) {
+                //
+            };
             msg++;
         }
     }
     else if (funcType == 2) {
         // 细粒度的改进型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->spin1_push(msg) == -1) {};
+            while (queue->spin1_push(msg) == -1) {
+                //
+            };
             msg++;
         }
     }
     else if (funcType == 3) {
         // 细粒度的通用型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->spin2_push(msg) == -1) {};
+            while (queue->spin2_push(msg) == -1) {
+                //
+            };
             msg++;
         }
     }
     else if (funcType == 4) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->mutex_push(msg) == -1) {};
+            while (queue->mutex_push(msg) == -1) {
+                //
+            };
             msg++;
         }
     }
     else if (funcType == 9) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->spin3_push(msg) == -1) {};
+            while (queue->spin3_push(msg) == -1) {
+                //
+            };
             msg++;
         }
     }
     else {
         // 豆瓣上q3.h的lock-free改良型方案
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->push(msg) == -1) {};
+            while (queue->push(msg) == -1) {
+                //
+            };
             msg++;
         }
     }
@@ -343,6 +355,8 @@ RingQueue_pop_task(void *arg)
         msg = (msg_t *)queue->spin2_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
         msg = (msg_t *)queue->mutex_pop();
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+        msg = (msg_t *)queue->spin3_pop();
 #else
         msg = (msg_t *)queue->pop();
 #endif

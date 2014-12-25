@@ -44,6 +44,10 @@
 #define USE_JIMI_RINGQUEUE      1
 #endif
 
+#ifndef USE_FUNC_TYPE
+#define USE_FUNC_TYPE           1
+#endif
+
 ///
 /// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
 ///
@@ -65,11 +69,7 @@
 
 /// 取值范围是 0-3
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     4
-#endif
-
-#ifndef USE_FUNC_TYPE
-#define USE_FUNC_TYPE           1
+#define RINGQUEUE_LOCK_TYPE     3
 #endif
 
 ///
