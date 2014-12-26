@@ -23,6 +23,11 @@
 
 #define USE_SLEEP_AND_LOG   0
 
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#pragma warning(push)
+#pragma warning(disable: 4200)
+#endif  /* _MSC_VER */
+
 struct queue {
     struct {
         uint32_t mask;
@@ -184,3 +189,7 @@ pop(struct queue *q)
 
     return (void *)ret;
 }
+
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#pragma warning(pop)
+#endif  /* _MSC_VER */

@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__)
-__declspec(dllimport) int __stdcall SwitchToThread(void);
+//__declspec(dllimport) int __stdcall SwitchToThread(void);
 #endif
 
 /* Sleep for the platform */
@@ -23,8 +23,9 @@ void jimi_usleep(unsigned int usec);
 /* Sleep for Windows or MinGW */
 void jimi_wsleep(unsigned int millisec);
 
-/* Yield(): Switch to the other threads in the same CPU core. */
-void jimi_yield();
+/* Yield(): On Windows: Switch to the other threads in the same CPU core. */
+/*          On Linux: Switch to the other threads in all cores. */
+int jimi_yield();
 
 #ifdef __cplusplus
 }

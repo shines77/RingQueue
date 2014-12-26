@@ -913,11 +913,13 @@ main(int argn, char * argv[])
   #if defined(USE_FUNC_TYPE) && (USE_FUNC_TYPE != 0)
     //RingQueue_UnitTest();
 
-    RingQueue_Test(4, true);
-    RingQueue_Test(1, true);
-    RingQueue_Test(2, true);
-    RingQueue_Test(3, false);
+    RingQueue_Test(4, true);    // 使用pthread_mutex_t, 调用RingQueue.mutex_push().
+
+    RingQueue_Test(1, true);    // 使用自旋锁, 调用RingQueue.spin_push().
+    RingQueue_Test(2, true);    //             调用RingQueue.spin1_push().
+    RingQueue_Test(3, false);   //             调用RingQueue.spin2_push().
   #else
+    // 根据指定的 RINGQUEUE_LOCK_TYPE 执行RingQueue相应的push()和pop()函数
     RingQueue_Test(RINGQUEUE_LOCK_TYPE, false);
   #endif
 #endif
@@ -925,6 +927,7 @@ main(int argn, char * argv[])
     //SpinMutex_Test();
 
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
+    // 豆瓣上的 q3.h 的修正版
     q3_test();
 #endif
 

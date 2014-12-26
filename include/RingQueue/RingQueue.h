@@ -545,7 +545,6 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
 {
     index_type head, tail, next;
     uint32_t counter, pause_cnt, spin_counter;
-    static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     Jimi_ReadWriteBarrier();
@@ -619,7 +618,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
     index_type head, tail, next;
     value_type item;
     uint32_t counter, pause_cnt, spin_counter;
-    static const uint32_t max_spin_cnt = MUTEX_MAX_SPIN_COUNT;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     Jimi_ReadWriteBarrier();
@@ -693,7 +691,6 @@ inline
 int RingQueueBase<T, Capcity, CoreTy>::spin3_push(T * item)
 {
     index_type head, tail, next;
-    bool ok = false;
     int cnt;
 
     cnt = 0;
@@ -746,7 +743,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin3_pop()
 {
     index_type head, tail, next;
     value_type item;
-    bool ok = false;
     int cnt;
 
     cnt = 0;

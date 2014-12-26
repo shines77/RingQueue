@@ -38,9 +38,9 @@ void jimi_wsleep(unsigned int millisec)
     Sleep(millisec);
 }
 
-void jimi_yield()
+int jimi_yield()
 {
-    SwitchToThread();
+    return (int)SwitchToThread();
 }
 
 #elif defined(__linux__) || defined(__GNUC__)
@@ -65,9 +65,9 @@ void jimi_wsleep(unsigned int millisec)
 #endif
 }
 
-void jimi_yield()
+int jimi_yield()
 {
-    sched_yield();
+    return sched_yield();
 }
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
@@ -87,9 +87,9 @@ void jimi_wsleep(unsigned int millisec)
     Sleep(millisec);
 }
 
-void jimi_yield()
+int jimi_yield()
 {
-    SwitchToThread();
+    return (int)SwitchToThread();
 }
 
 #else  /* other unknown os */
@@ -125,9 +125,10 @@ void jimi_wsleep(unsigned int millisec)
     jimi_sleep(millisec);
 }
 
-void jimi_yield()
+int jimi_yield()
 {
     // Not implemented
+    return 1;
 }
 
 #endif  /* __linux__ */

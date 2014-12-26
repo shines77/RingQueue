@@ -44,6 +44,7 @@
 #define USE_JIMI_RINGQUEUE      1
 #endif
 
+/// 是否测试所有RingQueue测试, 还是只测试 RINGQUEUE_LOCK_TYPE 指定类型的测试
 #ifndef USE_FUNC_TYPE
 #define USE_FUNC_TYPE           1
 #endif
@@ -51,7 +52,7 @@
 ///
 /// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
 ///
-/// 定义为0, 表示使用豆瓣上q3.h的lock-free改良型方案, 调用RingQueue.push(), RingQueue.pop();
+/// 定义为0, 表示使用豆瓣上q3.h的lock-free修正版,    调用RingQueue.push(), RingQueue.pop();
 /// 定义为1, 表示使用细粒度的标准spin_mutex自旋锁,   调用RingQueue.spin_push(),  RingQueue.spin_pop();
 /// 定义为2, 表示使用细粒度的改进型spin_mutex自旋锁, 调用RingQueue.spin1_push(), RingQueue.spin1_pop();
 /// 定义为3, 表示使用细粒度的通用型spin_mutex自旋锁, 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
@@ -59,15 +60,15 @@
 ///          调用RingQueue.mutex_push(), RingQueue.mutex_pop();
 /// 定义为9, 表示使用细粒度的仿制spin_mutex自旋锁(会死锁), 调用RingQueue.spin3_push(), RingQueue.spin3_pop();
 ///
-/// 其中只有1, 2, 3, 4都可以得到正确结果, 2的速度最快;
-///
-/// 0 可能会导致逻辑错误, 结果错误, 而且当(PUSH_CNT + POP_CNT) > CPU物理核心数时,
+/// 其中 0 可能会导致逻辑错误, 结果错误, 而且当(PUSH_CNT + POP_CNT) > CPU物理核心数时,
 ///     有可能不能完成测试或运行时间很久(几十秒或几分钟不等, 而且结果还是错误的), 可自行验证.
+///
+/// 其中只有1, 2, 3, 4都可以得到正确结果, 2的速度可能最快;
 ///
 /// 9 可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
 ///
 
-/// 取值范围是 0-3
+/// 取值范围是 0-9, 未定义代表 0
 #ifndef RINGQUEUE_LOCK_TYPE
 #define RINGQUEUE_LOCK_TYPE     3
 #endif

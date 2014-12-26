@@ -85,7 +85,7 @@ int PTW32_CDECL pthread_detach(pthread_t tid)
     bResult = TerminateThread((HANDLE)tid, -1);
     if (bResult && tid != NULL)
         bResult = CloseHandle((HANDLE)tid);
-    return (int)(!bResult);
+    return (bResult ? 0 : (int)-1);
 }
 
 int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
@@ -97,7 +97,7 @@ int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
     else
         dwMillisecs = (DWORD)(*value_ptr);
     dwResponse = WaitForSingleObject(thread, dwMillisecs);
-    return (int)(dwResponse != WAIT_OBJECT_0);
+    return ((dwResponse == WAIT_OBJECT_0) ? 0 : (int)-1);;
 }
 
 /*
@@ -107,17 +107,15 @@ int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
                                    const pthread_mutexattr_t * attr)
 {
 #if 0
-    DWORD dwSpinCounter;
-    BOOL bResult;
-    if (attr == NULL)
-        dwSpinCounter = 4000;
-    else
-        dwSpinCounter = (DWORD)*attr;
-    bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCounter);
-    return (int)(!bResult);
+    DWORD dwSpinCounter = 4000;
+    BOOL bResult = FALSE;
+    if (mutex != NULL)
+        bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCounter);
+    return (bResult ? 0 : (int)-1);
 #else
-    InitializeCriticalSection(mutex);
-    return 0;
+    if (mutex != NULL)
+        InitializeCriticalSection(mutex);
+    return ((mutex != NULL) ? 0 : (int)-1);
 #endif
 }
 
@@ -125,20 +123,20 @@ int PTW32_CDECL pthread_mutex_destroy(pthread_mutex_t * mutex)
 {
     if (mutex != NULL)
         DeleteCriticalSection(mutex);
-    return (int)(mutex != NULL);
+    return ((mutex != NULL) ? 0 : (int)-1);
 }
 
 int PTW32_CDECL pthread_mutex_lock(pthread_mutex_t * mutex)
 {
     EnterCriticalSection(mutex);
-    return (int)(mutex == NULL);
+    return ((mutex != NULL) ? 0 : (int)-1);
 }
 
 int PTW32_CDECL pthread_mutex_timedlock(pthread_mutex_t * mutex,
                                         const struct timespec *abstime)
 {
     EnterCriticalSection(mutex);
-    return (int)(mutex == NULL);
+    return ((mutex != NULL) ? 0 : (int)-1);
 }
 
 int PTW32_CDECL pthread_mutex_trylock(pthread_mutex_t * mutex)
@@ -146,13 +144,13 @@ int PTW32_CDECL pthread_mutex_trylock(pthread_mutex_t * mutex)
     BOOL bResult = FALSE;
     if (mutex != NULL)
         bResult = TryEnterCriticalSection(mutex);
-    return (int)bResult;
+    return (bResult ? 0 : (int)-1);
 }
 
 int PTW32_CDECL pthread_mutex_unlock(pthread_mutex_t * mutex)
 {
     LeaveCriticalSection(mutex);
-    return (int)(mutex == NULL);
+    return ((mutex != NULL) ? 0 : (int)-1);
 }
 
 int PTW32_CDECL pthread_mutex_consistent(pthread_mutex_t * mutex)
