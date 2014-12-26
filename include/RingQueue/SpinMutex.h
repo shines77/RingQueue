@@ -113,7 +113,7 @@ public:
 
     static const uint32_t YIELD_THRESHOLD  = kYieldThreshold;   // When to switch over to a true yield.
     static const uint32_t SLEEP_0_INTERVAL = 4;                 // After how many yields should we Sleep(0)?
-    static const uint32_t SLEEP_1_INTERVAL = 16;                // After how many yields should we Sleep(1)?
+    static const uint32_t SLEEP_1_INTERVAL = 64;                // After how many yields should we Sleep(1)?
 
 public:
     SpinMutex()  { core.Status = kUnlocked; };
@@ -162,7 +162,6 @@ void SpinMutex<Helper>::lock()
             if (loop_count <= YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
-                    //jimi_mm_pause();
                 }
                 if (kB == 0)
                     spin_count = spin_count + kC;
@@ -189,8 +188,9 @@ void SpinMutex<Helper>::lock()
                 else {
                     // 同下
                     if (kUseYield) {
-                        if (!jimi_yield())
+                        if (!jimi_yield()) {
                             jimi_wsleep(0);
+                        }
                     }
                 }
 #elif defined(__linux__) || defined(__GNUC__)
@@ -213,9 +213,13 @@ void SpinMutex<Helper>::lock()
 #else
                 if ((SLEEP_1_INTERVAL != 0) &&
                     (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
+    #if !(defined(_M_X64) || defined(_WIN64))
                     // On Windows: 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程.
                     // On Linux: 等价于usleep(1).
                     jimi_wsleep(1);
+    #else
+                    jimi_wsleep(1);
+    #endif  /* !(_M_X64 || _WIN64) */
                     // If enter Sleep(1) one time, reset the loop_count if need.
                     if (kNeedReset)
                         loop_count = 1;
@@ -231,14 +235,16 @@ void SpinMutex<Helper>::lock()
                     // On Linux: sched_yield(), 把当前线程/进程放到等待线程/进程的末尾, 然后切换到等待线程/进程列表中的首个线程/进程.
                     if (kUseYield) {
                         // 如果yield()失败, 则直接转入Sleep(0);
-                        if (!jimi_yield())
+                        if (!jimi_yield()) {
                             jimi_wsleep(0);
+                        }
                     }
                 }
 #endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
             }
             // Just let the code look well
             loop_count++;
+            jimi_mm_pause();
         } while (jimi_val_compare_and_swap32(&core.Status, kUnlocked, kLocked) != kUnlocked);
     }
 

@@ -106,8 +106,8 @@ int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
 int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
                                    const pthread_mutexattr_t * attr)
 {
-#if 0
-    DWORD dwSpinCounter = 4000;
+#if 1
+    static const DWORD dwSpinCounter = 2;
     BOOL bResult = FALSE;
     if (mutex != NULL)
         bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCounter);

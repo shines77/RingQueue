@@ -544,7 +544,7 @@ inline
 int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
 {
     index_type head, tail, next;
-    uint32_t counter, pause_cnt, spin_counter;
+    uint32_t loop_count, yield_cnt, pause_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     Jimi_ReadWriteBarrier();
@@ -557,39 +557,49 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
        atomic_exchange.  For the subsequent tries we use
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
-        counter = 1;
-        spin_counter = 1;
+        loop_count = 1;
+        spin_count = 1;
         do {
-            if (counter <= YIELD_THRESHOLD) {
-                for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+            if (loop_count <= YIELD_THRESHOLD) {
+                for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                     //jimi_mm_pause();
                 }
-                spin_counter *= 2;
+                spin_count *= 2;
             }
             else {
-                pause_cnt = counter - YIELD_THRESHOLD;
+                yield_cnt = loop_count - YIELD_THRESHOLD;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
-                if ((pause_cnt & 3) == 3) {
+                if ((yield_cnt & 3) == 3) {
                     jimi_wsleep(0);
                 }
                 else {
-                    jimi_yield();
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
                 }
 #else
-                if ((pause_cnt & 15) == 15) {
+                if ((yield_cnt & 63) == 63) {
+  #if !(defined(_M_X64) || defined(_WIN64))
                     jimi_wsleep(1);
+  #else
+                    jimi_wsleep(1);
+  #endif  /* !(_M_X64 || _WIN64) */
                 }
-                else if ((pause_cnt & 3) == 3) {
+                else if ((yield_cnt & 3) == 3) {
                     jimi_wsleep(0);
                 }
                 else {
-                    if (!jimi_yield())
+                    if (!jimi_yield()) {
                         jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
                 }
 #endif
             }
-            counter++;
+            loop_count++;
+            //jimi_mm_pause();
         } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
     }
 
@@ -618,7 +628,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
 {
     index_type head, tail, next;
     value_type item;
-    uint32_t counter, pause_cnt, spin_counter;
+    uint32_t loop_count, yield_cnt, pause_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     Jimi_ReadWriteBarrier();
@@ -631,39 +641,49 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
        atomic_exchange.  For the subsequent tries we use
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
-        counter = 1;
-        spin_counter = 1;
+        loop_count = 1;
+        spin_count = 1;
         do {
-            if (counter <= YIELD_THRESHOLD) {
-                for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
+            if (loop_count <= YIELD_THRESHOLD) {
+                for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                     //jimi_mm_pause();
                 }
-                spin_counter *= 2;
+                spin_count *= 2;
             }
             else {
-                pause_cnt = counter - YIELD_THRESHOLD;
+                yield_cnt = loop_count - YIELD_THRESHOLD;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
-                if ((pause_cnt & 3) == 3) {
+                if ((yield_cnt & 3) == 3) {
                     jimi_wsleep(0);
                 }
                 else {
-                    jimi_yield();
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
                 }
 #else
-                if ((pause_cnt & 15) == 15) {
+                if ((yield_cnt & 63) == 63) {
+  #if !(defined(_M_X64) || defined(_WIN64))
                     jimi_wsleep(1);
+  #else
+                    jimi_wsleep(1);
+  #endif  /* !(_M_X64 || _WIN64) */
                 }
-                else if ((pause_cnt & 3) == 3) {
+                else if ((yield_cnt & 3) == 3) {
                     jimi_wsleep(0);
                 }
                 else {
-                    if (!jimi_yield())
+                    if (!jimi_yield()) {
                         jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
                 }
 #endif
             }
-            counter++;
+            loop_count++;
+            //jimi_mm_pause();
         } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
     }
 
