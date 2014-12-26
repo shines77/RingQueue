@@ -9,8 +9,8 @@
 #define QMASK           (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT        4
-#define POP_CNT         4
+#define PUSH_CNT        2
+#define POP_CNT         2
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 #if 1
@@ -73,6 +73,9 @@
 #ifndef RINGQUEUE_LOCK_TYPE
 #define RINGQUEUE_LOCK_TYPE     2
 #endif
+
+/// 是否显示 push, pop 和 rdtsc 相关数据
+#define DISPLAY_PUSH_POP_DATA   1
 
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用

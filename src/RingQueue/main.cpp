@@ -739,49 +739,49 @@ RingQueue_Test(int funcType, bool bContinue = true)
 
     if (funcType == 1) {
         // 细粒度的标准spin_mutex自旋锁
-        printf("This is RingQueue.spin_push() test:\n");
+        printf("This is RingQueue.spin_push() test: (%d)\n", funcType);
     }
     else if (funcType == 2) {
         // 细粒度的改进型spin_mutex自旋锁
-        printf("This is RingQueue.spin1_push() test:\n");
+        printf("This is RingQueue.spin1_push() test: (%d)\n", funcType);
     }
     else if (funcType == 3) {
         // 细粒度的通用型spin_mutex自旋锁
-        printf("This is RingQueue.spin2_push() test:\n");
+        printf("This is RingQueue.spin2_push() test: (%d)\n", funcType);
     }
     else if (funcType == 4) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
-        printf("This is RingQueue.mutex_push() test:\n");
+        printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
     }
     else if (funcType == 5) {
         // 豆瓣上q3.h的原版文件
-        printf("This is DouBan's q3.h test:\n");
+        printf("This is DouBan's q3.h test: (%d)\n", funcType);
     }
     else if (funcType == 9) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
-        printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
+        printf("This is RingQueue.spin3_push() test (maybe deadlock): (%d)\n", funcType);
     }
     else {
         // 豆瓣上q3.h的lock-free改良型方案
-        printf("This is RingQueue.push() test (modified base on q3.h):\n");
+        printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
     }
 
 #if 0
     //printf("\n");
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
-    printf("This is RingQueue.spin_push() test:\n");
+    printf("This is RingQueue.spin_push() test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-    printf("This is RingQueue.spin1_push() test:\n");
+    printf("This is RingQueue.spin1_push() test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
-    printf("This is RingQueue.spin2_push() test:\n");
+    printf("This is RingQueue.spin2_push() test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
-    printf("This is RingQueue.mutex_push() test:\n");
+    printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 5)
-    printf("This is DouBan's q3.h test:\n");
+    printf("This is DouBan's q3.h test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
-    printf("This is RingQueue.spin3_push() test (maybe deadlock):\n");
+    printf("This is RingQueue.spin3_push() test (maybe deadlock): (%d)\n", funcType);
 #else
-    printf("This is RingQueue.push() test (modified base on q3.h):\n");
+    printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
 #endif
 #endif
 
@@ -818,7 +818,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
     stopTime = jmc_get_timestamp();
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
-#if 1
+#if defined(DISPLAY_PUSH_POP_DATA) && (DISPLAY_PUSH_POP_DATA != 0)
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
@@ -827,13 +827,12 @@ RingQueue_Test(int funcType, bool bContinue = true)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
-    //printf("\n");
-#endif
+#endif  /* DISPLAY_PUSH_POP_DATA */
 
     //printf("---------------------------------------------------------------\n");
 
     printf("\n");
-    printf("time elapsed: %9.3f ms, funcType = %d\n\n", elapsedTime, funcType);
+    printf("time elapsed: %9.3f ms\n\n", elapsedTime);
 
     //jimi_console_readkeyln(false, true, false);
 
@@ -920,6 +919,7 @@ q3_test(void)
     stopTime = jmc_get_timestamp();
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
+#if defined(DISPLAY_PUSH_POP_DATA) && (DISPLAY_PUSH_POP_DATA != 0)
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
@@ -928,8 +928,9 @@ q3_test(void)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
-    printf("\n");
+#endif  /* DISPLAY_PUSH_POP_DATA */
 
+    printf("\n");
     printf("time elapsed: %9.3f ms\n\n", elapsedTime);
 
     pop_list_verify();
