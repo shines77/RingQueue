@@ -106,7 +106,7 @@ int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
 int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
                                    const pthread_mutexattr_t * attr)
 {
-#if 1
+#if defined(_M_X64) || defined(_WIN64)
     static const DWORD dwSpinCounter = 2;
     BOOL bResult = FALSE;
     if (mutex != NULL)
@@ -116,7 +116,7 @@ int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
     if (mutex != NULL)
         InitializeCriticalSection(mutex);
     return ((mutex != NULL) ? 0 : (int)-1);
-#endif
+#endif  /* defined(_M_X64) || defined(_WIN64) */
 }
 
 int PTW32_CDECL pthread_mutex_destroy(pthread_mutex_t * mutex)
