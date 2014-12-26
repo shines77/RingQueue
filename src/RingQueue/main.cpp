@@ -50,7 +50,9 @@ typedef struct thread_arg_t
 
 static volatile struct msg_t *msgs = NULL;
 
-static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
+static struct msg_t **popmsg_list = NULL;
+
+//static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_LENGTH];
 
 int test_msg_init(void);
 
@@ -72,11 +74,15 @@ read_rdtsc(void)
         "=d" (tsc.hi_32)
     );
 #else
+  #if defined(_M_X64) || defined(_WIN64)
+    return 0ULL;
+  #else
     __asm {
         rdtsc
         mov tsc.lo_32, eax
         mov tsc.hi_32, edx
     }
+  #endif
 #endif
 
   return tsc.tsc_64;
@@ -267,7 +273,8 @@ RingQueue_pop_task(void *arg)
         free(thread_arg);
 
     cnt = 0;
-    record_list = &popmsg_list[idx][0];
+    //record_list = &popmsg_list[idx][0];
+    record_list = &popmsg_list[idx * MAX_POP_MSG_LENGTH];
     start = read_rdtsc();
 
 #if defined(USE_FUNC_TYPE) && (USE_FUNC_TYPE != 0)
@@ -378,6 +385,8 @@ RingQueue_pop_task(void *arg)
     return NULL;
 }
 
+#include <errno.h>
+
 static int
 RingQueue_start_thread(int id,
                        void *(PTW32_API *cb)(void *),
@@ -386,6 +395,7 @@ RingQueue_start_thread(int id,
 {
     pthread_t kid;
     pthread_attr_t attr;
+    int retval;
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     cpu_set_t cpuset;
     int core_id;
@@ -396,8 +406,19 @@ RingQueue_start_thread(int id,
         return -1;
 #endif
 
-    if (pthread_attr_init(&attr))
-        return -1;
+    ///
+    /// pthread_attr_init() 在 cygwin 或 MinGW + MSYS 环境下可能返回错误代码 16 (EBUSY)
+    ///
+    /// See: http://www.impredicative.com/pipermail/ur/2013-October/001461.html
+    ///
+    if (retval = pthread_attr_init(&attr)) {
+        if (retval != EBUSY) {
+            //printf("retval = %04d, attr = %016p\n", retval, &attr);
+            return -1;
+        }
+    }
+
+    //printf("retval = %04d, attr = %016p\n", retval, &attr);
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     CPU_ZERO(&cpuset);
@@ -407,11 +428,13 @@ RingQueue_start_thread(int id,
     CPU_SET(core_id, &cpuset);
 #endif
 
-    if (pthread_create(&kid, &attr, cb, arg))
+    if (retval = pthread_create(&kid, &attr, cb, arg))
         return -1;
 
     if (tid)
         *tid = kid;
+
+    //printf("retval = %04d, kid = %016p\n", retval, &kid);
 
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     if (pthread_setaffinity_np(kid, sizeof(cpu_set_t), &cpuset))
@@ -519,32 +542,41 @@ setaffinity(int core_id)
     return 0;
 }
 
-void init_pop_list(void)
+void pop_list_reset(void)
 {
     unsigned int i, j;
+    struct msg_t **cur_popmsg_list = popmsg_list;
     for (i = 0; i < POP_CNT; i++) {
         for (j = 0; j < MAX_POP_MSG_LENGTH; ++j) {
-            popmsg_list[i][j] = NULL;
+            //popmsg_list[i][j] = NULL;
+            *cur_popmsg_list++ = NULL;
         }
     }
 }
 
-int verify_pop_list(void)
+int pop_list_verify(void)
 {
     int i, j;
     uint32_t index;
     uint32_t *verify_list;
+    struct msg_t *msg;
     int empty, overlay, correct, errors, times;
 
     verify_list = (uint32_t *)calloc(MSG_TOTAL_CNT, sizeof(uint32_t));
     if (verify_list == NULL)
         return -1;
 
+    //printf("popmsg_list = %016p\n", popmsg_list);
+
     for (i = 0; i < POP_CNT; ++i) {
-        for (j = 0; j < MAX_PUSH_MSG_LENGTH; ++j) {
-            index = (uint32_t)(popmsg_list[i][j]->dummy - 1);
-            if (index < MSG_TOTAL_CNT)
-                verify_list[index] = verify_list[index] + 1;
+        for (j = 0; j < MAX_POP_MSG_LENGTH; ++j) {
+            //index = (uint32_t)(popmsg_list[i][j]->dummy - 1);
+            msg = popmsg_list[i * MAX_POP_MSG_LENGTH + j];
+            if (msg != NULL) {
+                index = (uint32_t)(msg->dummy - 1);
+                if (index < MSG_TOTAL_CNT)
+                    verify_list[index] = verify_list[index] + 1;
+            }
         }
     }
 
@@ -645,7 +677,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
     setaffinity(0);
 
     test_msg_init();
-    init_pop_list();
+    pop_list_reset();
 
     startTime = jmc_get_timestamp();
 
@@ -655,6 +687,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         thread_arg->funcType = funcType;
         thread_arg->queue = &ringQueue;
         RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg, &kids[i]);
+        jimi_sleep(1);
     }
     for (i = 0; i < POP_CNT; i++) {
         thread_arg = (thread_arg_t *)malloc(sizeof(struct thread_arg_t));
@@ -663,6 +696,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         thread_arg->queue = &ringQueue;
         RingQueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
                                &kids[i + PUSH_CNT]);
+        jimi_sleep(1);
     }
     for (i = 0; i < POP_CNT + PUSH_CNT; i++)
         pthread_join(kids[i], NULL);
@@ -689,7 +723,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
 
     //jimi_console_readkeyln(false, true, false);
 
-    verify_pop_list();
+    pop_list_verify();
 
     //printf("---------------------------------------------------------------\n\n");
 
@@ -838,6 +872,28 @@ test_msg_destory(void)
     }
 }
 
+int
+popmsg_list_init(void)
+{
+    if (popmsg_list != NULL)
+        return -1;
+
+    popmsg_list = (struct msg_t **)calloc(MSG_TOTAL_CNT, sizeof(struct msg_t *));
+    if (popmsg_list != NULL)
+        return 1;
+    else
+        return 0;
+}
+
+void
+popmsg_list_destory(void)
+{
+    if (popmsg_list) {
+        free((void *)popmsg_list);
+        popmsg_list = NULL;
+    }
+}
+
 void
 display_test_info(void)
 {
@@ -845,6 +901,11 @@ display_test_info(void)
     printf("PUSH_CNT            = %u\n"
            "POP_CNT             = %u\n"
            "MSG_TOTAL_LENGTH    = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
+#if defined(_M_X64) || defined(_WIN64)
+    printf("x64 Mode            = Yes\n");
+#else
+    printf("x64 Mode            = No\n");
+#endif
 #if defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0)
     printf("USE_THREAD_AFFINITY = Yes\n");
 #else
@@ -906,6 +967,7 @@ main(int argn, char * argv[])
     jimi_cpu_warmup(500);
 
     test_msg_init();
+    popmsg_list_init();
 
     display_test_info();
 
@@ -931,6 +993,7 @@ main(int argn, char * argv[])
     q3_test();
 #endif
 
+    popmsg_list_destory();
     test_msg_destory();
 
     //jimi_console_readkeyln(false, true, false);

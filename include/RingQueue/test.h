@@ -44,7 +44,7 @@
 #define USE_JIMI_RINGQUEUE      1
 #endif
 
-/// 是否测试所有RingQueue测试, 还是只测试 RINGQUEUE_LOCK_TYPE 指定类型的测试
+/// 是否测试所有RingQueue测试, 或是仅测试 RINGQUEUE_LOCK_TYPE 指定类型的测试
 #ifndef USE_FUNC_TYPE
 #define USE_FUNC_TYPE           1
 #endif
@@ -70,7 +70,7 @@
 
 /// 取值范围是 0-9, 未定义代表 0
 #ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     3
+#define RINGQUEUE_LOCK_TYPE     2
 #endif
 
 ///

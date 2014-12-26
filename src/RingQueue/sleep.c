@@ -65,6 +65,11 @@ void jimi_wsleep(unsigned int millisec)
 #endif
 }
 
+///
+/// int sched_yield(void);
+///
+/// See: http://man7.org/linux/man-pages/man2/sched_yield.2.html
+///
 int jimi_yield()
 {
     return sched_yield();

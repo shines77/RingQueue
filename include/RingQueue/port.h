@@ -39,7 +39,7 @@
 #define jimi_b64(x)             (jimi_b32(x) | (jimi_b32(x) >> 32))
 
 #define jimi_next_power_of_2(x)     (jimi_b32((x) - 1) + 1)
-#define jimi_next_power_of_2_64(x)  (jimi_b64((x) - 1) + 1)
+#define jimi_next_power_of_2_64(x)  (jimi_b64((uint64_t)(x) - 1) + 1)
 
 #if defined(JIMI_SIZE_T_SIZEOF) && (JIMI_SIZE_T_SIZEOF == 8)
 #define JIMI_ROUND_TO_POW2(N)   jimi_next_power_of_2_64(N)

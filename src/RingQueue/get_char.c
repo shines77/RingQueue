@@ -5,7 +5,7 @@
 
 #if defined(__MINGW32__)
 #include <conio.h>
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__GNUC__)
 #include <termios.h>
 #endif  /* __MINGW32__ */
 
@@ -32,7 +32,7 @@ int jimi_getche(void)
     return ch;
 }
 
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__GNUC__)
 
 /// <comment>
 ///
