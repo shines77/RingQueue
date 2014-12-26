@@ -73,7 +73,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)bin\vc2013\$(ProjectName)\x64-$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)gen\tmp\vc2013\$(ProjectName)\x86-$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)gen\tmp\vc2013\$(ProjectName)\x64-$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)bin\vc2013\$(ProjectName)\x86-$(Configuration)\</OutDir>
@@ -83,7 +83,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin\vc2013\$(ProjectName)\x64-$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)gen\tmp\vc2013\$(ProjectName)\x86-$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)gen\tmp\vc2013\$(ProjectName)\x64-$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

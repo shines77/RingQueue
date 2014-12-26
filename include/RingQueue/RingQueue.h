@@ -584,7 +584,8 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
                     jimi_wsleep(0);
                 }
                 else {
-                    jimi_yield();
+                    if (!jimi_yield())
+                        jimi_wsleep(0);
                 }
 #endif
             }
@@ -657,7 +658,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
                     jimi_wsleep(0);
                 }
                 else {
-                    jimi_yield();
+                    if (!jimi_yield())
+                        jimi_wsleep(0);
                 }
 #endif
             }
@@ -795,6 +797,8 @@ int RingQueueBase<T, Capcity, CoreTy>::mutex_push(T * item)
 {
     index_type head, tail, next;
 
+    Jimi_ReadWriteBarrier();
+
     pthread_mutex_lock(&queue_mutex);
 
     head = core.info.head;
@@ -823,6 +827,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::mutex_pop()
 {
     index_type head, tail, next;
     value_type item;
+
+    Jimi_ReadWriteBarrier();
 
     pthread_mutex_lock(&queue_mutex);
 

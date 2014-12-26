@@ -34,17 +34,18 @@
 #define USE_THREAD_AFFINITY     0
 #endif
 
-/// 是否运行q3.h的测试代码
-#ifndef USE_DOUBAN_QUEUE
-#define USE_DOUBAN_QUEUE        0
-#endif
-
 /// 是否运行jimi:RingQueue的测试代码
 #ifndef USE_JIMI_RINGQUEUE
 #define USE_JIMI_RINGQUEUE      1
 #endif
 
+/// 是否运行q3.h的测试代码
+#ifndef USE_DOUBAN_QUEUE
+#define USE_DOUBAN_QUEUE        1
+#endif
+
 /// 是否测试所有RingQueue测试, 或是仅测试 RINGQUEUE_LOCK_TYPE 指定类型的测试
+/// 定义为1(或非0)表示测试所有RingQueue测试
 #ifndef USE_FUNC_TYPE
 #define USE_FUNC_TYPE           1
 #endif
@@ -76,7 +77,7 @@
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用
 ///
-#define USE_SPIN_MUTEX_COUNTER  1
+#define USE_SPIN_MUTEX_COUNTER  0
 
 ///
 /// spin_mutex的最大spin_count值, 默认值为16, 建议设为0或1,2, 更快! 设为0则跟USE_SPIN_MUTEX_COUNTER设为0等价

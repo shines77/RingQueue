@@ -40,6 +40,7 @@ void jimi_wsleep(unsigned int millisec)
 
 int jimi_yield()
 {
+    /* On success, SwitchToThread() returns 1.  On error, 0 is returned. */
     return (int)SwitchToThread();
 }
 
@@ -67,12 +68,15 @@ void jimi_wsleep(unsigned int millisec)
 
 ///
 /// int sched_yield(void);
-///
 /// See: http://man7.org/linux/man-pages/man2/sched_yield.2.html
+///
+/// sched_yield()函数 高级进程管理 
+/// See: http://blog.csdn.net/magod/article/details/7265555
 ///
 int jimi_yield()
 {
-    return sched_yield();
+    /* On success, sched_yield() returns 0.  On error, -1 is returned. */
+    return (sched_yield() ? 0 : 1);
 }
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
@@ -92,8 +96,13 @@ void jimi_wsleep(unsigned int millisec)
     Sleep(millisec);
 }
 
+///
+/// MSDN: SwitchToThread
+/// See: http://msdn.microsoft.com/en-us/library/windows/desktop/ms686352%28v=vs.85%29.aspx
+///
 int jimi_yield()
 {
+    /* On success, SwitchToThread() returns 1.  On error, 0 is returned. */
     return (int)SwitchToThread();
 }
 

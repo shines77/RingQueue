@@ -25,6 +25,7 @@ void jimi_wsleep(unsigned int millisec);
 
 /* Yield(): On Windows: Switch to the other threads in the same CPU core. */
 /*          On Linux: Switch to the other threads in all cores. */
+/* On success, jimi_yield() returns 1.  On error, 0 is returned. */
 int jimi_yield();
 
 #ifdef __cplusplus

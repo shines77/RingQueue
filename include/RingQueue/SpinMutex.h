@@ -188,8 +188,27 @@ void SpinMutex<Helper>::lock()
                 }
                 else {
                     // 同下
-                    if (kUseYield)
-                        jimi_yield();
+                    if (kUseYield) {
+                        if (!jimi_yield())
+                            jimi_wsleep(0);
+                    }
+                }
+#elif defined(__linux__) || defined(__GNUC__)
+                // Because Sleep(1) is too slowly in MinGW or cygwin, so we do not use it.
+                if ((SLEEP_1_INTERVAL != 0) &&
+                    (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
+                    // On Windows: 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程.
+                    // On Linux: 等价于usleep(1).
+                    jimi_wsleep(1);
+                    // If enter Sleep(1) one time, reset the loop_count if need.
+                    if (kNeedReset)
+                        loop_count = 1;
+                }
+                else {
+                    // Linux下面, 因为jimi_yield()和jimi_wsleep(0)等价, 所以可以省略jimi_wsleep(0)部分
+                    if (kUseYield || (SLEEP_1_INTERVAL != 0)) {
+                        jimi_yield()
+                    }
                 }
 #else
                 if ((SLEEP_1_INTERVAL != 0) &&
@@ -210,8 +229,11 @@ void SpinMutex<Helper>::lock()
                 else {
                     // On Windows: 只切换到当前线程所在的物理Core中其他线程, 即使别的Core中有合适的等待线程.
                     // On Linux: sched_yield(), 把当前线程/进程放到等待线程/进程的末尾, 然后切换到等待线程/进程列表中的首个线程/进程.
-                    if (kUseYield)
-                        jimi_yield();
+                    if (kUseYield) {
+                        // 如果yield()失败, 则直接转入Sleep(0);
+                        if (!jimi_yield())
+                            jimi_wsleep(0);
+                    }
                 }
 #endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
             }
