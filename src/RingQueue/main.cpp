@@ -94,8 +94,9 @@ read_rdtsc(void)
 }
 
 static volatile int quit = 0;
-static volatile unsigned int pop_total = 0;
 static volatile unsigned int push_total = 0;
+static volatile unsigned int pop_total = 0;
+static volatile unsigned int pop_fail_total = 0;
 
 static volatile uint64_t push_cycles = 0;
 static volatile uint64_t pop_cycles = 0;
@@ -114,8 +115,10 @@ static void
 init_globals(void)
 {
     quit = 0;
-    pop_total = 0;
+
     push_total = 0;
+    pop_total = 0;
+    pop_fail_total = 0;
 
     push_cycles = 0;
     pop_cycles = 0;
@@ -131,7 +134,9 @@ RingQueue_push_task(void *arg)
     msg_t *msg;
     uint64_t start;
     int i, idx, funcType;
-    unsigned int cnt = 0;
+    int32_t pause_cnt;
+    uint32_t fail_cnt, loop_cnt, yeild_cnt;
+    static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     idx = 0;
     funcType = 0;
@@ -152,6 +157,7 @@ RingQueue_push_task(void *arg)
     if (thread_arg)
         free(thread_arg);
 
+    fail_cnt = 0;
     msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
     start = read_rdtsc();
 
@@ -160,7 +166,7 @@ RingQueue_push_task(void *arg)
         // 细粒度的标准spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
             while (queue->spin_push(msg) == -1) {
-                cnt++;
+                fail_cnt++;
             };
             msg++;
         }
@@ -169,7 +175,7 @@ RingQueue_push_task(void *arg)
         // 细粒度的改进型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
             while (queue->spin1_push(msg) == -1) {
-                cnt++;
+                fail_cnt++;
             };
             msg++;
         }
@@ -177,8 +183,41 @@ RingQueue_push_task(void *arg)
     else if (funcType == 3) {
         // 细粒度的通用型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            loop_cnt = 0;
             while (queue->spin2_push(msg) == -1) {
-                cnt++;
+#if 1
+                if (loop_cnt >= YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                }
+                loop_cnt++;
+#elif 1
+                jimi_wsleep(0);
+                //jimi_mm_pause();
+                //jimi_mm_pause();
+#else
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+#endif
+                fail_cnt++;
             };
             msg++;
         }
@@ -187,7 +226,7 @@ RingQueue_push_task(void *arg)
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
             while (queue->mutex_push(msg) == -1) {
-                cnt++;
+                fail_cnt++;
             };
             msg++;
         }
@@ -196,7 +235,7 @@ RingQueue_push_task(void *arg)
         // 豆瓣上q3.h的原版文件
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
             while (push(q, (void *)msg) == -1) {
-                cnt++;
+                fail_cnt++;
             };
             msg++;
         }
@@ -205,7 +244,7 @@ RingQueue_push_task(void *arg)
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
             while (queue->spin3_push(msg) == -1) {
-                cnt++;
+                fail_cnt++;
             };
             msg++;
         }
@@ -214,7 +253,7 @@ RingQueue_push_task(void *arg)
         // 豆瓣上q3.h的lock-free改良型方案
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
             while (queue->push(msg) == -1) {
-                cnt++;
+                fail_cnt++;
             };
             msg++;
         }
@@ -224,19 +263,19 @@ RingQueue_push_task(void *arg)
 
     for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
 #if defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 1)
-        while (queue->spin_push(msg) == -1) { cnt++; };
+        while (queue->spin_push(msg) == -1) { fail_cnt++; };
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 2)
-        while (queue->spin1_push(msg) == -1) { cnt++; };
+        while (queue->spin1_push(msg) == -1) { fail_cnt++; };
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 3)
-        while (queue->spin2_push(msg) == -1) { cnt++; };
+        while (queue->spin2_push(msg) == -1) { fail_cnt++; };
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 4)
-        while (queue->mutex_push(msg) == -1) { cnt++; };
+        while (queue->mutex_push(msg) == -1) { fail_cnt++; };
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 5)
-        while (push(q, (void *)msg) == -1) { cnt++; };
+        while (push(q, (void *)msg) == -1) { fail_cnt++; };
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
-        while (queue->spin3_push(msg) == -1) { cnt++; };
+        while (queue->spin3_push(msg) == -1) { fail_cnt++; };
 #else
-        while (queue->push(msg) == -1) { cnt++; };
+        while (queue->push(msg) == -1) { fail_cnt++; };
 #endif
         msg++;
 #if 0
@@ -256,7 +295,7 @@ RingQueue_push_task(void *arg)
     //push_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&push_cycles, read_rdtsc() - start);
     //push_total += MAX_PUSH_MSG_LENGTH;
-    jimi_fetch_and_add32(&push_total, cnt);
+    jimi_fetch_and_add32(&push_total, fail_cnt);
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
@@ -274,7 +313,9 @@ RingQueue_pop_task(void *arg)
     msg_t **record_list;
     uint64_t start;
     int idx, funcType;
-    unsigned int cnt;
+    int32_t pause_cnt;
+    uint32_t cnt, fail_cnt, loop_cnt, yeild_cnt;
+    static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     idx = 0;
     funcType = 0;
@@ -296,6 +337,7 @@ RingQueue_pop_task(void *arg)
         free(thread_arg);
 
     cnt = 0;
+    fail_cnt = 0;
     record_list = &popmsg_list[idx][0];
     //record_list = &popmsg_list[idx * MAX_POP_MSG_LENGTH];
     start = read_rdtsc();
@@ -311,6 +353,9 @@ RingQueue_pop_task(void *arg)
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
             }
+            else {
+                fail_cnt++;
+            }
         }
     }
     else if (funcType == 2) {
@@ -323,17 +368,57 @@ RingQueue_pop_task(void *arg)
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
             }
+            else {
+                fail_cnt++;
+            }
         }
     }
     else if (funcType == 3) {
         // 细粒度的通用型spin_mutex自旋锁
+        loop_cnt = 0;
         while (true) {
             msg = (msg_t *)queue->spin2_pop();
             if (msg != NULL) {
                 *record_list++ = (struct msg_t *)msg;
+                loop_cnt = 0;
                 cnt++;
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
+            }
+            else {
+                fail_cnt++;
+#if 1
+                if (loop_cnt >= YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                }
+                loop_cnt++;
+#elif 1
+                jimi_wsleep(0);
+                //jimi_mm_pause();
+                //jimi_mm_pause();
+#else
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+#endif
             }
         }
     }
@@ -347,6 +432,9 @@ RingQueue_pop_task(void *arg)
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
             }
+            else {
+                fail_cnt++;
+            }
         }
     }
     else if (funcType == 5) {
@@ -358,6 +446,9 @@ RingQueue_pop_task(void *arg)
                 cnt++;
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
+            }
+            else {
+                fail_cnt++;
             }
         }
     }
@@ -371,6 +462,9 @@ RingQueue_pop_task(void *arg)
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
             }
+            else {
+                fail_cnt++;
+            }
         }
     }
     else {
@@ -382,6 +476,9 @@ RingQueue_pop_task(void *arg)
                 cnt++;
                 if (cnt >= MAX_POP_MSG_LENGTH)
                     break;
+            }
+            else {
+                fail_cnt++;
             }
         }
     }
@@ -418,6 +515,8 @@ RingQueue_pop_task(void *arg)
     jimi_fetch_and_add64(&pop_cycles, read_rdtsc() - start);
     //pop_total += cnt;
     jimi_fetch_and_add32(&pop_total, cnt);
+    //pop_fail_total += cnt;
+    jimi_fetch_and_add32(&pop_fail_total, fail_cnt);
 
     return NULL;
 }
@@ -535,7 +634,7 @@ pop_task(void *arg)
     struct msg_t **record_list;
     uint64_t start;
     int idx;
-    unsigned int cnt;
+    unsigned int cnt, fail_cnt;
 
     idx = 0;
     q = NULL;
@@ -553,6 +652,7 @@ pop_task(void *arg)
         free(thread_arg);
 
     cnt = 0;
+    fail_cnt = 0;
     record_list = &popmsg_list[idx][0];
     //record_list = &popmsg_list[idx * MAX_POP_MSG_LENGTH];
     start = read_rdtsc();
@@ -565,12 +665,17 @@ pop_task(void *arg)
             if (cnt >= MAX_POP_MSG_LENGTH)
                 break;
         }
+        else {
+            fail_cnt++;
+        }
     }
 
     //pop_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&pop_cycles, read_rdtsc() - start);
     //pop_total += cnt;
     jimi_fetch_and_add32(&pop_total, cnt);
+    //pop_fail_total += cnt;
+    jimi_fetch_and_add32(&pop_fail_total, fail_cnt);
 
     return NULL;
 }
@@ -822,7 +927,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
-    printf("pop  total: %u\n", pop_total);
+    printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
     if (pop_total == 0)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
@@ -923,7 +1028,7 @@ q3_test(void)
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
-    printf("pop  total: %u\n", pop_total);
+    printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
     if (pop_total == 0)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
@@ -1137,6 +1242,8 @@ main(int argn, char * argv[])
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
   #if defined(USE_FUNC_TYPE) && (USE_FUNC_TYPE != 0)
     //RingQueue_UnitTest();
+
+    //RingQueue_Test(3, true);
 
     RingQueue_Test(4, true);    // 使用pthread_mutex_t, 调用RingQueue.mutex_push().
 

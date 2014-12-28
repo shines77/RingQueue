@@ -544,7 +544,8 @@ inline
 int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
 {
     index_type head, tail, next;
-    uint32_t loop_count, yield_cnt, pause_cnt, spin_count;
+    int32_t pause_cnt;
+    uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     Jimi_ReadWriteBarrier();
@@ -557,10 +558,10 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
        atomic_exchange.  For the subsequent tries we use
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
-        loop_count = 1;
+        loop_count = 0;
         spin_count = 1;
         do {
-            if (loop_count <= YIELD_THRESHOLD) {
+            if (loop_count < YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                     //jimi_mm_pause();
@@ -593,6 +594,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
                 else {
                     if (!jimi_yield()) {
                         jimi_wsleep(0);
+                        //jimi_mm_pause();
                         //jimi_mm_pause();
                     }
                 }
@@ -628,7 +630,8 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
 {
     index_type head, tail, next;
     value_type item;
-    uint32_t loop_count, yield_cnt, pause_cnt, spin_count;
+    int32_t pause_cnt;
+    uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
     Jimi_ReadWriteBarrier();
@@ -641,10 +644,10 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
        atomic_exchange.  For the subsequent tries we use
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
-        loop_count = 1;
+        loop_count = 0;
         spin_count = 1;
         do {
-            if (loop_count <= YIELD_THRESHOLD) {
+            if (loop_count < YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                     //jimi_mm_pause();
@@ -677,6 +680,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
                 else {
                     if (!jimi_yield()) {
                         jimi_wsleep(0);
+                        //jimi_mm_pause();
                         //jimi_mm_pause();
                     }
                 }

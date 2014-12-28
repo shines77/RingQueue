@@ -41,7 +41,7 @@
 
 /// 是否运行q3.h的测试代码
 #ifndef USE_DOUBAN_QUEUE
-#define USE_DOUBAN_QUEUE        1
+#define USE_DOUBAN_QUEUE        0
 #endif
 
 /// 是否测试所有RingQueue测试, 或是仅测试 RINGQUEUE_LOCK_TYPE 指定类型的测试
