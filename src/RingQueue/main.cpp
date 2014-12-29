@@ -240,10 +240,52 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
+    else if (funcType == 6) {
+        // 细粒度的通用型spin_mutex自旋锁
+        for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
+            loop_cnt = 0;
+            while (queue->spin3_push(msg) == -1) {
+#if 0
+                if (loop_cnt >= YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                }
+                loop_cnt++;
+#elif 1
+                jimi_wsleep(0);
+                //jimi_mm_pause();
+                //jimi_mm_pause();
+#else
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+#endif
+                fail_cnt++;
+            };
+            msg++;
+        }
+    }
     else if (funcType == 9) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         for (i = 0; i < MAX_PUSH_MSG_LENGTH; i++) {
-            while (queue->spin3_push(msg) == -1) {
+            while (queue->spin9_push(msg) == -1) {
                 fail_cnt++;
             };
             msg++;
@@ -272,8 +314,10 @@ RingQueue_push_task(void *arg)
         while (queue->mutex_push(msg) == -1) { fail_cnt++; };
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 5)
         while (push(q, (void *)msg) == -1) { fail_cnt++; };
-#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 6)
         while (queue->spin3_push(msg) == -1) { fail_cnt++; };
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+        while (queue->spin9_push(msg) == -1) { fail_cnt++; };
 #else
         while (queue->push(msg) == -1) { fail_cnt++; };
 #endif
@@ -452,10 +496,59 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
+    else if (funcType == 6) {
+        // 细粒度的通用型spin_mutex自旋锁
+        loop_cnt = 0;
+        while (true) {
+            msg = (msg_t *)queue->spin3_pop();
+            if (msg != NULL) {
+                *record_list++ = (struct msg_t *)msg;
+                loop_cnt = 0;
+                cnt++;
+                if (cnt >= MAX_POP_MSG_LENGTH)
+                    break;
+            }
+            else {
+                fail_cnt++;
+#if 0
+                if (loop_cnt >= YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                }
+                loop_cnt++;
+#elif 1
+                jimi_wsleep(0);
+                //jimi_mm_pause();
+                //jimi_mm_pause();
+#else
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+                jimi_mm_pause();
+#endif
+            }
+        }
+    }
     else if (funcType == 9) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         while (true) {
-            msg = (msg_t *)queue->spin3_pop();
+            msg = (msg_t *)queue->spin9_pop();
             if (msg != NULL) {
                 *record_list++ = (struct msg_t *)msg;
                 cnt++;
@@ -496,8 +589,10 @@ RingQueue_pop_task(void *arg)
         msg = (msg_t *)queue->mutex_pop();
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 5)
         msg = (msg_t *)pop(q);
-#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 6)
         msg = (msg_t *)queue->spin3_pop();
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
+        msg = (msg_t *)queue->spin9_pop();
 #else
         msg = (msg_t *)queue->pop();
 #endif
@@ -862,9 +957,13 @@ RingQueue_Test(int funcType, bool bContinue = true)
         // 豆瓣上q3.h的原版文件
         printf("This is DouBan's q3.h test: (%d)\n", funcType);
     }
+    else if (funcType == 6) {
+        // 细粒度的通用型spin_mutex自旋锁
+        printf("This is RingQueue.spin3_push() test: (%d)\n", funcType);
+    }
     else if (funcType == 9) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
-        printf("This is RingQueue.spin3_push() test (maybe deadlock): (%d)\n", funcType);
+        printf("This is RingQueue.spin9_push() test (maybe deadlock): (%d)\n", funcType);
     }
     else {
         // 豆瓣上q3.h的lock-free改良型方案
@@ -883,8 +982,10 @@ RingQueue_Test(int funcType, bool bContinue = true)
     printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 5)
     printf("This is DouBan's q3.h test: (%d)\n", funcType);
+#elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 6)
+    printf("This is RingQueue.spin3_push() test: (%d)\n", funcType);
 #elif defined(RINGQUEUE_LOCK_TYPE) && (RINGQUEUE_LOCK_TYPE == 9)
-    printf("This is RingQueue.spin3_push() test (maybe deadlock): (%d)\n", funcType);
+    printf("This is RingQueue.spin9_push() test (maybe deadlock): (%d)\n", funcType);
 #else
     printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
 #endif
@@ -1249,7 +1350,8 @@ main(int argn, char * argv[])
 
     RingQueue_Test(1, true);    // 使用自旋锁, 调用RingQueue.spin_push().
     RingQueue_Test(2, true);    //             调用RingQueue.spin1_push().
-    RingQueue_Test(3, bConti);  //             调用RingQueue.spin2_push().
+    RingQueue_Test(3, true);    //             调用RingQueue.spin2_push().
+    RingQueue_Test(6, bConti);  //             调用RingQueue.spin3_push().
   #else
     // 根据指定的 RINGQUEUE_LOCK_TYPE 执行RingQueue相应的push()和pop()函数
     RingQueue_Test(RINGQUEUE_LOCK_TYPE, bConti);

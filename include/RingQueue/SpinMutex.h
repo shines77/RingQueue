@@ -156,10 +156,10 @@ void SpinMutex<Helper>::lock()
        atomic_exchange.  For the subsequent tries we use
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&core.Status, kLocked) != kUnlocked) {
-        loop_count = 1;
+        loop_count = 0;
         spin_count = kSpinCount;
         do {
-            if (loop_count <= YIELD_THRESHOLD) {
+            if (loop_count < YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                 }

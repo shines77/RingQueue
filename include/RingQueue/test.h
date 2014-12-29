@@ -96,20 +96,26 @@
 extern "C" {
 #endif
 
-typedef
-struct msg_t {
+struct msg_t
+{
     uint64_t dummy;
-} msg_t;
+};
 
-typedef
-struct spin_mutex_t {
+typedef struct msg_t msg_t;
+
+struct spin_mutex_t
+{
     volatile char padding1[CACHE_LINE_SIZE];
     volatile uint32_t locked;
+    volatile char padding2[CACHE_LINE_SIZE - 1 * sizeof(uint32_t)];
     volatile uint32_t spin_counter;
     volatile uint32_t recurse_counter;
     volatile uint32_t thread_id;
-    volatile char padding2[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
-} spin_mutex_t;
+    volatile uint32_t reserve;
+    volatile char padding3[CACHE_LINE_SIZE - 4 * sizeof(uint32_t)];
+};
+
+typedef struct spin_mutex_t spin_mutex_t;
 
 #ifdef __cplusplus
 }

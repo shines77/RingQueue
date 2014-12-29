@@ -143,6 +143,9 @@ public:
     int spin3_push(T * item);
     T * spin3_pop();
 
+    int spin9_push(T * item);
+    T * spin9_pop();
+
     int mutex_push(T * item);
     T * mutex_pop();
 
@@ -192,9 +195,9 @@ void RingQueueBase<T, Capcity, CoreTy>::init(bool bInitHead /* = false */)
     spin_mutex.spin_counter = MUTEX_MAX_SPIN_COUNT;
     spin_mutex.recurse_counter = 0;
     spin_mutex.thread_id = 0;
+    spin_mutex.reserve = 0;
 
     // Initilized mutex
-    //uint32_t spin_count = 1;
     pthread_mutex_init(&queue_mutex, NULL);
 }
 
@@ -449,7 +452,6 @@ int RingQueueBase<T, Capcity, CoreTy>::spin1_push(T * item)
             if (spin_counter <= max_spin_cnt) {
                 for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
-                    //jimi_mm_pause();
                 }
                 spin_counter *= 2;
             }
@@ -506,7 +508,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin1_pop()
             if (spin_counter <= max_spin_cnt) {
                 for (pause_cnt = spin_counter; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
-                    //jimi_mm_pause();
                 }
                 spin_counter *= 2;
             }
@@ -564,7 +565,6 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
             if (loop_count < YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
-                    //jimi_mm_pause();
                 }
                 spin_count *= 2;
             }
@@ -594,7 +594,6 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
                 else {
                     if (!jimi_yield()) {
                         jimi_wsleep(0);
-                        //jimi_mm_pause();
                         //jimi_mm_pause();
                     }
                 }
@@ -650,7 +649,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
             if (loop_count < YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
-                    //jimi_mm_pause();
                 }
                 spin_count *= 2;
             }
@@ -680,7 +678,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
                 else {
                     if (!jimi_yield()) {
                         jimi_wsleep(0);
-                        //jimi_mm_pause();
                         //jimi_mm_pause();
                     }
                 }
@@ -715,6 +712,181 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
 int RingQueueBase<T, Capcity, CoreTy>::spin3_push(T * item)
+{
+    index_type head, tail, next;
+    int32_t pause_cnt;
+    uint32_t loop_count, yield_cnt, spin_count;
+    static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
+
+    Jimi_ReadWriteBarrier();
+
+    /* atomic_exchange usually takes less instructions than
+       atomic_compare_and_exchange.  On the other hand,
+       atomic_compare_and_exchange potentially generates less bus traffic
+       when the lock is locked.
+       We assume that the first try mostly will be successful, and we use
+       atomic_exchange.  For the subsequent tries we use
+       atomic_compare_and_exchange.  */
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        loop_count = 0;
+        spin_count = 1;
+        do {
+            do {
+                if (loop_count < YIELD_THRESHOLD) {
+                    for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                        //jimi_mm_pause();
+                    }
+                    spin_count *= 2;
+                }
+                else {
+                    yield_cnt = loop_count - YIELD_THRESHOLD;
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+                    if ((yield_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+#else
+                    if ((yield_cnt & 63) == 63) {
+  #if !(defined(_M_X64) || defined(_WIN64))
+                        jimi_wsleep(1);
+  #else
+                        jimi_wsleep(1);
+  #endif  /* !(_M_X64 || _WIN64) */
+                    }
+                    else if ((yield_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+#endif
+                }
+                loop_count++;
+                //jimi_mm_pause();
+            } while (spin_mutex.locked != 0U);
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        Jimi_ReadWriteBarrier();
+        spin_mutex.locked = 0;
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    core.queue[head & kMask] = item;
+
+    Jimi_ReadWriteBarrier();
+
+    spin_mutex.locked = 0;
+
+    return 0;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+T * RingQueueBase<T, Capcity, CoreTy>::spin3_pop()
+{
+    index_type head, tail, next;
+    value_type item;
+    int32_t pause_cnt;
+    uint32_t loop_count, yield_cnt, spin_count;
+    static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
+
+    Jimi_ReadWriteBarrier();
+
+    /* atomic_exchange usually takes less instructions than
+       atomic_compare_and_exchange.  On the other hand,
+       atomic_compare_and_exchange potentially generates less bus traffic
+       when the lock is locked.
+       We assume that the first try mostly will be successful, and we use
+       atomic_exchange.  For the subsequent tries we use
+       atomic_compare_and_exchange.  */
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        loop_count = 0;
+        spin_count = 1;
+        do {
+            do {
+                if (loop_count < YIELD_THRESHOLD) {
+                    for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                        //jimi_mm_pause();
+                    }
+                    spin_count *= 2;
+                }
+                else {
+                    yield_cnt = loop_count - YIELD_THRESHOLD;
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+                    if ((yield_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+#else
+                    if ((yield_cnt & 63) == 63) {
+  #if !(defined(_M_X64) || defined(_WIN64))
+                        jimi_wsleep(1);
+  #else
+                        jimi_wsleep(1);
+  #endif  /* !(_M_X64 || _WIN64) */
+                    }
+                    else if ((yield_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+#endif
+                }
+                loop_count++;
+                //jimi_mm_pause();
+            } while (spin_mutex.locked != 0U);
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        Jimi_ReadWriteBarrier();
+        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+        spin_mutex.locked = 0;
+        return (value_type)NULL;
+    }
+    next = tail + 1;
+    core.info.tail = next;
+
+    item = core.queue[tail & kMask];
+
+    Jimi_ReadWriteBarrier();
+
+    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
+    spin_mutex.locked = 0;
+
+    return item;
+}
+
+template <typename T, uint32_t Capcity, typename CoreTy>
+inline
+int RingQueueBase<T, Capcity, CoreTy>::spin9_push(T * item)
 {
     index_type head, tail, next;
     int cnt;
@@ -765,7 +937,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin3_push(T * item)
 
 template <typename T, uint32_t Capcity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capcity, CoreTy>::spin3_pop()
+T * RingQueueBase<T, Capcity, CoreTy>::spin9_pop()
 {
     index_type head, tail, next;
     value_type item;
