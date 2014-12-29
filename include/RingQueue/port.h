@@ -110,12 +110,21 @@
 
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     InterlockedCompareExchange((volatile LONG *)(destPtr),              \
-                            (uint32_t)(newValue), (uint32_t)(oldValue))
+                            (LONG)(newValue), (LONG)(oldValue))
+
+#define jimi_val_compare_and_swap64(destPtr, oldValue, newValue)        \
+    InterlockedCompareExchange64((volatile LONG64 *)(destPtr),          \
+                            (LONG64)(newValue), (LONG64)(oldValue))
 
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
     (InterlockedCompareExchange((volatile LONG *)(destPtr),             \
-                            (uint32_t)(newValue), (uint32_t)(oldValue)) \
-                                == (uint32_t)(oldValue))
+                            (LONG)(newValue), (LONG)(oldValue))         \
+                                == (LONG)(oldValue))
+
+#define jimi_bool_compare_and_swap64(destPtr, oldValue, newValue)       \
+    (InterlockedCompareExchange((volatile LONG64 *)(destPtr),           \
+                            (LONG64)(newValue), (LONG64)(oldValue))     \
+                                == (LONG64)(oldValue))
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     InterlockedExchange((volatile LONG *)(destPtr), (uint32_t)(newValue))
