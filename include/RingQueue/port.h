@@ -179,9 +179,17 @@
     __internal_val_compare_and_swap32((volatile uint32_t *)(destPtr),   \
                                 (uint32_t)(oldValue), (uint32_t)(newValue))
 
+#define jimi_val_compare_and_swap64(destPtr, oldValue, newValue)        \
+    __internal_val_compare_and_swap64((volatile uint64_t *)(destPtr),   \
+                                (uint64_t)(oldValue), (uint64_t)(newValue))
+
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
     __internal_bool_compare_and_swap32((volatile uint32_t *)(destPtr),  \
                                 (uint32_t)(oldValue), (uint32_t)(newValue))
+
+#define jimi_bool_compare_and_swap64(destPtr, oldValue, newValue)       \
+    __internal_bool_compare_and_swap64((volatile uint64_t *)(destPtr),  \
+                                (uint64_t)(oldValue), (uint64_t)(newValue))
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     __internal_lock_test_and_set32((volatile uint32_t *)(destPtr),      \
@@ -243,9 +251,34 @@ uint32_t __internal_val_compare_and_swap32(volatile uint32_t *destPtr,
 }
 
 static JIMIC_INLINE
+uint64_t __internal_val_compare_and_swap64(volatile uint64_t *destPtr,
+                                           uint64_t oldValue,
+                                           uint64_t newValue)
+{
+    uint64_t origValue = *destPtr;
+    if (*destPtr == oldValue) {
+        *destPtr = newValue;
+    }
+    return origValue;
+}
+
+static JIMIC_INLINE
 bool __internal_bool_compare_and_swap32(volatile uint32_t *destPtr,
                                         uint32_t oldValue,
                                         uint32_t newValue)
+{
+    if (*destPtr == oldValue) {
+        *destPtr = newValue;
+        return 1;
+    }
+    else
+        return 0;
+}
+
+static JIMIC_INLINE
+bool __internal_bool_compare_and_swap64(volatile uint64_t *destPtr,
+                                        uint64_t oldValue,
+                                        uint64_t newValue)
 {
     if (*destPtr == oldValue) {
         *destPtr = newValue;
