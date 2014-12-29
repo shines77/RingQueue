@@ -134,9 +134,23 @@
     __sync_val_compare_and_swap((volatile uint32_t *)(destPtr),         \
                             (uint32_t)(oldValue), (uint32_t)(newValue))
 
+#define jimi_val_compare_and_swap64(destPtr, oldValue, newValue)        \
+    __sync_val_compare_and_swap((volatile uint64_t *)(destPtr),         \
+                            (uint64_t)(oldValue), (uint64_t)(newValue))
+
+#define jimi_val_compare_and_swap(destPtr, oldValue, newValue)          \
+    __sync_val_compare_and_swap((destPtr), (oldValue), (newValue))
+
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
     __sync_bool_compare_and_swap((volatile uint32_t *)(destPtr),        \
                             (uint32_t)(oldValue), (uint32_t)(newValue))
+
+#define jimi_bool_compare_and_swap64(destPtr, oldValue, newValue)       \
+    __sync_bool_compare_and_swap((volatile uint64_t *)(destPtr),        \
+                            (uint64_t)(oldValue), (uint64_t)(newValue))
+
+#define jimi_bool_compare_and_swap(destPtr, oldValue, newValue)         \
+    __sync_bool_compare_and_swap((destPtr), (oldValue), (newValue))
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     __sync_lock_test_and_set((volatile uint32_t *)(destPtr),            \
