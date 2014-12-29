@@ -126,7 +126,9 @@
 #define jimi_fetch_and_add64(destPtr, addValue)                         \
     InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), (uint64_t)(addValue))
 
-#elif defined(__GUNC__) || defined(__linux__) || defined(__CYGWIN__) || defined(__MINGW32__)
+#elif defined(__GUNC__) || defined(__linux__) || defined(__clang__) \
+    || defined(__CLANG__) || defined(__APPLE__) || defined(__CYGWIN__) \
+    || defined(__MINGW32__)
 
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     __sync_val_compare_and_swap((volatile uint32_t *)(destPtr),         \
@@ -167,8 +169,8 @@
                                 (uint32_t)(addValue))
 
 #define jimi_fetch_and_add64(destPtr, addValue)                         \
-    __internal_fetch_and_add64((volatile uint32_t *)(destPtr),          \
-                                (uint32_t)(addValue))
+    __internal_fetch_and_add64((volatile uint64_t *)(destPtr),          \
+                                (uint64_t)(addValue))
 
 #endif  /* defined(_MSC_VER) || defined(__INTER_COMPILER) */
 

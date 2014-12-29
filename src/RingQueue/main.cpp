@@ -1025,6 +1025,16 @@ RingQueue_Test(int funcType, bool bContinue = true)
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
 #if defined(DISPLAY_PUSH_POP_DATA) && (DISPLAY_PUSH_POP_DATA != 0)
+  #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__)
+    printf("\n");
+    printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
+    printf("push cycles/msg: %u\n", (uint32_t)(push_cycles / MSG_TOTAL_CNT));
+    printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
+    if (pop_total == 0)
+        printf("pop  cycles/msg: %u\n", 0UL);
+    else
+        printf("pop  cycles/msg: %u\n", (uint32_t)(pop_cycles / pop_total));
+  #else
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
@@ -1033,6 +1043,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
+  #endif
 #endif  /* DISPLAY_PUSH_POP_DATA */
 
     //printf("---------------------------------------------------------------\n");
@@ -1126,6 +1137,16 @@ q3_test(void)
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
 #if defined(DISPLAY_PUSH_POP_DATA) && (DISPLAY_PUSH_POP_DATA != 0)
+  #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__)
+    printf("\n");
+    printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
+    printf("push cycles/msg: %u\n", (uint32_t)(push_cycles / MSG_TOTAL_CNT));
+    printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
+    if (pop_total == 0)
+        printf("pop  cycles/msg: %u\n", 0UL);
+    else
+        printf("pop  cycles/msg: %u\n", (uint32_t)(pop_cycles / pop_total));
+  #else
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MSG_TOTAL_CNT);
@@ -1134,6 +1155,7 @@ q3_test(void)
         printf("pop  cycles/msg: %"PRIuFAST64"\n", 0ULL);
     else
         printf("pop  cycles/msg: %"PRIuFAST64"\n", pop_cycles / pop_total);
+  #endif
 #endif  /* DISPLAY_PUSH_POP_DATA */
 
     printf("\n");
