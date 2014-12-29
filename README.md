@@ -3,5 +3,5 @@ RingQueue
 
 A lock-free(or spin-lock) Queue implemented by RingBuffer.
 
-Ò»¸öÓÃRingBufferÊµÏÖµÄÎŞËø¶ÓÁĞ(»ò×ÔĞıËø¶ÓÁĞ).
+ä¸€ä¸ªç”¨RingBufferå®ç°çš„æ— é”é˜Ÿåˆ—(æˆ–è‡ªæ—‹é”é˜Ÿåˆ—).
 

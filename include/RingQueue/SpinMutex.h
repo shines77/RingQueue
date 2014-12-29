@@ -207,7 +207,7 @@ void SpinMutex<Helper>::lock()
                 else {
                     // Linux下面, 因为jimi_yield()和jimi_wsleep(0)等价, 所以可以省略jimi_wsleep(0)部分
                     if (kUseYield || (SLEEP_1_INTERVAL != 0)) {
-                        jimi_yield()
+                        jimi_yield();
                     }
                 }
 #else
