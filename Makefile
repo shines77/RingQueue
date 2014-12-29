@@ -39,7 +39,7 @@ _RPATH = -Wl,-rpath,$(1)
 RPATH = $(if $(1),$(call _RPATH,$(1)))
 
 header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include/RingQueue/get_char.h \
-    include/RingQueue/mq.h include/RingQueue/port.h include/RingQueue/q.h include/RingQueue/q3.h \
+    include/RingQueue/mq.h include/RingQueue/port.h include/RingQueue/q3.h \
     include/RingQueue/RingQueue.h include/RingQueue/sleep.h include/RingQueue/sys_timer.h \
     include/RingQueue/test.h include/RingQueue/vs_inttypes.h include/RingQueue/vs_stdbool.h \
     include/RingQueue/vs_stdint.h include/RingQueue/msvc/inttypes.h include/RingQueue/msvc/stdbool.h \
@@ -69,7 +69,7 @@ BINS := $(srcroot)bin/pprof $(objroot)bin/RingQueue.sh
 
 C_HDRS := $(objroot)include/RingQueue/console.h $(objroot)include/RingQueue/dump_mem.h \
 	$(objroot)include/RingQueue/get_char.h $(objroot)include/RingQueue/mq.h \
-	$(objroot)include/RingQueue/port.h $(objroot)include/RingQueue/q.h \
+	$(objroot)include/RingQueue/port.h \
 	$(objroot)include/RingQueue/q3.h $(objroot)include/RingQueue/RingQueue.h \
 	$(objroot)include/RingQueue/sleep.h $(objroot)include/RingQueue/sys_timer.h \
 	$(objroot)include/RingQueue/test.h $(objroot)include/RingQueue/vs_inttypes.h \

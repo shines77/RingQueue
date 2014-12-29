@@ -1075,7 +1075,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
 
     qfree(q);
 
-    // 如果不需要"press any key to continue..."提示则直接退出
+    // if do not need "press any key to continue..." prompt, exit to function directly.
     if (!bContinue) {
         printf("---------------------------------------------------------------\n\n");
 
@@ -1316,33 +1316,40 @@ display_test_info(void)
 #endif
 }
 
-void SpinMutex_Test(void)
+void SpinMutex_Test(bool bReadKey = false)
 {
     SpinMutex<DefaultSMHelper> spinMutex2;
 
     typedef SpinMutexHelper<
-        5,      // _YieldThreshold, The threshold of enter yield(), the spin loop times.
-        16,     // _SpinCount, The initial value of spin counter.
+        1,      // _YieldThreshold, The threshold of enter yield(), the spin loop times.
+        2,      // _SpinCountInitial, The initial value of spin counter.
         2,      // _A
         1,      // _B
         0,      // _C, Next loop: spin_count = spin_count * _A / _B + _C;
-        true,   // _UseYield? Whether use yield() function in loop.
+        4,      // _Sleep_0_Interval, After how many yields should we Sleep(0)?
+        32,     // _Sleep_1_Interval, After how many yields should we Sleep(1)?
+        true,   // _UseYieldProcessor? Whether use jimi_yield() function in loop.
         false   // _NeedReset? After run Sleep(1), reset the loop_count if need.
     > MySpinMutexHelper;
 
     SpinMutex<MySpinMutexHelper> spinMutex;
 
     spinMutex.lock();
+    printf(" ... ");
+    spinMutex.spinWait(4000);
+    printf(" ... ");
     spinMutex.unlock();
 
     spinMutex.lock();
-    spinMutex.unlock();
-
+    printf(" ... ");
     spinMutex.spinWait(4000);
+    printf(" ... ");
+    spinMutex.unlock();  
 
     printf("\n");
 
-    jimi_console_readkeyln(false, true, false);
+    if (bReadKey)
+        jimi_console_readkeyln(false, true, false);
 }
 
 int
@@ -1383,7 +1390,7 @@ main(int argn, char * argv[])
 
     //RingQueue_Test(0, true);
 
-    //SpinMutex_Test();
+    SpinMutex_Test();
 
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     // 豆瓣上的 q3.h 的修正版

@@ -22,7 +22,7 @@
 #define JIMI_MAX(a, b)          ((a) > (b) ? (a) : (b))
 #endif
 
-#if defined(_WIN64) || defined(_M_X64)
+#if defined(_M_X64) || defined(_WIN64) || defined(_M_AMD64)
 #define JIMI_SIZE_T_SIZEOF      8
 #else
 #define JIMI_SIZE_T_SIZEOF      4
@@ -51,7 +51,7 @@
 #define jimi_mm_pause       _mm_pause
 #endif
 
-#if defined(_MSC_VER) || defined(__INTER_COMPILER)
+#if defined(_MSC_VER) || defined(__INTER_COMPILER) || defined(__ICC)
 
 #ifndef jimi_likely
 #define jimi_likely(x)      (x)
@@ -99,7 +99,7 @@
 
 #endif  /* _MSC_VER */
 
-#if defined(_MSC_VER) || defined(__INTER_COMPILER)
+#if defined(_MSC_VER) || defined(__INTER_COMPILER) || defined(__ICC)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -122,22 +122,22 @@
                                 == (LONG)(oldValue))
 
 #define jimi_bool_compare_and_swap64(destPtr, oldValue, newValue)       \
-    (InterlockedCompareExchange((volatile LONG64 *)(destPtr),           \
+    (InterlockedCompareExchange64((volatile LONG64 *)(destPtr),         \
                             (LONG64)(newValue), (LONG64)(oldValue))     \
                                 == (LONG64)(oldValue))
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
-    InterlockedExchange((volatile LONG *)(destPtr), (uint32_t)(newValue))
+    InterlockedExchange((volatile LONG *)(destPtr), (LONG)(newValue))
 
 #define jimi_fetch_and_add32(destPtr, addValue)                         \
-    InterlockedExchangeAdd((volatile LONG *)(destPtr), (uint32_t)(addValue))
+    InterlockedExchangeAdd((volatile LONG *)(destPtr), (LONG)(addValue))
 
 #define jimi_fetch_and_add64(destPtr, addValue)                         \
-    InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), (uint64_t)(addValue))
+    InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), (LONGLONG)(addValue))
 
-#elif defined(__GUNC__) || defined(__linux__) || defined(__clang__) \
-    || defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__) \
-    || defined(__CYGWIN__) || defined(__MINGW32__)
+#elif defined(__GUNC__) || defined(__linux__) \
+   || defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__) \
+   || defined(__CYGWIN__) || defined(__MINGW32__)
 
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     __sync_val_compare_and_swap((volatile uint32_t *)(destPtr),         \
@@ -205,13 +205,15 @@
 
 #endif  /* defined(_MSC_VER) || defined(__INTER_COMPILER) */
 
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__CYGWIN__)
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)  || defined(__ICC) \
+ || defined(__MINGW32__) || defined(__CYGWIN__)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include "msvc/targetver.h"
 #include <windows.h>
-#elif defined(__linux__) || defined(__GUNC__)
+#elif defined(__linux__) || defined(__GUNC__) \
+   || defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__)
 #include <unistd.h>
 #endif
 
@@ -222,17 +224,22 @@ extern "C" {
 static JIMIC_INLINE
 int jimi_get_processor_num(void)
 {
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__CYGWIN__)
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)  || defined(__ICC) \
+ || defined(__MINGW32__) || defined(__CYGWIN__)
+
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     return si.dwNumberOfProcessors;
-#elif defined(__linux__) || defined(__GUNC__) || defined(__clang__) \
-      defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__)
+
+#elif defined(__linux__) || defined(__GUNC__) \
+   || defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__)
+
     int nprocs = -1;
   #ifdef _SC_NPROCESSORS_ONLN
     nprocs = sysconf(_SC_NPROCESSORS_ONLN);
   #endif
     return nprocs;
+
 #else
     return 1;
 #endif

@@ -33,6 +33,8 @@
 #define JIMI_CACHE_LINE_SIZE    64
 #endif
 
+#define SPINMUTEX_DEFAULT_SPIN_COUNT    4000
+
 namespace jimi {
 
 ///////////////////////////////////////////////////////////////////
@@ -48,25 +50,39 @@ struct SpinMutexCore
     volatile char paddding2[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
 };
 
+typedef struct SpinMutexYieldInfo SpinMutexYieldInfo;
+
+struct SpinMutexYieldInfo
+{
+    uint32_t loop_count;
+    uint32_t spin_count;
+};
+
 ///////////////////////////////////////////////////////////////////
 // struct SpinMutexHelper<>
 ///////////////////////////////////////////////////////////////////
 
-template < uint32_t _YieldThreshold = 4U,
-           uint32_t _SpinCount = 16U,
-           uint32_t _CoeffA = 2U, uint32_t _CoeffB = 1U, uint32_t _CoeffC = 0U,
-           bool _UseYield = true,
-           bool _NeedReset = false >
+template < uint32_t _YieldThreshold = 1U,
+           uint32_t _SpinCountInitial = 2U,
+           uint32_t _CoeffA = 2U,
+           uint32_t _CoeffB = 1U,
+           uint32_t _CoeffC = 0U,
+           uint32_t _Sleep_0_Interval = 4U,
+           uint32_t _Sleep_1_Interval = 32U,
+           bool     _UseYieldProcessor = true,
+           bool     _NeedReset = false >
 class SpinMutexHelper
 {
 public:
-    static const uint32_t YieldThreshold    = _YieldThreshold;
-    static const uint32_t SpinCount         = _SpinCount;
-    static const uint32_t CoeffA            = _CoeffA;
-    static const uint32_t CoeffB            = _CoeffB;
-    static const uint32_t CoeffC            = _CoeffC;
-    static const bool     UseYield          = _UseYield;
-    static const bool     NeedReset         = _NeedReset;
+    static const uint32_t YieldThreshold        = _YieldThreshold;
+    static const uint32_t SpinCountInitial      = _SpinCountInitial;
+    static const uint32_t CoeffA                = _CoeffA;
+    static const uint32_t CoeffB                = _CoeffB;
+    static const uint32_t CoeffC                = _CoeffC;
+    static const uint32_t Sleep_0_Interval      = _Sleep_0_Interval;
+    static const uint32_t Sleep_1_Interval      = _Sleep_1_Interval;
+    static const bool     UseYieldProcessor     = _UseYieldProcessor;
+    static const bool     NeedReset             = _NeedReset;
 };
 
 typedef SpinMutexHelper<>  DefaultSMHelper;
@@ -80,12 +96,14 @@ typedef SpinMutexHelper<>  DefaultSMHelper;
     SpinMutex<DefaultSMHelper> spinMutex2;
 
     typedef SpinMutexHelper<
-        5,      // _YieldThreshold, The threshold of enter yield(), the spin loop times.
-        16,     // _SpinCount, The initial value of spin counter.
+        1,      // _YieldThreshold, The threshold of enter yield(), the spin loop times.
+        2,      // _SpinCountInitial, The initial value of spin counter.
         2,      // _A
         1,      // _B
         0,      // _C, Next loop: spin_count = spin_count * _A / _B + _C;
-        true,   // _UseYield? Whether use yield() function in loop.
+        4,      // _Sleep_0_Interval, After how many yields should we Sleep(0)?
+        32,     // _Sleep_1_Interval, After how many yields should we Sleep(1)?
+        true,   // _UseYieldProcessor? Whether use jimi_yield() function in loop.
         false   // _NeedReset? After run Sleep(1), reset the loop_count if need.
     > MySpinMutexHelper;
 
@@ -103,17 +121,31 @@ public:
     static const uint32_t kLocked   = 1U;
     static const uint32_t kUnlocked = 0U;
 
-    static const uint32_t kYieldThreshold   = helper_type::YieldThreshold;
-    static const uint32_t kSpinCount        = helper_type::SpinCount;
-    static const uint32_t kA                = helper_type::CoeffA;
-    static const uint32_t kB                = helper_type::CoeffB;
-    static const uint32_t kC                = helper_type::CoeffC;
-    static const bool     kUseYield         = helper_type::UseYield;
-    static const bool     kNeedReset        = helper_type::NeedReset;
+    static const uint32_t kYieldThreshold       = helper_type::YieldThreshold;
+    static const uint32_t kSpinCountInitial     = helper_type::SpinCountInitial;
+    static const uint32_t kA                    = helper_type::CoeffA;
+    static const uint32_t kB                    = helper_type::CoeffB;
+    static const uint32_t kC                    = helper_type::CoeffC;
+    static const uint32_t kSleep_1_Interval     = helper_type::Sleep_1_Interval;
+    static const uint32_t kSleep_0_Interval     = helper_type::Sleep_0_Interval;
+    static const bool     kUseYieldProcessor    = helper_type::UseYieldProcessor;
+    static const bool     kNeedReset            = helper_type::NeedReset;
 
+    /* SPINMUTEX_DEFAULT_SPIN_COUNT = 4000 */
+    static const int32_t  kDefaultSpinCount = SPINMUTEX_DEFAULT_SPIN_COUNT;
+
+    /* kYieldThreshold default value is 1. */
     static const uint32_t YIELD_THRESHOLD  = kYieldThreshold;   // When to switch over to a true yield.
-    static const uint32_t SLEEP_0_INTERVAL = 4;                 // After how many yields should we Sleep(0)?
-    static const uint32_t SLEEP_1_INTERVAL = 64;                // After how many yields should we Sleep(1)?
+    /* kSleep_0_Interval default value is 4. */
+    static const uint32_t SLEEP_0_INTERVAL = kSleep_0_Interval; // After how many yields should we Sleep(0)?
+    /* kSleep_1_Interval default value is 32. */
+#if defined(_M_X64) || defined(_WIN64) || defined(_M_AMD64)
+    // Because Sleep(1) is too slowly in x64, Win64 or AMD64 mode, so we let Sleep(1) interval is double.
+    static const uint32_t SLEEP_1_INTERVAL = kSleep_1_Interval * 2;
+                                                                // After how many yields should we Sleep(1)?
+#else
+    static const uint32_t SLEEP_1_INTERVAL = kSleep_1_Interval; // After how many yields should we Sleep(1)?
+#endif  /* _M_X64 || _WIN64 || _M_AMD64 */
 
 public:
     SpinMutex()  { core.Status = kUnlocked; };
@@ -121,30 +153,32 @@ public:
 
 public:
     void lock();
-    bool tryLock(int nSpinCount = 4000);
+    bool tryLock(int nSpinCount = kDefaultSpinCount);
     void unlock();
 
-    static void spinWait(int nSpinCount = 4000);
+    void yield_reset(SpinMutexYieldInfo &yieldInfo);
+    void yield(SpinMutexYieldInfo &yieldInfo);
+
+    static void spinWait(int nSpinCount = kDefaultSpinCount);
 
 private:
     SpinMutexCore core;
 };
 
-template <typename Helper>
-void SpinMutex<Helper>::spinWait(int nSpinCount /* = 4000 */)
+template <typename SpinHelper>
+inline
+void SpinMutex<SpinHelper>::spinWait(int nSpinCount /* = kDefaultSpinCount(4000) */)
 {
     for (; nSpinCount > 0; --nSpinCount) {
         jimi_mm_pause();
     }
 }
 
-template <typename Helper>
-void SpinMutex<Helper>::lock()
+template <typename SpinHelper>
+void SpinMutex<SpinHelper>::lock()
 {
     uint32_t loop_count, spin_count, yield_cnt;
     int32_t pause_cnt;
-
-    //printf("SpinMutex<T>::lock(): Enter().\n");
 
     Jimi_ReadWriteBarrier();
 
@@ -157,7 +191,7 @@ void SpinMutex<Helper>::lock()
        atomic_compare_and_exchange.  */
     if (jimi_lock_test_and_set32(&core.Status, kLocked) != kUnlocked) {
         loop_count = 0;
-        spin_count = kSpinCount;
+        spin_count = kSpinCountInitial;
         do {
             if (loop_count < YIELD_THRESHOLD) {
                 for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
@@ -172,29 +206,9 @@ void SpinMutex<Helper>::lock()
                 // Yield count is base on YIELD_THRESHOLD
                 yield_cnt = loop_count - YIELD_THRESHOLD;
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-                // Because Sleep(1) is too slowly in MinGW or cygwin, so we do not use it.
-                if ((SLEEP_1_INTERVAL != 0) &&
-                    (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
-                    // If enter Sleep(1) one time, reset the loop_count if need.
-                    if (kNeedReset)
-                        loop_count = 1;
-                }
-                else if ((SLEEP_0_INTERVAL != 0) &&
-                         (yield_cnt % SLEEP_0_INTERVAL) == (SLEEP_0_INTERVAL - 1)) {
-                    // 同下
-                    jimi_wsleep(0);
-                }
-                else {
-                    // 同下
-                    if (kUseYield) {
-                        if (!jimi_yield()) {
-                            jimi_wsleep(0);
-                        }
-                    }
-                }
-#elif defined(__linux__) || defined(__GNUC__)
-                // Because Sleep(1) is too slowly in MinGW or cygwin, so we do not use it.
+#if (defined(__linux__) || defined(__GNUC__) \
+    || defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__)) \
+    && !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(__MSYS__))
                 if ((SLEEP_1_INTERVAL != 0) &&
                     (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
                     // On Windows: 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程.
@@ -202,60 +216,56 @@ void SpinMutex<Helper>::lock()
                     jimi_wsleep(1);
                     // If enter Sleep(1) one time, reset the loop_count if need.
                     if (kNeedReset)
-                        loop_count = 1;
+                        loop_count = 0; 
                 }
                 else {
-                    // Linux下面, 因为jimi_yield()和jimi_wsleep(0)等价, 所以可以省略jimi_wsleep(0)部分
-                    if (kUseYield || (SLEEP_1_INTERVAL != 0)) {
+                    // 在Linux下面, 因为jimi_yield()和jimi_wsleep(0)是等价的, 所以可以省略掉jimi_wsleep(0)部分的代码
+                    if (kUseYieldProcessor || (SLEEP_1_INTERVAL != 0)) {
                         jimi_yield();
                     }
                 }
 #else
                 if ((SLEEP_1_INTERVAL != 0) &&
                     (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
-    #if !(defined(_M_X64) || defined(_WIN64))
-                    // On Windows: 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程.
-                    // On Linux: 等价于usleep(1).
+#if defined(__MINGW32__) || defined(__CYGWIN__) || defined(__MSYS__)
+                    // Because Sleep(1) is too slowly in MinGW or cygwin, so we do not use it.
+                    // Do nothing!!!
+#else
+                    // jimi_wsleep(1) 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程 on Windows.
+                    // jimi_wsleep(1) is equivalent to usleep(1) on Linux.
                     jimi_wsleep(1);
-    #else
-                    jimi_wsleep(1);
-    #endif  /* !(_M_X64 || _WIN64) */
+#endif
                     // If enter Sleep(1) one time, reset the loop_count if need.
                     if (kNeedReset)
-                        loop_count = 1;
+                        loop_count = 0;
                 }
                 else if ((SLEEP_0_INTERVAL != 0) &&
                          (yield_cnt % SLEEP_0_INTERVAL) == (SLEEP_0_INTERVAL - 1)) {
-                    // On Windows: 只切换到跟当前线程优先级别相同的其他线程, 允许切换到其他物理Core的线程.
-                    // On Linux: 因为Linux上的usleep(0)无法实现Windows上的Sleep(0)的效果, 所以这里等价于sched_yield().
+                    //jimi_wsleep(0) on Windows: 只切换到跟当前线程优先级别相同的其他线程, 允许切换到其他物理Core的线程.
+                    //jimi_wsleep(0) on Linux: 因为Linux上的usleep(0)无法实现Windows上的Sleep(0)的效果, 所以这里等价于sched_yield().
                     jimi_wsleep(0);
                 }
                 else {
-                    // On Windows: 只切换到当前线程所在的物理Core中其他线程, 即使别的Core中有合适的等待线程.
-                    // On Linux: sched_yield(), 把当前线程/进程放到等待线程/进程的末尾, 然后切换到等待线程/进程列表中的首个线程/进程.
-                    if (kUseYield) {
-                        // 如果yield()失败, 则直接转入Sleep(0);
+                    // jimi_yield() on Windows: 只切换到当前线程所在的物理Core中其他线程, 即使别的Core中有合适的等待线程.
+                    // jimi_yield() on Linux: sched_yield(), 把当前线程/进程放到等待线程/进程的末尾, 然后切换到等待线程/进程列表中的首个线程/进程.
+                    if (kUseYieldProcessor) {
+                        // if YieldProcessor() failed, then directly enter Sleep(0).
                         if (!jimi_yield()) {
                             jimi_wsleep(0);
                         }
                     }
                 }
-#endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
+#endif  /* defined(__linux__) || defined(__GNUC__) || defined(__clang__) */
             }
             // Just let the code look well
             loop_count++;
-            jimi_mm_pause();
         } while (jimi_val_compare_and_swap32(&core.Status, kUnlocked, kLocked) != kUnlocked);
     }
-
-    //printf("SpinMutex<T>::lock(): Leave().\n");
 }
 
-template <typename Helper>
-bool SpinMutex<Helper>::tryLock(int nSpinCount /* = 4000 */)
+template <typename SpinHelper>
+bool SpinMutex<SpinHelper>::tryLock(int nSpinCount /* = kDefaultSpinCount(4000) */)
 {
-    //printf("SpinMutex<T>::tryLock(): Enter().\n");
-
     Jimi_ReadWriteBarrier();
 
     /* atomic_exchange usually takes less instructions than
@@ -269,25 +279,111 @@ bool SpinMutex<Helper>::tryLock(int nSpinCount /* = 4000 */)
         for (; nSpinCount > 0; --nSpinCount) {
             jimi_mm_pause();
         }
-        bool isLocked = (jimi_val_compare_and_swap32(&core.Status, kUnlocked, kLocked) != kUnlocked);
-        //printf("SpinMutex<T>::tryLock(): Leave().\n");
+        bool isLocked =
+            (jimi_val_compare_and_swap32(&core.Status, kUnlocked, kLocked)
+                                        != kUnlocked);
         return isLocked;
     }
 
-    //printf("SpinMutex<T>::ltryLockock(): Leave().\n");
     return kLocked;
 }
 
 template <typename Helper>
 void SpinMutex<Helper>::unlock()
 {
-    //printf("SpinMutex<T>::unlock(): Enter().\n");
-
     Jimi_ReadWriteBarrier();
 
     core.Status = kUnlocked;
+}
 
-    //printf("SpinMutex<T>::unlock(): Leave().\n");
+template <typename SpinHelper>
+inline
+void SpinMutex<SpinHelper>::yield_reset(SpinMutexYieldInfo &yieldInfo)
+{
+    yieldInfo.loop_count = 0;
+    yieldInfo.spin_count = kSpinCountInitial;
+}
+
+template <typename SpinHelper>
+inline
+void SpinMutex<SpinHelper>::yield(SpinMutexYieldInfo &yieldInfo)
+{
+    uint32_t loop_count, spin_count, yield_cnt;
+    int32_t pause_cnt;
+
+    loop_count = yieldInfo.loop_count;
+    spin_count = yieldInfo.spin_count;
+
+    if (loop_count < YIELD_THRESHOLD) {
+        for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
+            jimi_mm_pause();
+        }
+        if (kB == 0)
+            yieldInfo.spin_count = spin_count + kC;
+        else
+            yieldInfo.spin_count = spin_count * kA / kB + kC;
+    }
+    else {
+        // Yield count is base on YIELD_THRESHOLD
+        yield_cnt = loop_count - YIELD_THRESHOLD;
+
+#if (defined(__linux__) || defined(__GNUC__) \
+|| defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__)) \
+&& !(defined(__MINGW32__) || defined(__CYGWIN__) || defined(__MSYS__))
+        if ((SLEEP_1_INTERVAL != 0) &&
+            (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
+            // On Windows: 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程.
+            // On Linux: 等价于usleep(1).
+            jimi_wsleep(1);
+            // If enter Sleep(1) one time, reset the loop_count if need.
+            if (kNeedReset) {
+                yield_reset(yieldInfo);
+            }
+        }
+        else {
+            // 在Linux下面, 因为jimi_yield()和jimi_wsleep(0)是等价的, 所以可以省略掉jimi_wsleep(0)部分的代码
+            if (kUseYieldProcessor || (SLEEP_1_INTERVAL != 0)) {
+                jimi_yield();
+            }
+        }
+#else
+        if ((SLEEP_1_INTERVAL != 0) &&
+            (yield_cnt % SLEEP_1_INTERVAL) == (SLEEP_1_INTERVAL - 1)) {
+#if defined(__MINGW32__) || defined(__CYGWIN__) || defined(__MSYS__)
+            // Because Sleep(1) is too slowly in MinGW or cygwin, so we do not use it.
+            // Do nothing!!!
+#else
+            // jimi_wsleep(1) 休眠一个时间片, 可以切换到任何物理Core上的任何等待中的线程/进程 on Windows.
+            // jimi_wsleep(1) is equivalent to usleep(1) on Linux.
+            jimi_wsleep(1);
+#endif
+            // If enter Sleep(1) one time, reset the loop_count if need.
+            if (kNeedReset) {
+                yield_reset(yieldInfo);
+            }
+        }
+        else if ((SLEEP_0_INTERVAL != 0) &&
+                    (yield_cnt % SLEEP_0_INTERVAL) == (SLEEP_0_INTERVAL - 1)) {
+            //jimi_wsleep(0) on Windows: 只切换到跟当前线程优先级别相同的其他线程, 允许切换到其他物理Core的线程.
+            //jimi_wsleep(0) on Linux: 因为Linux上的usleep(0)无法实现Windows上的Sleep(0)的效果, 所以这里等价于sched_yield().
+            jimi_wsleep(0);
+        }
+        else {
+            // jimi_yield() on Windows: 只切换到当前线程所在的物理Core中其他线程, 即使别的Core中有合适的等待线程.
+            // jimi_yield() on Linux: sched_yield(), 把当前线程/进程放到等待线程/进程的末尾, 然后切换到等待线程/进程列表中的首个线程/进程.
+            if (kUseYieldProcessor) {
+                // if YieldProcessor() failed, then directly enter Sleep(0).
+                if (!jimi_yield()) {
+                    jimi_wsleep(0);
+                }
+            }
+        }
+#endif  /* defined(__linux__) || defined(__GNUC__) || defined(__clang__) */
+    }
+    // Just let the code look well.
+    loop_count++;
+    // Update loop_count to yieldInfo.
+    yieldInfo.loop_count = loop_count;
 }
 
 }  /* namespace jimi */

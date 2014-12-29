@@ -582,11 +582,7 @@ int RingQueueBase<T, Capcity, CoreTy>::spin2_push(T * item)
                 }
 #else
                 if ((yield_cnt & 63) == 63) {
-  #if !(defined(_M_X64) || defined(_WIN64))
                     jimi_wsleep(1);
-  #else
-                    jimi_wsleep(1);
-  #endif  /* !(_M_X64 || _WIN64) */
                 }
                 else if ((yield_cnt & 3) == 3) {
                     jimi_wsleep(0);
@@ -666,11 +662,7 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin2_pop()
                 }
 #else
                 if ((yield_cnt & 63) == 63) {
-  #if !(defined(_M_X64) || defined(_WIN64))
                     jimi_wsleep(1);
-  #else
-                    jimi_wsleep(1);
-  #endif  /* !(_M_X64 || _WIN64) */
                 }
                 else if ((yield_cnt & 3) == 3) {
                     jimi_wsleep(0);
@@ -735,7 +727,6 @@ int RingQueueBase<T, Capcity, CoreTy>::spin3_push(T * item)
                 if (loop_count < YIELD_THRESHOLD) {
                     for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                         jimi_mm_pause();
-                        //jimi_mm_pause();
                     }
                     spin_count *= 2;
                 }
@@ -822,7 +813,6 @@ T * RingQueueBase<T, Capcity, CoreTy>::spin3_pop()
                 if (loop_count < YIELD_THRESHOLD) {
                     for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                         jimi_mm_pause();
-                        //jimi_mm_pause();
                     }
                     spin_count *= 2;
                 }
