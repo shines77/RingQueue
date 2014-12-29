@@ -311,6 +311,8 @@ void SpinMutex<SpinHelper>::yield(SpinMutexYieldInfo &yieldInfo)
     uint32_t loop_count, spin_count, yield_cnt;
     int32_t pause_cnt;
 
+    Jimi_ReadWriteBarrier();
+
     loop_count = yieldInfo.loop_count;
     spin_count = yieldInfo.spin_count;
 
@@ -382,6 +384,9 @@ void SpinMutex<SpinHelper>::yield(SpinMutexYieldInfo &yieldInfo)
     }
     // Just let the code look well.
     loop_count++;
+
+    Jimi_ReadWriteBarrier();
+
     // Update loop_count to yieldInfo.
     yieldInfo.loop_count = loop_count;
 }
