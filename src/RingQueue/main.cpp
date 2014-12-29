@@ -1285,7 +1285,7 @@ display_test_info(void)
     printf("PUSH_CNT            = %u\n"
            "POP_CNT             = %u\n"
            "MSG_TOTAL_LENGTH    = %u\n", PUSH_CNT, POP_CNT, MSG_TOTAL_LENGTH);
-#if defined(_M_X64) || defined(_WIN64)
+#if defined(_M_X64) || defined(_WIN64) || defined(_M_AMD64) || defined(_M_IA64)
     printf("x64 Mode            = Yes\n");
 #else
     printf("x64 Mode            = No\n");
