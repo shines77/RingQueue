@@ -218,7 +218,8 @@ int jimi_get_processor_num(void)
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     return si.dwNumberOfProcessors;
-#elif defined(__linux__) || defined(__GUNC__)
+#elif defined(__linux__) || defined(__GUNC__) || defined(__clang__) \
+      defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__)
     int nprocs = -1;
   #ifdef _SC_NPROCESSORS_ONLN
     nprocs = sysconf(_SC_NPROCESSORS_ONLN);

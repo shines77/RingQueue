@@ -1372,8 +1372,9 @@ main(int argn, char * argv[])
 
     RingQueue_Test(1, true);    // 使用自旋锁, 调用RingQueue.spin_push().
     RingQueue_Test(2, true);    //             调用RingQueue.spin1_push().
-    RingQueue_Test(3, true);    //             调用RingQueue.spin2_push().
-    RingQueue_Test(6, bConti);  //             调用RingQueue.spin3_push().
+    RingQueue_Test(3, bConti);  //             调用RingQueue.spin2_push().
+
+    //RingQueue_Test(6, bConti);  //             调用RingQueue.spin3_push().
   #else
     // 根据指定的 RINGQUEUE_LOCK_TYPE 执行RingQueue相应的push()和pop()函数
     RingQueue_Test(RINGQUEUE_LOCK_TYPE, bConti);
