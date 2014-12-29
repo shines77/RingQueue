@@ -1025,7 +1025,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
 #if defined(DISPLAY_PUSH_POP_DATA) && (DISPLAY_PUSH_POP_DATA != 0)
-  #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__)
+  #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__)
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %u\n", (uint32_t)(push_cycles / MSG_TOTAL_CNT));
@@ -1137,7 +1137,7 @@ q3_test(void)
     elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
 
 #if defined(DISPLAY_PUSH_POP_DATA) && (DISPLAY_PUSH_POP_DATA != 0)
-  #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__)
+  #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__)
     printf("\n");
     printf("push total: %u + %u\n", MSG_TOTAL_CNT, push_total);
     printf("push cycles/msg: %u\n", (uint32_t)(push_cycles / MSG_TOTAL_CNT));

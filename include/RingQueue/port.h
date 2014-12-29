@@ -127,8 +127,8 @@
     InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), (uint64_t)(addValue))
 
 #elif defined(__GUNC__) || defined(__linux__) || defined(__clang__) \
-    || defined(__CLANG__) || defined(__APPLE__) || defined(__CYGWIN__) \
-    || defined(__MINGW32__)
+    || defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__) \
+    || defined(__CYGWIN__) || defined(__MINGW32__)
 
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
     __sync_val_compare_and_swap((volatile uint32_t *)(destPtr),         \
