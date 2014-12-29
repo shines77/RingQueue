@@ -189,7 +189,6 @@
     <ClInclude Include="..\..\..\include\RingQueue\msvc\stdint.h" />
     <ClInclude Include="..\..\..\include\RingQueue\msvc\targetver.h" />
     <ClInclude Include="..\..\..\include\RingQueue\port.h" />
-    <ClInclude Include="..\..\..\include\RingQueue\q.h" />
     <ClInclude Include="..\..\..\include\RingQueue\q3.h" />
     <ClInclude Include="..\..\..\include\RingQueue\RingQueue.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sleep.h" />

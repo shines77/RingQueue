@@ -21,10 +21,10 @@ struct queue {
 static inline struct queue *
 qinit(void)
 {
-    struct queue *q = malloc(sizeof(*q));
+    struct queue *q = (struct queue *)malloc(sizeof(*q));
 
     bzero(q, sizeof(*q));
-    q->msgs = calloc(sizeof(struct msg *), CNT);
+    q->msgs = (struct msg **)calloc(sizeof(struct msg *), CNT);
 
     return q;
 }

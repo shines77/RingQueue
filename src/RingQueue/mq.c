@@ -20,7 +20,7 @@ struct queue {
 
 struct queue *
 queue_create() {
-	struct queue * q = malloc(sizeof(*q));
+	struct queue * q = (struct queue *)malloc(sizeof(*q));
 	memset(q, 0, sizeof(*q));
 	return q;
 }
@@ -57,7 +57,11 @@ queue_pop(struct queue *q) {
 		if (m == NULL) {
 			return NULL;
 		}
-	} while (!jimi_bool_compare_and_swap32(&q->q[masked], m, NULL));
+#if defined(_M_X64) || defined(_WIN64)
+	} while (!jimi_bool_compare_and_swap64(&q->q[masked], m, NULL));
+#else
+    } while (!jimi_bool_compare_and_swap32(&q->q[masked], m, NULL));
+#endif
 	q->head ++;
 	return m;
 }
