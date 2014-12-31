@@ -22,7 +22,7 @@ CPPFLAGS := -D_REENTRANT -I$(srcroot)include -I$(objroot)include -I$(srcroot)inc
 CFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
 LDFLAGS := 
 EXTRA_LDFLAGS := 
-LIBS := -lpthread -lwinmm
+LIBS := -lpthread
 RPATH_EXTRA := 
 SO := so
 IMPORTLIB := so
@@ -37,6 +37,28 @@ XSLTPROC := /usr/bin/xsltproc
 AUTOCONF := false
 _RPATH = -Wl,-rpath,$(1)
 RPATH = $(if $(1),$(call _RPATH,$(1)))
+
+ifeq ($(OS), Windows_NT)
+    LIBS += -lwinmm
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S), Linux)
+        CCFLAGS += -D LINUX
+    endif
+    ifeq ($(UNAME_S), Darwin)
+        CCFLAGS += -D OSX
+    endif
+    UNAME_P := $(shell uname -p)
+    ifeq ($(UNAME_P), x86_64)
+        CCFLAGS += -D AMD64
+    endif
+    ifneq ($(filter %86, $(UNAME_P)),)
+        CCFLAGS += -D IA32
+    endif
+    ifneq ($(filter arm%, $(UNAME_P)),)
+        CCFLAGS += -D ARM
+    endif
+endif
 
 header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include/RingQueue/get_char.h \
     include/RingQueue/mq.h include/RingQueue/port.h include/RingQueue/q3.h \
