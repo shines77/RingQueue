@@ -206,8 +206,8 @@ RingQueue_push_task(void *arg)
     if (thread_arg)
         free(thread_arg);
 
-#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) && (0) \
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     TIMECAPS tc;
     MMRESULT mm_result, time_result;
     time_result = TIMERR_NOCANDO;
@@ -418,8 +418,8 @@ RingQueue_push_task(void *arg)
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
-#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) && (0) \
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     if (time_result == TIMERR_NOERROR) {
         time_result = timeEndPeriod(tc.wPeriodMin);
     }
@@ -462,8 +462,8 @@ RingQueue_pop_task(void *arg)
     if (thread_arg)
         free(thread_arg);
 
-#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) && (0) \
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     TIMECAPS tc;
     MMRESULT mm_result, time_result;
     time_result = TIMERR_NOCANDO;
@@ -721,8 +721,8 @@ RingQueue_pop_task(void *arg)
     //pop_fail_total += cnt;
     jimi_fetch_and_add32(&pop_fail_total, fail_cnt);
 
-#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) && (0) \
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     if (time_result == TIMERR_NOERROR) {
         time_result = timeEndPeriod(tc.wPeriodMin);
     }
@@ -1394,12 +1394,12 @@ popmsg_list_destory(void)
 }
 
 void
-display_test_info(void)
+display_test_info(int time_noerror)
 {
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     TIMECAPS tc;
-    MMRESULT mm_result, time_result;
+    MMRESULT mm_result;
     time_result = TIMERR_NOCANDO;
     tc.wPeriodMin = 0;
     tc.wPeriodMax = 0;
@@ -1428,8 +1428,8 @@ display_test_info(void)
     printf("USE_THREAD_AFFINITY = No\n");
 #endif
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
-    if (mm_result == MMSYSERR_NOERROR)
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    if ((mm_result == MMSYSERR_NOERROR) && (time_noerror != 0))
         printf("USE_TIME_PERIOD     = Yes (%u)\n", tc.wPeriodMin);
     else
         printf("USE_TIME_PERIOD     = Yes (Failed)\n");
@@ -1503,7 +1503,7 @@ main(int argn, char * argv[])
 #endif
 
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     TIMECAPS tc;
     MMRESULT mm_result, time_result;
     time_result = TIMERR_NOCANDO;
@@ -1536,7 +1536,12 @@ main(int argn, char * argv[])
     test_msg_init();
     popmsg_list_init();
 
-    display_test_info();
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    display_test_info((int)(time_result == TIMERR_NOERROR));
+#else
+    display_test_info(0);
+#endif
 
     //RingQueue_Test(0, true);
 
@@ -1573,7 +1578,7 @@ main(int argn, char * argv[])
     test_msg_destory();
 
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
-    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
     if (time_result == TIMERR_NOERROR) {
         time_result = timeEndPeriod(tc.wPeriodMin);
     }

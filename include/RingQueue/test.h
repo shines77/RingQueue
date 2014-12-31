@@ -5,18 +5,20 @@
 #include "vs_stdint.h"
 
 /// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
-#define QSIZE           (1 << 10)
-#define QMASK           (QSIZE - 1)
+#define QSIZE               (1 << 10)
+/// 下面一行请不要修改, 切记!!! qmask = qsize - 1
+#define QMASK               (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT        4
-#define POP_CNT         4
+#define PUSH_CNT            4
+#define POP_CNT             4
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
+/// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
 #if 1
 #define MSG_TOTAL_LENGTH    8000000
 #else
-#define MSG_TOTAL_LENGTH    80000
+#define MSG_TOTAL_LENGTH    8000
 #endif
 
 /// 等同于MSG_TOTAL_LENGTH
@@ -31,7 +33,7 @@
 /// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
 ///       该选项在虚拟机里最好不要启用, VirtualBox虚拟机只用了一个 CPU核心)
 #ifndef USE_THREAD_AFFINITY
-#define USE_THREAD_AFFINITY     1
+#define USE_THREAD_AFFINITY     0
 #endif
 
 /// 是否设置系统的时间片最小间隔时间, 对Sleep()的精度有影响(0不启用, 1启用, 默认不启用,
