@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="RingQueue" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/gcc/Debug/RingQueue" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/gcc/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-msse" />
+					<Add option="-msse2" />
+					<Add option="-msse3" />
+					<Add option="-D__MMX__" />
+					<Add option="-D__SSE__" />
+					<Add option="-D__SSE2__" />
+					<Add option="-D__SSE3__" />
+					<Add directory="include/RingQueue" />
+					<Add directory="src" />
+				</Compiler>
+				<Linker>
+					<Add library="pthread" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/gcc/Release/RingQueue" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/gcc/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-msse" />
+					<Add option="-msse2" />
+					<Add option="-msse3" />
+					<Add option="-D__MMX__" />
+					<Add option="-D__SSE__" />
+					<Add option="-D__SSE2__" />
+					<Add option="-D__SSE3__" />
+					<Add directory="include/RingQueue" />
+					<Add directory="src" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="pthread" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="include/RingQueue/RingQueue.h" />
+		<Unit filename="include/RingQueue/SpinMutex.h" />
+		<Unit filename="include/RingQueue/console.h" />
+		<Unit filename="include/RingQueue/dump_mem.h" />
+		<Unit filename="include/RingQueue/get_char.h" />
+		<Unit filename="include/RingQueue/mq.h" />
+		<Unit filename="include/RingQueue/msvc/inttypes.h" />
+		<Unit filename="include/RingQueue/msvc/pthread.h" />
+		<Unit filename="include/RingQueue/msvc/sched.h" />
+		<Unit filename="include/RingQueue/msvc/stdbool.h" />
+		<Unit filename="include/RingQueue/msvc/stdint.h" />
+		<Unit filename="include/RingQueue/msvc/targetver.h" />
+		<Unit filename="include/RingQueue/port.h" />
+		<Unit filename="include/RingQueue/q3.h" />
+		<Unit filename="include/RingQueue/sleep.h" />
+		<Unit filename="include/RingQueue/sys_timer.h" />
+		<Unit filename="include/RingQueue/test.h" />
+		<Unit filename="include/RingQueue/vs_inttypes.h" />
+		<Unit filename="include/RingQueue/vs_stdbool.h" />
+		<Unit filename="include/RingQueue/vs_stdint.h" />
+		<Unit filename="src/RingQueue/console.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/dump_mem.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/get_char.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/main.cpp" />
+		<Unit filename="src/RingQueue/mq.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/msvc/pthread.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/msvc/sched.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/sleep.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/RingQueue/sys_timer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
