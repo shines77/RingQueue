@@ -21,7 +21,7 @@
 					<Add option="-D__SSE2__" />
 					<Add option="-D__SSE3__" />
 					<Add directory="include/RingQueue" />
-					<Add directory="src" />
+					<Add directory="src/RingQueue" />
 				</Compiler>
 				<Linker>
 					<Add library="pthread" />
@@ -43,7 +43,7 @@
 					<Add option="-D__SSE2__" />
 					<Add option="-D__SSE3__" />
 					<Add directory="include/RingQueue" />
-					<Add directory="src" />
+					<Add directory="src/RingQueue" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
