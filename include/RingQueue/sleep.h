@@ -10,8 +10,9 @@
 extern "C" {
 #endif
 
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__)
-//__declspec(dllimport) int __stdcall SwitchToThread(void);
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__MINGW32__) || defined(__CYGWIN__)
+__declspec(dllimport) int __stdcall SwitchToThread(void);
+//__declspec(dllimport) void __stdcall Sleep(DWORD);
 #endif
 
 /* Sleep for the platform */

@@ -40,6 +40,55 @@
 //#include <vld.h>
 #include <errno.h>
 
+#if (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+
+#elif defined(__MINGW32__) || defined(__CYGWIN__)
+
+#ifndef MMSYSERR_BASE
+#define MMSYSERR_BASE          0
+#endif
+
+#ifndef TIMERR_BASE
+#define TIMERR_BASE            96
+#endif
+
+/* timer error return values */
+#define TIMERR_NOERROR        (0)                  /* no error */
+#define TIMERR_NOCANDO        (TIMERR_BASE + 1)    /* request not completed */
+#define TIMERR_STRUCT         (TIMERR_BASE + 33)   /* time struct size */
+
+/* general error return values */
+#define MMSYSERR_NOERROR      0                    /* no error */
+#define MMSYSERR_ERROR        (MMSYSERR_BASE + 1)  /* unspecified error */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* timer device capabilities data structure */
+typedef struct timecaps_tag {
+    UINT    wPeriodMin;     /* minimum period supported  */
+    UINT    wPeriodMax;     /* maximum period supported  */
+} TIMECAPS, *PTIMECAPS, *NPTIMECAPS, *LPTIMECAPS;
+
+#ifndef _MMRESULT_
+typedef UINT    MMRESULT;   /* error return code, 0 means no error */
+#define _MMRESULT_
+#endif  /* _MMRESULT_ */
+
+__declspec(dllimport) MMRESULT __stdcall timeGetDevCaps(LPTIMECAPS ptc, UINT cbtc);
+__declspec(dllimport) MMRESULT __stdcall timeBeginPeriod(UINT uPeriod);
+__declspec(dllimport) MMRESULT __stdcall timeEndPeriod(UINT uPeriod);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  /* defined(__MINGW32__) || defined(__CYGWIN__) */
+
 using namespace jimi;
 
 typedef RingQueue<msg_t, QSIZE> RingQueue_t;
@@ -156,6 +205,32 @@ RingQueue_push_task(void *arg)
 
     if (thread_arg)
         free(thread_arg);
+
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    TIMECAPS tc;
+    MMRESULT mm_result, time_result;
+    time_result = TIMERR_NOCANDO;
+    tc.wPeriodMin = 0;
+    tc.wPeriodMax = 0;
+    // See: http://msdn.microsoft.com/zh-cn/dd757627%28v=vs.85%29
+    mm_result = timeGetDevCaps(&tc, sizeof(tc));
+#ifdef _DEBUG
+    printf("wPeriodMin = %u, wPeriodMax = %u\n", tc.wPeriodMin, tc.wPeriodMax);
+#endif
+    if (mm_result == MMSYSERR_NOERROR) {
+        // Returns TIMERR_NOERROR if successful
+        // or TIMERR_NOCANDO if the resolution specified in uPeriod is out of range.
+        // See: http://msdn.microsoft.com/zh-cn/dd757624%28v=vs.85%29
+        time_result = timeBeginPeriod(tc.wPeriodMin);
+#ifdef _DEBUG
+        if (time_result == TIMERR_NOERROR)
+            printf("timeBeginPeriod(%u) = TIMERR_NOERROR\n", tc.wPeriodMin);
+        else
+            printf("timeBeginPeriod(%u) = %u\n", tc.wPeriodMin, time_result);
+#endif
+    }
+#endif
 
     fail_cnt = 0;
     msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_LENGTH];
@@ -343,6 +418,13 @@ RingQueue_push_task(void *arg)
     if (push_total == MSG_TOTAL_CNT)
         quit = 1;
 
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    if (time_result == TIMERR_NOERROR) {
+        time_result = timeEndPeriod(tc.wPeriodMin);
+    }
+#endif
+
     return NULL;
 }
 
@@ -379,6 +461,32 @@ RingQueue_pop_task(void *arg)
 
     if (thread_arg)
         free(thread_arg);
+
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    TIMECAPS tc;
+    MMRESULT mm_result, time_result;
+    time_result = TIMERR_NOCANDO;
+    tc.wPeriodMin = 0;
+    tc.wPeriodMax = 0;
+    // See: http://msdn.microsoft.com/zh-cn/dd757627%28v=vs.85%29
+    mm_result = timeGetDevCaps(&tc, sizeof(tc));
+#ifdef _DEBUG
+    printf("wPeriodMin = %u, wPeriodMax = %u\n", tc.wPeriodMin, tc.wPeriodMax);
+#endif
+    if (mm_result == MMSYSERR_NOERROR) {
+        // Returns TIMERR_NOERROR if successful
+        // or TIMERR_NOCANDO if the resolution specified in uPeriod is out of range.
+        // See: http://msdn.microsoft.com/zh-cn/dd757624%28v=vs.85%29
+        time_result = timeBeginPeriod(tc.wPeriodMin);
+#ifdef _DEBUG
+        if (time_result == TIMERR_NOERROR)
+            printf("timeBeginPeriod(%u) = TIMERR_NOERROR\n", tc.wPeriodMin);
+        else
+            printf("timeBeginPeriod(%u) = %u\n", tc.wPeriodMin, time_result);
+#endif
+    }
+#endif
 
     cnt = 0;
     fail_cnt = 0;
@@ -612,6 +720,13 @@ RingQueue_pop_task(void *arg)
     jimi_fetch_and_add32(&pop_total, cnt);
     //pop_fail_total += cnt;
     jimi_fetch_and_add32(&pop_fail_total, fail_cnt);
+
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    if (time_result == TIMERR_NOERROR) {
+        time_result = timeEndPeriod(tc.wPeriodMin);
+    }
+#endif
 
     return NULL;
 }
@@ -1281,6 +1396,23 @@ popmsg_list_destory(void)
 void
 display_test_info(void)
 {
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    TIMECAPS tc;
+    MMRESULT mm_result, time_result;
+    time_result = TIMERR_NOCANDO;
+    tc.wPeriodMin = 0;
+    tc.wPeriodMax = 0;
+    // See: http://msdn.microsoft.com/zh-cn/dd757627%28v=vs.85%29
+    mm_result = timeGetDevCaps(&tc, sizeof(tc));
+    if (mm_result == MMSYSERR_NOERROR) {
+        // Returns TIMERR_NOERROR if successful
+        // or TIMERR_NOCANDO if the resolution specified in uPeriod is out of range.
+        // See: http://msdn.microsoft.com/zh-cn/dd757624%28v=vs.85%29
+        //time_result = timeBeginPeriod(tc.wPeriodMin);
+    }
+#endif
+
     //printf("\n");
     printf("PUSH_CNT            = %u\n"
            "POP_CNT             = %u\n"
@@ -1294,6 +1426,15 @@ display_test_info(void)
     printf("USE_THREAD_AFFINITY = Yes\n");
 #else
     printf("USE_THREAD_AFFINITY = No\n");
+#endif
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    if (mm_result == MMSYSERR_NOERROR)
+        printf("USE_TIME_PERIOD     = Yes (%u)\n", tc.wPeriodMin);
+    else
+        printf("USE_TIME_PERIOD     = Yes (Failed)\n");
+#else
+    printf("USE_TIME_PERIOD     = No\n");
 #endif
     printf("\n");
 
@@ -1344,7 +1485,7 @@ void SpinMutex_Test(bool bReadKey = false)
     printf(" ... ");
     spinMutex.spinWait(4000);
     printf(" ... ");
-    spinMutex.unlock();  
+    spinMutex.unlock();
 
     printf("\n");
 
@@ -1360,6 +1501,36 @@ main(int argn, char * argv[])
 #else
     bool bConti = false;
 #endif
+
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    TIMECAPS tc;
+    MMRESULT mm_result, time_result;
+    time_result = TIMERR_NOCANDO;
+    tc.wPeriodMin = 0;
+    tc.wPeriodMax = 0;
+    // See: http://msdn.microsoft.com/zh-cn/dd757627%28v=vs.85%29
+    mm_result = timeGetDevCaps(&tc, sizeof(tc));
+#ifdef _DEBUG
+    printf("wPeriodMin = %u, wPeriodMax = %u\n", tc.wPeriodMin, tc.wPeriodMax);
+#endif
+    if (mm_result == MMSYSERR_NOERROR) {
+        // Returns TIMERR_NOERROR if successful
+        // or TIMERR_NOCANDO if the resolution specified in uPeriod is out of range.
+        // See: http://msdn.microsoft.com/zh-cn/dd757624%28v=vs.85%29
+        time_result = timeBeginPeriod(tc.wPeriodMin);
+#ifdef _DEBUG
+        if (time_result == TIMERR_NOERROR)
+            printf("timeBeginPeriod(%u) = TIMERR_NOERROR\n", tc.wPeriodMin);
+        else
+            printf("timeBeginPeriod(%u) = %u\n", tc.wPeriodMin, time_result);
+#endif
+    }
+#ifdef _DEBUG
+    printf("\n");
+#endif
+#endif  /* defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0) */
+
     jimi_cpu_warmup(500);
 
     test_msg_init();
@@ -1400,6 +1571,13 @@ main(int argn, char * argv[])
 
     popmsg_list_destory();
     test_msg_destory();
+
+#if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
+    &&(defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
+    if (time_result == TIMERR_NOERROR) {
+        time_result = timeEndPeriod(tc.wPeriodMin);
+    }
+#endif
 
     //jimi_console_readkeyln(false, true, false);
     return 0;

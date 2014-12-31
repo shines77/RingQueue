@@ -29,9 +29,15 @@
 #define MAX_POP_MSG_LENGTH  (MSG_TOTAL_LENGTH / POP_CNT)
 
 /// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
-///       该选项在Windows下无效, 在虚拟机里更是不能启用)
+///       该选项在虚拟机里最好不要启用, VirtualBox虚拟机只用了一个 CPU核心)
 #ifndef USE_THREAD_AFFINITY
-#define USE_THREAD_AFFINITY     0
+#define USE_THREAD_AFFINITY     1
+#endif
+
+/// 是否设置系统的时间片最小间隔时间, 对Sleep()的精度有影响(0不启用, 1启用, 默认不启用,
+///       该选项只有Windows下才有效)
+#ifndef USE_TIME_PERIOD
+#define USE_TIME_PERIOD         0
 #endif
 
 /// 是否运行jimi:RingQueue的测试代码

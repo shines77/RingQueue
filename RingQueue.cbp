@@ -25,6 +25,7 @@
 				</Compiler>
 				<Linker>
 					<Add library="pthread" />
+					<Add library="winmm" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -47,6 +48,7 @@
 				<Linker>
 					<Add option="-s" />
 					<Add library="pthread" />
+					<Add library="winmm" />
 				</Linker>
 			</Target>
 		</Build>
@@ -67,7 +69,6 @@
 		<Unit filename="include/RingQueue/msvc/stdint.h" />
 		<Unit filename="include/RingQueue/msvc/targetver.h" />
 		<Unit filename="include/RingQueue/port.h" />
-		<Unit filename="include/RingQueue/q.h" />
 		<Unit filename="include/RingQueue/q3.h" />
 		<Unit filename="include/RingQueue/sleep.h" />
 		<Unit filename="include/RingQueue/sys_timer.h" />

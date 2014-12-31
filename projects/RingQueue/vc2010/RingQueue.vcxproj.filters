@@ -65,9 +65,6 @@
     <ClInclude Include="..\..\..\include\RingQueue\port.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\RingQueue\q.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\RingQueue\q3.h">
       <Filter>include</Filter>
     </ClInclude>

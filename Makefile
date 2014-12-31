@@ -17,12 +17,12 @@ MANDIR := $(DESTDIR)/usr/local/share/man
 srcroot := 
 objroot := 
 
-# Build parameters.
+# Build parameters. -m32 for x86 (32 bit), -m64 for x64 (64 bit)
 CPPFLAGS := -D_REENTRANT -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
 CFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
 LDFLAGS := 
 EXTRA_LDFLAGS := 
-LIBS := -lpthread
+LIBS := -lpthread -lwinmm
 RPATH_EXTRA := 
 SO := so
 IMPORTLIB := so
