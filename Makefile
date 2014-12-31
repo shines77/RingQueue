@@ -38,6 +38,10 @@ AUTOCONF := false
 _RPATH = -Wl,-rpath,$(1)
 RPATH = $(if $(1),$(call _RPATH,$(1)))
 
+############################################################################
+#  See: http://stackoverflow.com/questions/714100/os-detecting-makefile    #
+############################################################################
+
 ifeq ($(OS), Windows_NT)
     LIBS += -lwinmm
 else
