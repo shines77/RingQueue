@@ -22,13 +22,13 @@
 #endif
 
 /// 等同于MSG_TOTAL_LENGTH
-#define MSG_TOTAL_CNT       (MSG_TOTAL_LENGTH)
+#define MSG_TOTAL_CNT           (MSG_TOTAL_LENGTH)
 
 /// 分发给每个(push)线程的消息数量, 等同于MAX_PUSH_MSG_LENGTH
-#define MAX_PUSH_MSG_LENGTH (MSG_TOTAL_LENGTH / PUSH_CNT)
+#define MAX_PUSH_MSG_LENGTH     (MSG_TOTAL_LENGTH / PUSH_CNT)
 
 /// 分发给每个(pop)线程的消息数量
-#define MAX_POP_MSG_LENGTH  (MSG_TOTAL_LENGTH / POP_CNT)
+#define MAX_POP_MSG_LENGTH      (MSG_TOTAL_LENGTH / POP_CNT)
 
 /// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
 ///       该选项在虚拟机里最好不要启用, VirtualBox虚拟机只用了一个 CPU核心)

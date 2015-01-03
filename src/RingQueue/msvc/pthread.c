@@ -107,10 +107,10 @@ int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
                                    const pthread_mutexattr_t * attr)
 {
 #if defined(_M_X64) || defined(_WIN64)
-    static const DWORD dwSpinCounter = 2;
+    static const DWORD dwSpinCount = 2;
     BOOL bResult = FALSE;
     if (mutex != NULL)
-        bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCounter);
+        bResult = InitializeCriticalSectionAndSpinCount(mutex, dwSpinCount);
     return (bResult ? 0 : (int)-1);
 #else
     if (mutex != NULL)
