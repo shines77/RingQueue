@@ -62,7 +62,8 @@ push(struct queue *q, void *m)
     do {
         head = q->head.first;
         tail = q->tail.second;
-        if ((mask + tail - head) < 1U)
+        //if ((mask + tail - head) < 1U)
+        if ((head - tail) > mask)
             return -1;
         next = head + 1;
         ok = __sync_bool_compare_and_swap(&q->head.first, head, next);
@@ -91,7 +92,8 @@ pop(struct queue *q)
     do {
         tail = q->tail.first;
         head = q->head.second;
-        if ((head - tail) < 1U)
+        //if ((head - tail) < 1U)
+        if ((tail == head) || (tail > head && (head - tail) > mask))
             return NULL;
         next = tail + 1;
         ok = __sync_bool_compare_and_swap(&q->tail.first, tail, next);
