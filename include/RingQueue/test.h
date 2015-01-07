@@ -16,19 +16,19 @@
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
 #if 1
-#define MSG_TOTAL_LENGTH    8000000
+#define MAX_MSG_COUNT       (8000000 * 1)
 #else
-#define MSG_TOTAL_LENGTH    8000
+#define MAX_MSG_COUNT       8000
 #endif
 
-/// 等同于MSG_TOTAL_LENGTH
-#define MSG_TOTAL_CNT           (MSG_TOTAL_LENGTH)
+/// 等同于MAX_MSG_COUNT
+#define MAX_MSG_CNT             (MAX_MSG_COUNT)
 
-/// 分发给每个(push)线程的消息数量, 等同于MAX_PUSH_MSG_LENGTH
-#define MAX_PUSH_MSG_LENGTH     (MSG_TOTAL_LENGTH / PUSH_CNT)
+/// 分发给每个(push)线程的消息数量, 等同于MAX_PUSH_MSG_COUNT
+#define MAX_PUSH_MSG_COUNT      (MAX_MSG_COUNT / PUSH_CNT)
 
 /// 分发给每个(pop)线程的消息数量
-#define MAX_POP_MSG_LENGTH      (MSG_TOTAL_LENGTH / POP_CNT)
+#define MAX_POP_MSG_COUNT       (MAX_MSG_COUNT / POP_CNT)
 
 /// 是否设置线程的CPU亲缘性(0不启用, 1启用, 默认不启用,
 ///       该选项在虚拟机里最好不要启用, VirtualBox虚拟机只用了一个 CPU核心)
@@ -49,17 +49,11 @@
 
 /// 是否运行q3.h的测试代码
 #ifndef USE_DOUBAN_QUEUE
-#define USE_DOUBAN_QUEUE        0
-#endif
-
-/// 是否测试所有RingQueue测试, 或是仅测试 RINGQUEUE_LOCK_TYPE 指定类型的测试
-/// 定义为1(或非0)表示测试所有RingQueue测试
-#ifndef USE_FUNC_TYPE
-#define USE_FUNC_TYPE           1
+#define USE_DOUBAN_QUEUE        1
 #endif
 
 ///
-/// RingQueue锁的类型定义: (如果该宏RINGQUEUE_LOCK_TYPE未定义, 则等同于定义为0)
+/// RingQueue锁的类型定义: (如果该宏TEST_FUNC_TYPE未定义, 则等同于定义为0)
 ///
 /// 定义为0, 表示使用豆瓣上q3.h的lock-free修正版,    调用RingQueue.push(), RingQueue.pop();
 /// 定义为1, 表示使用细粒度的标准spin_mutex自旋锁,   调用RingQueue.spin_push(),  RingQueue.spin_pop();
@@ -77,13 +71,16 @@
 /// 9 可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
 ///
 
-/// 取值范围是 0-9, 未定义代表 0
-#ifndef RINGQUEUE_LOCK_TYPE
-#define RINGQUEUE_LOCK_TYPE     2
+/// 取值范围是 0-9
+/// 定义为 0 或 不定义该宏, 表示运行main()里指定的某几种 RingQueue 测试;
+/// 定义为 1-9, 则表示只运行 TEST_FUNC_TYPE 指定的测试类型, 类型定义值见上.
+/// 建议你定义为 0(测多个) 或者 3(只测最全面的一个)
+#ifndef TEST_FUNC_TYPE
+#define TEST_FUNC_TYPE          3
 #endif
 
-/// 是否显示 push, pop 和 rdtsc 相关数据
-#define DISPLAY_PUSH_POP_DATA   1
+/// 是否显示 push 次数, pop 次数 和 rdtsc计数 等额外的测试信息
+#define DISPLAY_EXTRA_RESULT    1
 
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用
