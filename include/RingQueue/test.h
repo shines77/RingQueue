@@ -55,7 +55,7 @@
 ///
 /// RingQueue锁的类型定义: (如果该宏TEST_FUNC_TYPE未定义, 则等同于定义为0)
 ///
-/// 定义为0, 表示使用豆瓣上q3.h的lock-free修正版,    调用RingQueue.push(), RingQueue.pop();
+/// 定义为0, 表示使用豆瓣上q3.h的lock-free改进版,    调用RingQueue.push(), RingQueue.pop();
 /// 定义为1, 表示使用细粒度的标准spin_mutex自旋锁,   调用RingQueue.spin_push(),  RingQueue.spin_pop();
 /// 定义为2, 表示使用细粒度的改进型spin_mutex自旋锁, 调用RingQueue.spin1_push(), RingQueue.spin1_pop();
 /// 定义为3, 表示使用细粒度的通用型spin_mutex自旋锁, 调用RingQueue.spin2_push(), RingQueue.spin2_pop();
@@ -76,7 +76,7 @@
 /// 定义为 1-9, 则表示只运行 TEST_FUNC_TYPE 指定的测试类型, 类型定义值见上.
 /// 建议你定义为 0(测多个) 或者 3(只测最全面的一个)
 #ifndef TEST_FUNC_TYPE
-#define TEST_FUNC_TYPE          3
+#define TEST_FUNC_TYPE          0
 #endif
 
 /// 是否显示 push 次数, pop 次数 和 rdtsc计数 等额外的测试信息

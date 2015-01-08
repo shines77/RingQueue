@@ -1117,6 +1117,12 @@ RingQueue_Test(int funcType, bool bContinue = true)
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;
 
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE != 0)
+    if (funcType != TEST_FUNC_TYPE) {
+        return;
+    }
+#endif
+
     q = qinit();
 
     printf("---------------------------------------------------------------\n");
@@ -1623,18 +1629,18 @@ main(int argn, char * argv[])
     display_test_info(0);
 #endif
 
-    //RingQueue_Test(0, true);
-
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
   #if !defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)
     //RingQueue_UnitTest();
+
+    //RingQueue_Test(0, true);
 
     //RingQueue_Test(3, true);
 
     RingQueue_Test(4, true);    // 使用pthread_mutex_t, 调用RingQueue.mutex_push().
 
-    //RingQueue_Test(1, true);    // 使用自旋锁, 调用RingQueue.spin_push().
-    //RingQueue_Test(2, true);    //             调用RingQueue.spin1_push().
+    RingQueue_Test(1, true);    // 使用自旋锁, 调用RingQueue.spin_push().
+    RingQueue_Test(2, true);    //             调用RingQueue.spin1_push().
     RingQueue_Test(3, bConti);  //             调用RingQueue.spin2_push().
 
     //RingQueue_Test(6, bConti);  //             调用RingQueue.spin3_push().
