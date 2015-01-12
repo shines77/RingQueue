@@ -294,7 +294,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
         return -1;
     }
 
-    numCore = jimi_get_processor_num();
+    numCore = get_num_of_processors();
     if (numCore <= 1) {
         return 0;
     }

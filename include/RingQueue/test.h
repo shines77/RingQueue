@@ -10,15 +10,15 @@
 #define QMASK               (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT            2
-#define POP_CNT             2
+#define PUSH_CNT            4
+#define POP_CNT             4
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
 #if 1
-#define MAX_MSG_COUNT       (8000000 * 1)
+#define MAX_MSG_COUNT           (8000000 * 1)
 #else
-#define MAX_MSG_COUNT       8000
+#define MAX_MSG_COUNT           8000
 #endif
 
 /// 等同于MAX_MSG_COUNT
@@ -49,7 +49,7 @@
 
 /// 是否运行q3.h的测试代码
 #ifndef USE_DOUBAN_QUEUE
-#define USE_DOUBAN_QUEUE        1
+#define USE_DOUBAN_QUEUE        0
 #endif
 
 ///
@@ -66,7 +66,7 @@
 /// 其中 0 可能会导致逻辑错误, 结果错误, 而且当(PUSH_CNT + POP_CNT) > CPU物理核心数时,
 ///     有可能不能完成测试或运行时间很久(几十秒或几分钟不等, 而且结果还是错误的), 可自行验证.
 ///
-/// 其中只有1, 2, 3, 4都可以得到正确结果, 2的速度可能最快;
+/// 其中只有1, 2, 3, 4都可以得到正确结果, 2的速度可能最快, 3最稳定(推荐);
 ///
 /// 9 可能会慢如蜗牛(消息在运行但是走得很慢很慢, 甚至死锁);
 ///
@@ -76,7 +76,7 @@
 /// 定义为 1-9, 则表示只运行 TEST_FUNC_TYPE 指定的测试类型, 类型定义值见上.
 /// 建议你定义为 0(测多个) 或者 3(只测最全面的一个)
 #ifndef TEST_FUNC_TYPE
-#define TEST_FUNC_TYPE          0
+#define TEST_FUNC_TYPE          3
 #endif
 
 /// 是否显示 push 次数, pop 次数 和 rdtsc计数 等额外的测试信息
@@ -101,12 +101,25 @@
 extern "C" {
 #endif
 
+#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+typedef uint64_t sequence_t;
+#else
+typedef uint32_t sequence_t;
+#endif
+
 struct msg_t
 {
     uint64_t dummy;
 };
 
 typedef struct msg_t msg_t;
+
+struct MessageEvent
+{
+    uint64_t value;
+};
+
+typedef struct MessageEvent MessageEvent;
 
 struct spin_mutex_t
 {

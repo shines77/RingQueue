@@ -836,7 +836,7 @@ RingQueue_start_thread(int id,
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     CPU_ZERO(&cpuset);
     //core_id = CORE_ID(id);
-    core_id = id % jimi_get_processor_num();
+    core_id = id % get_num_of_processors();
     //printf("id = %d, core_id = %d.\n", core_id, id);
     CPU_SET(core_id, &cpuset);
 #endif
@@ -995,7 +995,7 @@ start_thread(int id,
 #if (defined(USE_THREAD_AFFINITY) && (USE_THREAD_AFFINITY != 0))
     CPU_ZERO(&cpuset);
     //core_id = CORE_ID(id);
-    core_id = id % jimi_get_processor_num();
+    core_id = id % get_num_of_processors();
     //printf("core_id = %d, id = %d.\n", core_id, id);
     CPU_SET(core_id, &cpuset);
 #endif
@@ -1379,7 +1379,7 @@ RingQueue_UnitTest(void)
     printf("---------------------------------------------------------------\n");
     printf("RingQueue2() test begin...\n\n");
 
-    printf("ringQueue.capcity() = %u\n", ringQueue.capcity());
+    printf("ringQueue.capacity() = %u\n", ringQueue.capacity());
     printf("ringQueue.mask()    = %u\n\n", ringQueue.mask());
     printf("ringQueue.sizes()   = %u\n\n", ringQueue.sizes());
 

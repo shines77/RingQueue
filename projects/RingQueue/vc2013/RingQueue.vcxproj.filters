@@ -110,6 +110,9 @@
     <ClInclude Include="..\..\..\include\RingQueue\msvc\targetver.h">
       <Filter>include\msvc</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueue.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />

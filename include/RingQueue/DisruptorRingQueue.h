@@ -1,6 +1,6 @@
 
-#ifndef _JIMI_UTIL_RINGQUEUE_H_
-#define _JIMI_UTIL_RINGQUEUE_H_
+#ifndef _JIMI_DISRUPTOR_RINGQUEUE_H_
+#define _JIMI_DISRUPTOR_RINGQUEUE_H_
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 #pragma once
@@ -30,13 +30,13 @@
 namespace jimi {
 
 #if 0
-struct RingQueueHead
+struct DisruptorRingQueueHead
 {
     volatile uint32_t head;
     volatile uint32_t tail;
 };
 #else
-struct RingQueueHead
+struct DisruptorRingQueueHead
 {
     volatile uint32_t head;
     char padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
@@ -46,34 +46,34 @@ struct RingQueueHead
 };
 #endif
 
-typedef struct RingQueueHead RingQueueHead;
+typedef struct DisruptorRingQueueHead DisruptorRingQueueHead;
 
 ///////////////////////////////////////////////////////////////////
-// class SmallRingQueueCore<Capacity>
+// class SmallDisruptorRingQueueCore<Capacity>
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capacity>
-class SmallRingQueueCore
+class SmallDisruptorRingQueueCore
 {
 public:
     typedef uint32_t    size_type;
     typedef T *         item_type;
 
 public:
-    static const size_type  kCapacityCore    = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
+    static const size_type  kCapacityCore   = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
     static const bool       kIsAllocOnHeap  = false;
 
 public:
-    RingQueueHead       info;
-    volatile item_type  queue[kCapacityCore];
+    DisruptorRingQueueHead  info;
+    volatile item_type      queue[kCapacityCore];
 };
 
 ///////////////////////////////////////////////////////////////////
-// class RingQueueCore<Capacity>
+// class DisruptorRingQueueCore<Capacity>
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capacity>
-class RingQueueCore
+class DisruptorRingQueueCore
 {
 public:
     typedef T *         item_type;
@@ -82,17 +82,17 @@ public:
     static const bool kIsAllocOnHeap = true;
 
 public:
-    RingQueueHead       info;
-    volatile item_type *queue;
+    DisruptorRingQueueHead  info;
+    volatile item_type     *queue;
 };
 
 ///////////////////////////////////////////////////////////////////
-// class RingQueueBase<T, Capacity, CoreTy>
+// class DisruptorRingQueueBase<T, Capacity, CoreTy>
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capacity = 16U,
-          typename CoreTy = RingQueueCore<T, Capacity> >
-class RingQueueBase
+          typename CoreTy = DisruptorRingQueueCore<T, Capacity> >
+class DisruptorRingQueueBase
 {
 public:
     typedef uint32_t                    size_type;
@@ -107,49 +107,26 @@ public:
 
 public:
     static const size_type  kCapacity = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
-    static const index_type kMask     = (index_type)(kCapacity - 1);
+    static const index_type kMask    = (index_type)(kCapacity - 1);
 
 public:
-    RingQueueBase(bool bInitHead = false);
-    ~RingQueueBase();
+    DisruptorRingQueueBase(bool bInitHead = false);
+    ~DisruptorRingQueueBase();
 
 public:
     void dump_info();
     void dump_detail();
 
     index_type mask() const      { return kMask;     };
-    size_type capacity() const   { return kCapacity; };
+    size_type capacity() const    { return kCapacity; };
     size_type length() const     { return sizes();   };
     size_type sizes() const;
 
     void init(bool bInitHead = false);
 
-    int push(T * item);
-    T * pop();
+    int push(T * entry);
+    int pop (T * entry);
 
-    int push2(T * item);
-    T * pop2();
-
-    int spin_push(T * item);
-    T * spin_pop();
-
-    int spin1_push(T * item);
-    T * spin1_pop();
-
-    int spin2_push(T * item);
-    T * spin2_pop();
-
-    int spin3_push(T * item);
-    T * spin3_pop();
-
-    int spin8_push(T * item);
-    T * spin8_pop();
-
-    int spin9_push(T * item);
-    T * spin9_pop();
-
-    int mutex_push(T * item);
-    T * mutex_pop();
 
 protected:
     core_type       core;
@@ -158,15 +135,15 @@ protected:
 };
 
 template <typename T, uint32_t Capacity, typename CoreTy>
-RingQueueBase<T, Capacity, CoreTy>::RingQueueBase(bool bInitHead  /* = false */)
+DisruptorRingQueueBase<T, Capacity, CoreTy>::DisruptorRingQueueBase(bool bInitHead  /* = false */)
 {
-    //printf("RingQueueBase::RingQueueBase();\n\n");
+    //printf("DisruptorRingQueueBase::DisruptorRingQueueBase();\n\n");
 
     init(bInitHead);
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
-RingQueueBase<T, Capacity, CoreTy>::~RingQueueBase()
+DisruptorRingQueueBase<T, Capacity, CoreTy>::~DisruptorRingQueueBase()
 {
     // Do nothing!
     Jimi_ReadWriteBarrier();
@@ -178,9 +155,9 @@ RingQueueBase<T, Capacity, CoreTy>::~RingQueueBase()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-void RingQueueBase<T, Capacity, CoreTy>::init(bool bInitHead /* = false */)
+void DisruptorRingQueueBase<T, Capacity, CoreTy>::init(bool bInitHead /* = false */)
 {
-    //printf("RingQueueBase::init();\n\n");
+    //printf("DisruptorRingQueueBase::init();\n\n");
 
     if (!bInitHead) {
         core.info.head = 0;
@@ -204,30 +181,30 @@ void RingQueueBase<T, Capacity, CoreTy>::init(bool bInitHead /* = false */)
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
-void RingQueueBase<T, Capacity, CoreTy>::dump_info()
+void DisruptorRingQueueBase<T, Capacity, CoreTy>::dump_info()
 {
     //ReleaseUtils::dump(&core.info, sizeof(core.info));
     dump_mem(&core.info, sizeof(core.info), false, 16, 0, 0);
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
-void RingQueueBase<T, Capacity, CoreTy>::dump_detail()
+void DisruptorRingQueueBase<T, Capacity, CoreTy>::dump_detail()
 {
 #if 0
     printf("---------------------------------------------------------\n");
-    printf("RingQueueBase.p.head = %u\nRingQueueBase.p.tail = %u\n\n", core.info.p.head, core.info.p.tail);
-    printf("RingQueueBase.c.head = %u\nRingQueueBase.c.tail = %u\n",   core.info.c.head, core.info.c.tail);
+    printf("DisruptorRingQueueBase.p.head = %u\nDisruptorRingQueueBase.p.tail = %u\n\n", core.info.p.head, core.info.p.tail);
+    printf("DisruptorRingQueueBase.c.head = %u\nDisruptorRingQueueBase.c.tail = %u\n",   core.info.c.head, core.info.c.tail);
     printf("---------------------------------------------------------\n\n");
 #else
-    printf("RingQueueBase: (head = %u, tail = %u)\n",
+    printf("DisruptorRingQueueBase: (head = %u, tail = %u)\n",
            core.info.head, core.info.tail);
 #endif
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-typename RingQueueBase<T, Capacity, CoreTy>::size_type
-RingQueueBase<T, Capacity, CoreTy>::sizes() const
+typename DisruptorRingQueueBase<T, Capacity, CoreTy>::size_type
+DisruptorRingQueueBase<T, Capacity, CoreTy>::sizes() const
 {
     index_type head, tail;
 
@@ -242,7 +219,7 @@ RingQueueBase<T, Capacity, CoreTy>::sizes() const
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::push(T * item)
 {
     index_type head, tail, next;
     bool ok = false;
@@ -267,7 +244,7 @@ int RingQueueBase<T, Capacity, CoreTy>::push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -293,7 +270,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::push2(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::push2(T * item)
 {
     index_type head, tail, next;
     bool ok = false;
@@ -328,7 +305,7 @@ int RingQueueBase<T, Capacity, CoreTy>::push2(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::pop2()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::pop2()
 {
     index_type head, tail, next;
     value_type item;
@@ -366,7 +343,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::pop2()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::spin_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::spin_push(T * item)
 {
     index_type head, tail, next;
 #if defined(USE_SPIN_MUTEX_COUNTER) && (USE_SPIN_MUTEX_COUNTER != 0)
@@ -421,7 +398,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::spin_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::spin_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -477,7 +454,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin_pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::spin1_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::spin1_push(T * item)
 {
     index_type head, tail, next;
     uint32_t pause_cnt, spin_counter;
@@ -532,7 +509,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin1_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::spin1_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::spin1_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -588,7 +565,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin1_pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::spin2_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::spin2_push(T * item)
 {
     index_type head, tail, next;
     int32_t pause_cnt;
@@ -667,7 +644,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin2_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::spin2_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::spin2_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -749,7 +726,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin2_pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::spin3_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::spin3_push(T * item)
 {
     index_type head, tail, next;
     int32_t pause_cnt;
@@ -834,7 +811,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin3_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::spin3_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::spin3_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -922,7 +899,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin3_pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::spin8_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::spin8_push(T * item)
 {
     index_type head, tail, next;
 
@@ -953,7 +930,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin8_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::spin8_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::spin8_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -987,7 +964,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin8_pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::spin9_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::spin9_push(T * item)
 {
     index_type head, tail, next;
     int cnt;
@@ -1038,7 +1015,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin9_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::spin9_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::spin9_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -1090,7 +1067,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin9_pop()
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-int RingQueueBase<T, Capacity, CoreTy>::mutex_push(T * item)
+int DisruptorRingQueueBase<T, Capacity, CoreTy>::mutex_push(T * item)
 {
     index_type head, tail, next;
 
@@ -1118,7 +1095,7 @@ int RingQueueBase<T, Capacity, CoreTy>::mutex_push(T * item)
 
 template <typename T, uint32_t Capacity, typename CoreTy>
 inline
-T * RingQueueBase<T, Capacity, CoreTy>::mutex_pop()
+T * DisruptorRingQueueBase<T, Capacity, CoreTy>::mutex_pop()
 {
     index_type head, tail, next;
     value_type item;
@@ -1151,7 +1128,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::mutex_pop()
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capacity = 16U>
-class SmallRingQueue : public RingQueueBase<T, Capacity, SmallRingQueueCore<T, Capacity> >
+class SmallRingQueue : public DisruptorRingQueueBase<T, Capacity, SmallDisruptorRingQueueCore<T, Capacity> >
 {
 public:
     typedef uint32_t                    size_type;
@@ -1162,7 +1139,7 @@ public:
     typedef T &                         reference;
     typedef const T &                   const_reference;
 
-    static const size_type kCapacity = RingQueueBase<T, Capacity, SmallRingQueueCore<T, Capacity> >::kCapacity;
+    static const size_type kCapacity = DisruptorRingQueueBase<T, Capacity, SmallDisruptorRingQueueCore<T, Capacity> >::kCapacity;
 
 public:
     SmallRingQueue(bool bFillQueue = true, bool bInitHead = false);
@@ -1178,7 +1155,7 @@ protected:
 template <typename T, uint32_t Capacity>
 SmallRingQueue<T, Capacity>::SmallRingQueue(bool bFillQueue /* = true */,
                                              bool bInitHead  /* = false */)
-: RingQueueBase<T, Capacity, SmallRingQueueCore<T, Capacity> >(bInitHead)
+: DisruptorRingQueueBase<T, Capacity, SmallDisruptorRingQueueCore<T, Capacity> >(bInitHead)
 {
     //printf("SmallRingQueue::SmallRingQueue();\n\n");
 
@@ -1214,7 +1191,7 @@ void SmallRingQueue<T, Capacity>::dump_detail()
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, uint32_t Capacity = 16U>
-class RingQueue : public RingQueueBase<T, Capacity, RingQueueCore<T, Capacity> >
+class RingQueue : public DisruptorRingQueueBase<T, Capacity, DisruptorRingQueueCore<T, Capacity> >
 {
 public:
     typedef uint32_t                    size_type;
@@ -1225,9 +1202,9 @@ public:
     typedef T &                         reference;
     typedef const T &                   const_reference;
 
-    typedef RingQueueCore<T, Capacity>   core_type;
+    typedef DisruptorRingQueueCore<T, Capacity>   core_type;
 
-    static const size_type kCapacity = RingQueueBase<T, Capacity, RingQueueCore<T, Capacity> >::kCapacity;
+    static const size_type kCapacity = DisruptorRingQueueBase<T, Capacity, DisruptorRingQueueCore<T, Capacity> >::kCapacity;
 
 public:
     RingQueue(bool bFillQueue = true, bool bInitHead = false);
@@ -1243,7 +1220,7 @@ protected:
 template <typename T, uint32_t Capacity>
 RingQueue<T, Capacity>::RingQueue(bool bFillQueue /* = true */,
                                    bool bInitHead  /* = false */)
-: RingQueueBase<T, Capacity, RingQueueCore<T, Capacity> >(bInitHead)
+: DisruptorRingQueueBase<T, Capacity, DisruptorRingQueueCore<T, Capacity> >(bInitHead)
 {
     //printf("RingQueue::RingQueue();\n\n");
 
@@ -1254,7 +1231,7 @@ template <typename T, uint32_t Capacity>
 RingQueue<T, Capacity>::~RingQueue()
 {
     // If the queue is allocated on system heap, release them.
-    if (RingQueueCore<T, Capacity>::kIsAllocOnHeap) {
+    if (DisruptorRingQueueCore<T, Capacity>::kIsAllocOnHeap) {
         delete [] this->core.queue;
         this->core.queue = NULL;
     }
@@ -1284,4 +1261,4 @@ void RingQueue<T, Capacity>::dump_detail()
 
 }  /* namespace jimi */
 
-#endif  /* _JIMI_UTIL_RINGQUEUE_H_ */
+#endif  /* _JIMI_DISRUPTOR_RINGQUEUE_H_ */
