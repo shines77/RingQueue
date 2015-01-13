@@ -101,25 +101,12 @@
 extern "C" {
 #endif
 
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
-typedef uint64_t sequence_t;
-#else
-typedef uint32_t sequence_t;
-#endif
-
 struct msg_t
 {
     uint64_t dummy;
 };
 
 typedef struct msg_t msg_t;
-
-struct MessageEvent
-{
-    uint64_t value;
-};
-
-typedef struct MessageEvent MessageEvent;
 
 struct spin_mutex_t
 {

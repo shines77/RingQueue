@@ -22,6 +22,8 @@
 #endif  // _MSC_VER
 #include <emmintrin.h>
 
+#include "Sequence.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -43,6 +45,9 @@ struct DisruptorRingQueueHead
 
     volatile uint32_t tail;
     char padding2[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
+
+    Sequence cursor;
+    Sequence next;
 };
 #endif
 

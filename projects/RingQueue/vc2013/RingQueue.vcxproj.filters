@@ -113,6 +113,12 @@
     <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueue.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\RingQueue\Sequence.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\RingQueue\MessageEvent.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />

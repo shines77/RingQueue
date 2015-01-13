@@ -35,8 +35,10 @@
 #include "sys_timer.h"
 #include "console.h"
 #include "RingQueue.h"
-#include "DisruptorRingQueue.h"
 #include "SpinMutex.h"
+
+#include "MessageEvent.h"
+#include "DisruptorRingQueue.h"
 
 //#include <vld.h>
 #include <errno.h>
@@ -1627,6 +1629,8 @@ main(int argn, char * argv[])
 
     disRingQueue.dump_detail();
     disRingQueue.dump_info();
+
+    //disRingQueue.
 
     test_msg_init();
     popmsg_list_init();
