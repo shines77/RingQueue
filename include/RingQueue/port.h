@@ -62,14 +62,20 @@
 #endif
 
 #ifndef JIMIC_INLINE
-#define JIMIC_INLINE        __inline
+#define JIMIC_INLINE            __inline
 #endif
+
+#define ALIGN_PREFIX(N)         __declspec(align(N))
+#define ALIGN_SUFFIX(N)
+
+#define CACHE_ALIGN_PREFIX      __declspec(align(JIMI_CACHE_LINE_SIZE))
+#define CACHE_ALIGN_SUFFIX
 
 #if defined(__INTER_COMPILER) || defined(__ICC)
 
-#define Jimi_ReadWriteBarrier()     __memory_barrier()
+#define Jimi_ReadWriteBarrier() __memory_barrier()
 
-#define Jimi_MemoryBarrier()        MemoryBarrier()
+#define Jimi_MemoryBarrier()    MemoryBarrier()
 
 #else
 
@@ -80,25 +86,34 @@
 ///
 /// See: http://en.wikipedia.org/wiki/Memory_ordering
 ///
-#define Jimi_ReadWriteBarrier()     _ReadWriteBarrier()
+#define Jimi_ReadWriteBarrier() _ReadWriteBarrier()
 
-#define Jimi_MemoryBarrier()        MemoryBarrier()
+#define Jimi_MemoryBarrier()    MemoryBarrier()
 
 #endif  /* __INTER_COMPILER || __ICC */
 
 #else  /* !_MSC_VER */
 
 #ifndef jimi_likely
-#define jimi_likely(x)      __builtin_expect((x), 1)
+#define jimi_likely(x)          __builtin_expect((x), 1)
 #endif
 
 #ifndef jimi_unlikely
-#define jimi_unlikely(x)    __builtin_expect((x), 0)
+#define jimi_unlikely(x)        __builtin_expect((x), 0)
 #endif
 
 #ifndef JIMIC_INLINE
-#define JIMIC_INLINE        inline
+#define JIMIC_INLINE            inline
 #endif
+
+#define ALIGN_PREFIX(N)         __attribute__((__aligned__((N))))
+#define ALIGN_SUFFIX(N)
+
+#define CACHE_ALIGN_PREFIX      __attribute__((__aligned__((JIMI_CACHE_LINE_SIZE))))
+#define CACHE_ALIGN_SUFFIX
+
+#define PACKED_ALIGN_PREFIX(N)
+#define PACKED_ALIGN_SUFFIX(N)  __attribute__((packed, aligned(N)))
 
 ///
 /// See: http://en.wikipedia.org/wiki/Memory_ordering

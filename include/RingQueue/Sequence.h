@@ -22,8 +22,13 @@ typedef uint32_t sequence_t;
 }
 #endif
 
+#if defined(_MSC_VER) || defined(__GNUC__)
+#pragma pack(push)
+#pragma pack(1)
+#endif
+
 template <typename T>
-class SequenceBase
+class CACHE_ALIGN_PREFIX SequenceBase
 {
 public:
     static const T  INITIAL_VALUE        = static_cast<T>(-1);
@@ -31,7 +36,7 @@ public:
     static const T  INITIAL_CURSOR_VALUE = static_cast<T>(-1);
 
 public:
-    SequenceBase() : value(INITIAL_VALUE) {}
+    SequenceBase() : value(INITIAL_VALUE) { memset(&padding1[0], 0, sizeof(padding1)); }
     SequenceBase(T initize_val) : value(initize_val) {}
     ~SequenceBase() {}
 
@@ -43,10 +48,13 @@ public:
     void        setVolatile(volatile T value) { this->value = value; };
 
 protected:
-    char        padding1[JIMI_CACHE_LINE_SIZE];
     volatile T  value;
-    char        padding2[JIMI_CACHE_LINE_SIZE - sizeof(T) * 1];
-};
+    char        padding1[JIMI_CACHE_LINE_SIZE - sizeof(T) * 1];
+} CACHE_ALIGN_SUFFIX;
+
+#if defined(_MSC_VER) || defined(__GNUC__)
+#pragma pack(pop)
+#endif
 
 typedef SequenceBase<uint32_t> Sequence;
 
