@@ -35,6 +35,7 @@
 #include "sys_timer.h"
 #include "console.h"
 #include "RingQueue.h"
+#include "DisruptorRingQueue.h"
 #include "SpinMutex.h"
 
 //#include <vld.h>
@@ -1618,6 +1619,14 @@ main(int argn, char * argv[])
 #endif  /* defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0) */
 
     jimi_cpu_warmup(500);
+
+    DisruptorRingQueue<MessageEvent, QSIZE> disRingQueue;
+    MessageEvent event;
+    disRingQueue.push(event);
+    disRingQueue.pop(event);
+
+    disRingQueue.dump_detail();
+    disRingQueue.dump_info();
 
     test_msg_init();
     popmsg_list_init();

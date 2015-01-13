@@ -1150,7 +1150,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::mutex_pop()
 // class SmallRingQueue<T, Capacity>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity = 16U>
+template <typename T, uint32_t Capacity = 1024U>
 class SmallRingQueue : public RingQueueBase<T, Capacity, SmallRingQueueCore<T, Capacity> >
 {
 public:
@@ -1213,7 +1213,7 @@ void SmallRingQueue<T, Capacity>::dump_detail()
 // class RingQueue<T, Capacity>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity = 16U>
+template <typename T, uint32_t Capacity = 1024U>
 class RingQueue : public RingQueueBase<T, Capacity, RingQueueCore<T, Capacity> >
 {
 public:
