@@ -181,14 +181,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\RingQueue\console.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueue.h" />
     <ClInclude Include="..\..\..\include\RingQueue\dump_mem.h" />
     <ClInclude Include="..\..\..\include\RingQueue\get_char.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\MessageEvent.h" />
     <ClInclude Include="..\..\..\include\RingQueue\mq.h" />
     <ClInclude Include="..\..\..\include\RingQueue\msvc\sched.h" />
     <ClInclude Include="..\..\..\include\RingQueue\msvc\targetver.h" />
     <ClInclude Include="..\..\..\include\RingQueue\port.h" />
     <ClInclude Include="..\..\..\include\RingQueue\q3.h" />
     <ClInclude Include="..\..\..\include\RingQueue\RingQueue.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\Sequence.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sleep.h" />
     <ClInclude Include="..\..\..\include\RingQueue\SpinMutex.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sys_timer.h" />

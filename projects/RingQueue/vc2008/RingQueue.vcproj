@@ -226,11 +226,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\include\RingQueue\DisruptorRingQueue.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\include\RingQueue\dump_mem.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\..\include\RingQueue\get_char.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\include\RingQueue\MessageEvent.h"
 				>
 			</File>
 			<File
@@ -242,15 +250,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\include\RingQueue\q.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\include\RingQueue\q3.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\..\include\RingQueue\RingQueue.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\include\RingQueue\Sequence.h"
 				>
 			</File>
 			<File
