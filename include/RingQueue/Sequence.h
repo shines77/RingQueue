@@ -7,20 +7,51 @@
 #endif
 
 #include "vs_stdint.h"
+#include "test.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
 typedef uint64_t sequence_t;
 #else
 typedef uint32_t sequence_t;
 #endif
 
+#if defined(_MSC_VER) || defined(__GNUC__)
+#pragma pack(push)
+#pragma pack(1)
+#endif
+
+struct CACHE_ALIGN_PREFIX seqence_c32
+{
+    volatile uint32_t   value;
+    char                padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t) * 1];
+} CACHE_ALIGN_SUFFIX;
+
+struct CACHE_ALIGN_PREFIX seqence_c64
+{
+    volatile uint64_t   value;
+    char                padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t) * 1];
+} CACHE_ALIGN_SUFFIX;
+
+#if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
+typedef struct seqence_c64 seqence_c;
+#else
+typedef struct seqence_c32 seqence_c;
+#endif
+
+#if defined(_MSC_VER) || defined(__GNUC__)
+#pragma pack(pop)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
+
+// Class Sequence() use in c++ only
+#ifdef __cplusplus
 
 #if defined(_MSC_VER) || defined(__GNUC__)
 #pragma pack(push)
@@ -56,9 +87,15 @@ protected:
 #pragma pack(pop)
 #endif
 
-typedef SequenceBase<uint32_t> Sequence;
-
 typedef SequenceBase<uint32_t> Sequence32;
 typedef SequenceBase<uint64_t> Sequence64;
+
+#if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
+typedef SequenceBase<uint64_t> Sequence;
+#else
+typedef SequenceBase<uint32_t> Sequence;
+#endif
+
+#endif  /* __cplusplus */
 
 #endif  /* _JIMI_SEQUENCE_H_ */

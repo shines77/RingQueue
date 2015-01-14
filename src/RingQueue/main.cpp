@@ -1627,8 +1627,8 @@ main(int argn, char * argv[])
     disRingQueue.push(event);
     disRingQueue.pop(event);
 
-    disRingQueue.dump_detail();
-    disRingQueue.dump_info();
+    //disRingQueue.dump_detail();
+    //disRingQueue.dump_info();
 
     //disRingQueue.
 
@@ -1658,8 +1658,17 @@ main(int argn, char * argv[])
 
     //RingQueue_Test(6, bConti);  //             调用RingQueue.spin3_push().
   #else
-    // 根据指定的 TEST_FUNC_TYPE 执行RingQueue相应的push()和pop()函数
-    RingQueue_Test(TEST_FUNC_TYPE, bConti);
+    // 连续测试3次
+    static const int kMaxPassNum = 3;
+    bConti = true;
+    for (int n = 1; n <= kMaxPassNum; ++n) {
+        // 根据指定的 TEST_FUNC_TYPE 执行RingQueue相应的push()和pop()函数
+#if !defined(USE_DOUBAN_QUEUE) || (USE_DOUBAN_QUEUE == 0)
+        if (n == kMaxPassNum)
+            bConti = false;
+#endif
+        RingQueue_Test(TEST_FUNC_TYPE, bConti);
+    }
   #endif
 #endif
 

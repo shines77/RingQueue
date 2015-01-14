@@ -139,6 +139,8 @@ public:
     int spin2_push(T * item);
     T * spin2_pop();
 
+    int spin2_push_(T * item);
+
     int spin3_push(T * item);
     T * spin3_pop();
 
@@ -584,6 +586,68 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin1_pop()
     spin_mutex.locked = 0;
 
     return item;
+}
+
+template <typename T, uint32_t Capacity, typename CoreTy>
+inline
+int RingQueueBase<T, Capacity, CoreTy>::spin2_push_(T * item)
+{
+    index_type head, tail, next;
+    int32_t pause_cnt;
+    uint32_t loop_count, yield_cnt, spin_count;
+    static const uint32_t YIELD_THRESHOLD = 1;  // 自旋次数阀值
+
+    Jimi_ReadWriteBarrier();    // 编译器读写屏障
+
+    // 下面这一句是一个小技巧, 参考自 pthread_spin_lock(), 自旋开始.
+    if (jimi_lock_test_and_set32(&spin_mutex.locked, 1U) != 0U) {
+        loop_count = 0;
+        spin_count = 1;
+        do {
+            if (loop_count < YIELD_THRESHOLD) {
+                for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();        // 这是为支持超线程的 CPU 准备的切换提示
+                }
+                spin_count *= 2;
+            }
+            else {
+                yield_cnt = loop_count - YIELD_THRESHOLD;
+                if ((yield_cnt & 63) == 63) {
+                    jimi_sleep(1);          // 真正的休眠, 转入内核态
+                }
+                else if ((yield_cnt & 3) == 3) {
+                    jimi_sleep(0);          // 切换到优先级跟自己一样或更高的线程, 可以换到别的CPU核心上
+                }
+                else {
+                    if (!jimi_yield()) {    // 让步给该线程所在的CPU核心上的别的线程,
+                                            // 不能切换到别的CPU核心上等待的线程
+                        jimi_sleep(0);      // 如果同核心上没有可切换的线程,
+                                            // 则切到别的核心试试(只能切优先级跟自己相同或更好的)
+                    }
+                }
+            }
+            loop_count++;
+        } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
+    }
+
+    // 进入锁区域
+    head = core.info.head;
+    tail = core.info.tail;
+    if ((head - tail) > kMask) {
+        Jimi_ReadWriteBarrier();
+        // 队列已满, 释放锁
+        spin_mutex.locked = 0;
+        return -1;
+    }
+    next = head + 1;
+    core.info.head = next;
+
+    core.queue[head & kMask] = item;    // 把数据写入队列
+
+    Jimi_ReadWriteBarrier();        // 编译器读写屏障
+
+    spin_mutex.locked = 0;          // 释放锁
+    return 0;
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
