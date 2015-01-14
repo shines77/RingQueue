@@ -72,7 +72,6 @@
 		<Unit filename="include/RingQueue/msvc/stdint.h" />
 		<Unit filename="include/RingQueue/msvc/targetver.h" />
 		<Unit filename="include/RingQueue/port.h" />
-		<Unit filename="include/RingQueue/q.h" />
 		<Unit filename="include/RingQueue/q3.h" />
 		<Unit filename="include/RingQueue/sleep.h" />
 		<Unit filename="include/RingQueue/sys_timer.h" />
