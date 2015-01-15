@@ -6,8 +6,10 @@
 #pragma once
 #endif
 
-#include "vs_stdint.h"
 #include "test.h"
+#include "port.h"
+
+#include "vs_stdint.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,26 +64,112 @@ template <typename T>
 class CACHE_ALIGN_PREFIX SequenceBase
 {
 public:
-    static const T  INITIAL_VALUE        = static_cast<T>(-1);
-    static const T  INITIAL_ZERO_VALUE   = static_cast<T>(0);
-    static const T  INITIAL_CURSOR_VALUE = static_cast<T>(-1);
+    static const uint32_t kSizeOfInt32 = sizeof(uint32_t);
+    static const uint32_t kSizeOfInt64 = sizeof(uint64_t);
+    static const uint32_t kSizeOfValue = sizeof(T);
+
+    static const T INITIAL_VALUE        = static_cast<T>(0);
+    static const T INITIAL_CURSOR_VALUE = static_cast<T>(-1);
 
 public:
-    SequenceBase() : value(INITIAL_VALUE) { memset(&padding1[0], 0, sizeof(padding1)); }
-    SequenceBase(T initize_val) : value(initize_val) {}
+    SequenceBase() : value(INITIAL_CURSOR_VALUE) {
+        init(INITIAL_CURSOR_VALUE);
+    }
+    SequenceBase(T initial_val) : value(initial_val) {
+        init(initial_val);
+    }
     ~SequenceBase() {}
 
 public:
-    T           get()        { return value;        }
-    void        set(T value) { this->value = value; };
+    void init(T initial_val) {
+#if 0
+        if (sizeof(padding) > 0) {
+            memset(&padding[0], 0, sizeof(padding));
+        }
+#elif 0
+        const uint32_t kAlignTo4Bytes = (sizeof(T) + (kSizeOfInt32 - 1)) & (~(kSizeOfInt32 - 1));
+        const int32_t fill_size = (sizeof(padding) > kAlignTo4Bytes)
+                    ? (kAlignTo4Bytes - sizeof(T)) : (sizeof(padding) - sizeof(T));
+        if (fill_size > 0) {
+            memset(&padding[0], 0, fill_size);
+        }
+#else
+        if (sizeof(T) > sizeof(uint32_t)) {
+            *(uint64_t *)(&value) = (uint64_t)initial_val;
+        }
+        else {
+            *(uint32_t *)(&value) = (uint32_t)initial_val;
+        }
+#endif
+    }
 
-    volatile T  getVolatile()                 { return value;        }
-    void        setVolatile(volatile T value) { this->value = value; };
+    T get() {
+        T val = value;
+        Jimi_ReadBarrier();
+        return val;
+    }
+
+    void set(T newValue) {
+#if 1
+        Jimi_WriteBarrier();
+        T oldValue;
+        // Loop until the update is successful.
+        do {
+            oldValue = this->value;
+        } while (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) != oldValue);
+#else
+        Jimi_WriteBarrier();
+        this->value = newValue;
+#endif
+    }
+
+    T getVolatile() {
+        T val = value;
+        Jimi_ReadBarrier();
+        return val;
+    }
+
+    void setVolatile(T newValue) {
+        Jimi_WriteBarrier();
+        this->value = newValue;
+    }
 
 protected:
     volatile T  value;
-    char        padding1[JIMI_CACHE_LINE_SIZE - sizeof(T) * 1];
+    char        padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
+                      ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
+                      : (JIMI_CACHE_LINE_SIZE)];
 } CACHE_ALIGN_SUFFIX;
+
+template <>
+void SequenceBase<int64_t>::set(int64_t newValue) {
+#if 1
+    Jimi_WriteBarrier();
+    int64_t oldValue;
+    // Loop until the update is successful.
+    do {
+        oldValue = this->value;
+    } while (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) != oldValue);
+#else
+    Jimi_WriteBarrier();
+    this->value = newValue;
+#endif
+}
+
+template <>
+void SequenceBase<uint64_t>::set(uint64_t newValue) {
+#if 1
+    Jimi_WriteBarrier();
+    uint64_t oldValue;
+    // Loop until the update is successful.
+    do {
+        oldValue = this->value;
+    } while (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) != oldValue);
+#else
+    Jimi_WriteBarrier();
+    this->value = newValue;
+#endif
+}
 
 #if defined(_MSC_VER) || defined(__GNUC__)
 #pragma pack(pop)
@@ -89,6 +177,8 @@ protected:
 
 typedef SequenceBase<uint32_t> Sequence32;
 typedef SequenceBase<uint64_t> Sequence64;
+
+typedef SequenceBase<uint8_t>  Sequence8;
 
 #if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
 typedef SequenceBase<uint64_t> Sequence;

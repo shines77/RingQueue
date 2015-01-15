@@ -23,4 +23,39 @@ typedef struct MessageEvent MessageEvent;
 }
 #endif
 
+// Class Sequence() use in c++ only
+#ifdef __cplusplus
+
+template <typename T>
+class CValueEvent
+{
+public:
+    T   value;
+
+#if 0
+    CValueEvent & operator = (CValueEvent & rhs) {
+        this->value = rhs.value;
+        return *this;
+    }
+#else
+   void operator = (CValueEvent & rhs) {
+        this->value = rhs.value;
+    }
+#endif
+
+    void read(CValueEvent & event) {
+        event.value = this->value;
+    }
+
+    void copy(CValueEvent & src) {
+        this->value = src.value;
+    }
+
+    void update(CValueEvent & event) {
+        this->value = event.value;
+    }
+};
+
+#endif  /* __cplusplus */
+
 #endif  /* _JIMI_MESSAGE_EVENT_H_ */

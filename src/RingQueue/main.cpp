@@ -1625,12 +1625,18 @@ main(int argn, char * argv[])
     DisruptorRingQueue<MessageEvent, QSIZE> disRingQueue;
     MessageEvent event;
     disRingQueue.push(event);
-    disRingQueue.pop(event);
+    disRingQueue.pop (event);
 
     //disRingQueue.dump_detail();
     //disRingQueue.dump_info();
 
-    //disRingQueue.
+    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE> disRingQueue2;
+    CValueEvent<uint64_t> event2;
+    disRingQueue2.push(event2);
+    disRingQueue2.pop (event2);
+
+    disRingQueue2.dump_detail();
+    disRingQueue2.dump_info();
 
     test_msg_init();
     popmsg_list_init();

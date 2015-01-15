@@ -10,6 +10,8 @@
 #include "port.h"
 #include "sleep.h"
 
+#include <atomic>
+
 #ifndef _MSC_VER
 #include <pthread.h>
 #include "msvc/pthread.h"
@@ -177,6 +179,13 @@ void DisruptorRingQueueBase<T, Capacity, CoreTy>::init(bool bInitHead /* = false
     }
 
     Jimi_ReadWriteBarrier();
+
+    core.info.cursor.set(0x1234);
+    core.info.next.set(0x5678);
+
+    std::atomic<uint32_t> IsPublished;
+
+    IsPublished.store(1, std::memory_order_release);
 
     // Initilized spin mutex
     spin_mutex.locked = 0;

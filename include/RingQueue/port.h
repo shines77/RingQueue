@@ -87,6 +87,8 @@
 /// See: http://en.wikipedia.org/wiki/Memory_ordering
 ///
 #define Jimi_ReadWriteBarrier() _ReadWriteBarrier()
+#define Jimi_ReadBarrier()      _ReadBarrier()
+#define Jimi_WriteBarrier()     _WriteBarrier()
 
 #define Jimi_MemoryBarrier()    MemoryBarrier()
 
@@ -122,7 +124,9 @@
 ///
 
 //#define Jimi_ReadWriteBarrier()     asm volatile ("":::"memory");
-#define Jimi_ReadWriteBarrier()     __asm__ __volatile__ ("":::"memory");
+#define Jimi_ReadWriteBarrier()     __asm__ __volatile__ ("" : : :"memory");
+#define Jimi_ReadBarrier()          __asm__ __volatile__ ("" : : :"memory");
+#define Jimi_WriteBarrier()         __asm__ __volatile__ ("" : : :"memory");
 
 #define Jimi_MemoryBarrier()        __sync_synchronize()
 
@@ -157,6 +161,9 @@
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     InterlockedExchange((volatile LONG *)(destPtr), (LONG)(newValue))
+
+#define jimi_lock_test_and_set64(destPtr, newValue)                     \
+    InterlockedExchange64((volatile LONGLONG *)(destPtr), (LONGLONG)(newValue))
 
 #define jimi_fetch_and_add32(destPtr, addValue)                         \
     InterlockedExchangeAdd((volatile LONG *)(destPtr), (LONG)(addValue))
@@ -194,6 +201,10 @@
     __sync_lock_test_and_set((volatile uint32_t *)(destPtr),            \
                              (uint32_t)(newValue))
 
+#define jimi_lock_test_and_set64(destPtr, newValue)                     \
+    __sync_lock_test_and_set((volatile uint64_t *)(destPtr),            \
+                             (uint64_t)(newValue))
+
 #define jimi_fetch_and_add32(destPtr, addValue)                         \
     __sync_fetch_and_add((volatile uint32_t *)(destPtr),                \
                          (uint32_t)(addValue))
@@ -223,6 +234,10 @@
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
     __internal_lock_test_and_set32((volatile uint32_t *)(destPtr),      \
                                 (uint32_t)(newValue))
+
+#define jimi_lock_test_and_set32(destPtr, newValue)                     \
+    __internal_lock_test_and_set64((volatile uint64_t *)(destPtr),      \
+                                (uint64_t)(newValue))
 
 #define jimi_fetch_and_add32(destPtr, addValue)                         \
     __internal_fetch_and_add32((volatile uint32_t *)(destPtr),          \
@@ -329,6 +344,15 @@ uint32_t __internal_lock_test_and_set32(volatile uint32_t *destPtr,
                                         uint32_t newValue)
 {
     uint32_t origValue = *destPtr;
+    *destPtr = newValue;
+    return origValue;
+}
+
+static JIMIC_INLINE
+uint64_t __internal_lock_test_and_set64(volatile uint64_t *destPtr,
+                                        uint64_t newValue)
+{
+    uint64_t origValue = *destPtr;
     *destPtr = newValue;
     return origValue;
 }
