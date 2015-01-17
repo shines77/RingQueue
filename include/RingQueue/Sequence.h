@@ -175,9 +175,9 @@ void SequenceBase<uint64_t>::set(uint64_t newValue) {
 #pragma pack(pop)
 #endif
 
-typedef SequenceBase<uint32_t> Sequence32;
 typedef SequenceBase<uint64_t> Sequence64;
-
+typedef SequenceBase<uint32_t> Sequence32;
+typedef SequenceBase<uint16_t> Sequence16;
 typedef SequenceBase<uint8_t>  Sequence8;
 
 #if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)

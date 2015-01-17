@@ -1636,13 +1636,17 @@ main(int argn, char * argv[])
     //disRingQueue.dump_detail();
     //disRingQueue.dump_info();
 
-    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE> disRingQueue2;
+    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
     CValueEvent<uint64_t> event2;
+    event2.value = 0x12345678ULL;
     disRingQueue2.push(event2);
     disRingQueue2.pop (event2);
 
     disRingQueue2.dump_detail();
-    disRingQueue2.dump_info();
+    //disRingQueue2.dump_info();
+    disRingQueue2.dump_core();
+
+    jimi_console_readkeyln(true, true, false);
 
     test_msg_init();
     popmsg_list_init();

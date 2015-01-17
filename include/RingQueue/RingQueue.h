@@ -212,7 +212,7 @@ template <typename T, uint32_t Capacity, typename CoreTy>
 void RingQueueBase<T, Capacity, CoreTy>::dump_info()
 {
     //ReleaseUtils::dump(&core.info, sizeof(core.info));
-    dump_memory(&core.info, sizeof(core.info), false, 16, 0, 0);
+    memory_dump(&core.info, sizeof(core.info), false, 16, 0, 0);
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
