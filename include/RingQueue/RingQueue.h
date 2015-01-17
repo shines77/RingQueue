@@ -65,7 +65,11 @@ public:
 
 public:
     RingQueueHead       info;
+#if 0
     volatile item_type  queue[kCapacityCore];
+#else
+    item_type           queue[kCapacityCore];
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -86,7 +90,11 @@ public:
 
 public:
     RingQueueHead       info;
+#if 0
     volatile item_type *queue;
+#else
+    item_type          *queue;
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////

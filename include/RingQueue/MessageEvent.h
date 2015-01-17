@@ -23,36 +23,101 @@ typedef struct MessageEvent MessageEvent;
 }
 #endif
 
-// Class Sequence() use in c++ only
+// Class CValueEvent() use in C++ only
 #ifdef __cplusplus
 
 template <typename T>
 class CValueEvent
 {
-public:
+private:
     T   value;
 
+public:
+    CValueEvent() : value(0) {}
+
+    CValueEvent(const T & value_) : value(value_) {}
+
 #if 0
-    CValueEvent & operator = (CValueEvent & rhs) {
+    // Copy constructor
+    CValueEvent(const CValueEvent & src) : value(src.value) {
+        //
+    }
+#endif
+    // Copy constructor
+    CValueEvent(const volatile CValueEvent & src) : value(src.value) {
+        //
+    }
+
+#if 1
+  #if 0
+    // Copy assignment operator
+    CValueEvent & operator = (const CValueEvent & rhs) {
+        this->value = rhs.value;
+        return *this;
+    }
+  #endif
+
+    // Copy assignment operator
+    CValueEvent & operator = (const volatile CValueEvent & rhs) {
         this->value = rhs.value;
         return *this;
     }
 #else
-   void operator = (CValueEvent & rhs) {
+  #if 0
+    // Copy assignment operator
+    void operator = (const CValueEvent & rhs) {
+        this->value = rhs.value;
+    }
+  #endif
+
+    // Copy assignment operator
+    void operator = (const volatile CValueEvent & rhs) {
         this->value = rhs.value;
     }
 #endif
 
+    // Read data from event
     void read(CValueEvent & event) {
         event.value = this->value;
     }
 
-    void copy(CValueEvent & src) {
-        this->value = src.value;
+    // Copy data from src
+    void copy(const CValueEvent & src) {
+        value = src.value;
     }
 
-    void update(CValueEvent & event) {
+    // Update data from event
+    void update(const CValueEvent & event) {
         this->value = event.value;
+    }
+
+    // Move the data reference only
+    void move(CValueEvent & event) {
+        // Do nothing!
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // volatile operation
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Read data from event
+    void read(volatile CValueEvent & event) {
+        event.value = this->value;
+    }
+
+    // Copy data from src
+    void copy(const volatile CValueEvent & src) {
+        value = src.value;
+    }
+
+    // Update data from event
+    void update(const volatile CValueEvent & event) {
+        this->value = event.value;
+    }
+
+    // Move the data reference only
+    void move(volatile CValueEvent & event) {
+        // Do nothing!
     }
 };
 

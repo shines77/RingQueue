@@ -77,8 +77,13 @@ public:
     Sequence                cursor, next;
     Sequence                gatingSequences[kConsumersAlloc];
 
+#if 0
     volatile item_type      entries[kCapacityCore];
     volatile flag_type      availableBuffer[kCapacityCore];
+#else
+    item_type               entries[kCapacityCore];
+    flag_type               availableBuffer[kCapacityCore];
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -106,8 +111,13 @@ public:
     Sequence                cursor, next;
     Sequence                gatingSequences[kConsumersAlloc];
 
+#if 0
     volatile item_type *    entries;
     volatile flag_type *    availableBuffer;
+#else
+    item_type *             entries;
+    flag_type *             availableBuffer;
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////
@@ -125,11 +135,11 @@ public:
     typedef CoreTy                      core_type;
     typedef typename CoreTy::item_type  item_type;
     typedef typename CoreTy::flag_type  flag_type;
-    typedef T *                         value_type;
-    typedef T *                         pointer;
-    typedef const T *                   const_pointer;
-    typedef T &                         reference;
-    typedef const T &                   const_reference;
+    typedef item_type                   value_type;
+    typedef item_type *                 pointer;
+    typedef const item_type *           const_pointer;
+    typedef item_type &                 reference;
+    typedef const item_type &           const_reference;
 
 public:
     static const size_type  kCapacity       = CoreTy::kCapacityCore;
@@ -156,13 +166,13 @@ public:
 
     void init(bool bInitHead = false);
 
-    int push(T & entry);
+    int push(const T & entry);
     int pop (T & entry);
 
-    int spin_push(T & entry);
+    int spin_push(const T & entry);
     int spin_pop (T & entry);
 
-    int mutex_push(T & entry);
+    int mutex_push(const T & entry);
     int mutex_pop (T & entry);
 
 protected:
@@ -278,7 +288,7 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sizes() const
 
 template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(T & entry)
+int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(const T & entry)
 {
     index_type head, tail, next;
     bool ok = false;
@@ -294,7 +304,8 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(T & 
         ok = jimi_bool_compare_and_swap32(&core.info.head, head, next);
     } while (!ok);
 
-    core.entries[head & kMask].value = entry.value;
+    //core.entries[head & kMask] = entry;
+    core.entries[head & kMask].copy(entry);
 
     Jimi_ReadWriteBarrier();
 
@@ -319,7 +330,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & e
         ok = jimi_bool_compare_and_swap32(&core.info.tail, tail, next);
     } while (!ok);
 
-    entry.value = core.entries[tail & kMask].value;
+    entry = core.entries[tail & kMask];
 
     Jimi_ReadWriteBarrier();
 
@@ -328,7 +339,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & e
 
 template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push(T & entry)
+int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push(const T & entry)
 {
     index_type head, tail, next;
     int32_t pause_cnt;
@@ -362,8 +373,8 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push
                 }
                 else {
                     if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
+                        //jimi_wsleep(0);
+                        jimi_mm_pause();
                     }
                 }
 #else
@@ -375,14 +386,13 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push
                 }
                 else {
                     if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
+                        //jimi_wsleep(0);
+                        jimi_mm_pause();
                     }
                 }
 #endif
             }
             loop_count++;
-            //jimi_mm_pause();
         } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
     }
 
@@ -396,7 +406,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push
     next = head + 1;
     core.info.head = next;
 
-    core.entries[head & kMask].value = entry.value;
+    core.entries[head & kMask] = entry;
 
     Jimi_ReadWriteBarrier();
 
@@ -410,7 +420,6 @@ inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(T & entry)
 {
     index_type head, tail, next;
-    value_type item;
     int32_t pause_cnt;
     uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
@@ -442,8 +451,8 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
                 }
                 else {
                     if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
+                        //jimi_wsleep(0);
+                        jimi_mm_pause();
                     }
                 }
 #else
@@ -455,14 +464,13 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
                 }
                 else {
                     if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
+                        //jimi_wsleep(0);
+                        jimi_mm_pause();
                     }
                 }
 #endif
             }
             loop_count++;
-            //jimi_mm_pause();
         } while (jimi_val_compare_and_swap32(&spin_mutex.locked, 0U, 1U) != 0U);
     }
 
@@ -476,7 +484,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
     next = tail + 1;
     core.info.tail = next;
 
-    entry.value = core.entries[tail & kMask].value;
+    entry = core.entries[tail & kMask];
 
     Jimi_ReadWriteBarrier();
 
@@ -487,7 +495,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
 
 template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_push(T & entry)
+int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_push(const T & entry)
 {
     index_type head, tail, next;
 
@@ -504,7 +512,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pus
     next = head + 1;
     core.info.head = next;
 
-    core.entries[head & kMask].value = entry.value;
+    core.entries[head & kMask] = entry;
 
     Jimi_ReadWriteBarrier();
 
@@ -533,7 +541,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pop
     next = tail + 1;
     core.info.tail = next;
 
-    entry.value = core.entries[tail & kMask].value;
+    entry = core.entries[tail & kMask];
 
     Jimi_ReadWriteBarrier();
 

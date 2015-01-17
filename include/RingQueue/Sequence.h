@@ -52,7 +52,7 @@ typedef struct seqence_c32 seqence_c;
 }
 #endif
 
-// Class Sequence() use in c++ only
+// Class Sequence() use in C++ only
 #ifdef __cplusplus
 
 #if defined(_MSC_VER) || defined(__GNUC__)

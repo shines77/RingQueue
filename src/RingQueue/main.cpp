@@ -1582,6 +1582,44 @@ void SpinMutex_Test(bool bReadKey = false)
         jimi_console_readkeyln(false, true, false);
 }
 
+void run_some_queue_tests(void)
+{
+    SmallRingQueue<uint64_t, 1024> smallRingQueue;
+    uint64_t ev = 1;
+    uint64_t *msg;
+    smallRingQueue.push(&ev);
+    msg = smallRingQueue.pop();
+
+    /*
+    DisruptorRingQueue<MessageEvent, QSIZE> disRingQueue;
+    MessageEvent event;
+    disRingQueue.push(event);
+    disRingQueue.pop (event);
+
+    //disRingQueue.dump_detail();
+    //disRingQueue.dump_info();
+    //*/
+
+    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
+    CValueEvent<uint64_t> event2;
+    volatile CValueEvent<uint64_t> ev2(0x12345678ULL);
+    CValueEvent<uint64_t> ev3(ev2);
+    CValueEvent<uint64_t> ev4(ev3);
+    CValueEvent<uint64_t> ev5;
+    ev5 = ev2;
+    ev5 = ev3;
+
+    event2.update(ev2);
+    disRingQueue2.push(event2);
+    disRingQueue2.pop (event2);
+
+    disRingQueue2.dump_detail();
+    //disRingQueue2.dump_info();
+    disRingQueue2.dump_core();
+
+    jimi_console_readkeyln(true, true, false);
+}
+
 int
 main(int argn, char * argv[])
 {
@@ -1622,31 +1660,9 @@ main(int argn, char * argv[])
 
     jimi_cpu_warmup(500);
 
-    SmallRingQueue<uint64_t, 1024> smallRingQueue;
-    uint64_t ev = 1;
-    uint64_t *msg;
-    smallRingQueue.push(&ev);
-    msg = smallRingQueue.pop();
-
-    DisruptorRingQueue<MessageEvent, QSIZE> disRingQueue;
-    MessageEvent event;
-    disRingQueue.push(event);
-    disRingQueue.pop (event);
-
-    //disRingQueue.dump_detail();
-    //disRingQueue.dump_info();
-
-    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
-    CValueEvent<uint64_t> event2;
-    event2.value = 0x12345678ULL;
-    disRingQueue2.push(event2);
-    disRingQueue2.pop (event2);
-
-    disRingQueue2.dump_detail();
-    //disRingQueue2.dump_info();
-    disRingQueue2.dump_core();
-
-    jimi_console_readkeyln(true, true, false);
+#ifdef _DEBUG
+    run_some_queue_tests();
+#endif
 
     test_msg_init();
     popmsg_list_init();
