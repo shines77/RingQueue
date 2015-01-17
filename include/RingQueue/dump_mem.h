@@ -10,10 +10,10 @@
 extern "C" {
 #endif
 
-void dump_mem(void *p, size_t size, bool alignedTo /* = false */,
-              unsigned int alignment /* = 16 */,
-              unsigned int extraHead /* = 0 */,
-              unsigned int extraTail /* = 0 */);
+void dump_memory(void *p, size_t size, bool alignedTo /* = false */,
+                 unsigned int alignment /* = 16 */,
+                 unsigned int extraHead /* = 0 */,
+                 unsigned int extraTail /* = 0 */);
 
 #ifdef __cplusplus
 }

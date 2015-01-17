@@ -60,7 +60,7 @@ public:
     typedef T *         item_type;
 
 public:
-    static const size_type  kCapacityCore    = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
+    static const size_type  kCapacityCore   = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
     static const bool       kIsAllocOnHeap  = false;
 
 public:
@@ -77,6 +77,9 @@ class RingQueueCore
 {
 public:
     typedef T *         item_type;
+
+    RingQueueCore()  {}
+    ~RingQueueCore() {}
 
 public:
     static const bool kIsAllocOnHeap = true;
@@ -209,7 +212,7 @@ template <typename T, uint32_t Capacity, typename CoreTy>
 void RingQueueBase<T, Capacity, CoreTy>::dump_info()
 {
     //ReleaseUtils::dump(&core.info, sizeof(core.info));
-    dump_mem(&core.info, sizeof(core.info), false, 16, 0, 0);
+    dump_memory(&core.info, sizeof(core.info), false, 16, 0, 0);
 }
 
 template <typename T, uint32_t Capacity, typename CoreTy>
@@ -1319,8 +1322,10 @@ RingQueue<T, Capacity>::~RingQueue()
 {
     // If the queue is allocated on system heap, release them.
     if (RingQueueCore<T, Capacity>::kIsAllocOnHeap) {
-        delete [] this->core.queue;
-        this->core.queue = NULL;
+        if (this->core.queue != NULL) {
+            delete [] this->core.queue;
+            this->core.queue = NULL;
+        }
     }
 }
 
@@ -1332,10 +1337,10 @@ void RingQueue<T, Capacity>::init_queue(bool bFillQueue /* = true */)
 
     value_type *newData = new T *[kCapacity];
     if (newData != NULL) {
-        this->core.queue = newData;
         if (bFillQueue) {
-            memset((void *)this->core.queue, 0, sizeof(value_type) * kCapacity);
+            memset((void *)newData, 0, sizeof(value_type) * kCapacity);
         }
+        this->core.queue = newData;
     }
 }
 

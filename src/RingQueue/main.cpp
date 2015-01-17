@@ -1622,6 +1622,12 @@ main(int argn, char * argv[])
 
     jimi_cpu_warmup(500);
 
+    SmallRingQueue<uint64_t, 1024> smallRingQueue;
+    uint64_t ev = 1;
+    uint64_t *msg;
+    smallRingQueue.push(&ev);
+    msg = smallRingQueue.pop();
+
     DisruptorRingQueue<MessageEvent, QSIZE> disRingQueue;
     MessageEvent event;
     disRingQueue.push(event);
