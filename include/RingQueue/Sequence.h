@@ -95,10 +95,10 @@ public:
         }
 #else
         if (sizeof(T) > sizeof(uint32_t)) {
-            *(uint64_t *)(&value) = (uint64_t)initial_val;
+            *(uint64_t *)(&this->value) = (uint64_t)initial_val;
         }
         else {
-            *(uint32_t *)(&value) = (uint32_t)initial_val;
+            *(uint32_t *)(&this->value) = (uint32_t)initial_val;
         }
 #endif
     }
@@ -134,12 +134,26 @@ public:
         this->value = newValue;
     }
 
+    T compareAndSwap(T oldValue, T newValue) {
+        Jimi_WriteBarrier();
+        return jimi_val_compare_and_swap32(&(this->value), oldValue, newValue);
+    }
+
+    bool compareAndSwapBool(T oldValue, T newValue) {
+        Jimi_WriteBarrier();
+        return (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) == oldValue);
+    }
+
 protected:
     volatile T  value;
     char        padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
                       ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
                       : (JIMI_CACHE_LINE_SIZE)];
 } CACHE_ALIGN_SUFFIX;
+
+#if defined(_MSC_VER) || defined(__GNUC__)
+#pragma pack(pop)
+#endif
 
 template <>
 void SequenceBase<int64_t>::set(int64_t newValue) {
@@ -171,9 +185,17 @@ void SequenceBase<uint64_t>::set(uint64_t newValue) {
 #endif
 }
 
-#if defined(_MSC_VER) || defined(__GNUC__)
-#pragma pack(pop)
-#endif
+template <>
+uint64_t SequenceBase<uint64_t>::compareAndSwap(uint64_t oldValue, uint64_t newValue) {
+    Jimi_WriteBarrier();
+    return jimi_val_compare_and_swap64(&(this->value), oldValue, newValue);
+}
+
+template <>
+bool SequenceBase<uint64_t>::compareAndSwapBool(uint64_t oldValue, uint64_t newValue) {
+    Jimi_WriteBarrier();
+    return (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) == oldValue);
+}
 
 typedef SequenceBase<uint64_t> Sequence64;
 typedef SequenceBase<uint32_t> Sequence32;

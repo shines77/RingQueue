@@ -47,18 +47,39 @@
 #define JIMI_ROUND_TO_POW2(N)   jimi_next_power_of_2(N)
 #endif
 
+#define jimi_nbits2(n)          (((n) & 2) ? 1 : 0)
+#define jimi_nbits4(n)          (((n) & 0x0000000CU) ? (2  +  jimi_nbits2((n) >> 2)) : ( jimi_nbits2(n)))
+#define jimi_nbits8(n)          (((n) & 0x000000F0U) ? (4  +  jimi_nbits4((n) >> 4)) : ( jimi_nbits4(n)))
+#define jimi_nbits16(n)         (((n) & 0x0000FF00U) ? (8  +  jimi_nbits8((n) >> 8)) : ( jimi_nbits8(n)))
+#define jimi_nbits32(n)         (((n) & 0xFFFF0000U) ? (16 + jimi_nbits16((n) >>16)) : (jimi_nbits16(n)))
+#define jimi_nbits_t(n)         (((n) == 0) ? 0 : (jimi_nbits32(n) + 1))
+
+#ifndef JIMI_POPCONUT
+#define JIMI_POPCONUT(N)        jimi_nbits_t(N)
+#endif  /* JIMI_POPCONUT */
+
+#define jimi_popcnt1(n)         ((n) - (((n) >> 1) & 0x55555555U))
+#define jimi_popcnt2(n)         ((jimi_popcnt1(n) & 0x33333333U) + ((jimi_popcnt1(n) >> 2) & 0x33333333U))
+#define jimi_popcnt3(n)         ((jimi_popcnt2(n) & 0x0F0F0F0FU) + ((jimi_popcnt2(n) >> 4) & 0x0F0F0F0FU))
+#define jimi_popcnt4(n)         ((jimi_popcnt3(n) & 0x0000FFFFU) + ((jimi_popcnt3(n) >>16) & 0x0000FFFFU))
+#define jimi_popcnt5(n)         ((jimi_popcnt4(n) & 0x000000FFU) + ((jimi_popcnt4(n) >> 8) & 0x000000FFU))
+
+#ifndef JIMI_POPCONUT32
+#define JIMI_POPCONUT32(N)      jimi_popcnt5(N)
+#endif  /* JIMI_POPCONUT32 */
+
 #ifndef jimi_mm_pause
-#define jimi_mm_pause       _mm_pause
+#define jimi_mm_pause           _mm_pause
 #endif
 
 #if defined(_MSC_VER) || defined(__INTER_COMPILER) || defined(__ICC)
 
 #ifndef jimi_likely
-#define jimi_likely(x)      (x)
+#define jimi_likely(x)          (x)
 #endif
 
 #ifndef jimi_unlikely
-#define jimi_unlikely(x)    (x)
+#define jimi_unlikely(x)        (x)
 #endif
 
 #ifndef JIMIC_INLINE
@@ -142,12 +163,12 @@
 #include <intrin.h>
 
 #define jimi_val_compare_and_swap32(destPtr, oldValue, newValue)        \
-    InterlockedCompareExchange((volatile LONG *)(destPtr),              \
-                            (LONG)(newValue), (LONG)(oldValue))
+    (uint32_t)(InterlockedCompareExchange((volatile LONG *)(destPtr),   \
+                            (LONG)(newValue), (LONG)(oldValue)))
 
-#define jimi_val_compare_and_swap64(destPtr, oldValue, newValue)        \
-    InterlockedCompareExchange64((volatile LONG64 *)(destPtr),          \
-                            (LONG64)(newValue), (LONG64)(oldValue))
+#define jimi_val_compare_and_swap64(destPtr, oldValue, newValue)            \
+    (uint64_t)(InterlockedCompareExchange64((volatile LONG64 *)(destPtr),   \
+                            (LONG64)(newValue), (LONG64)(oldValue)))
 
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \
     (InterlockedCompareExchange((volatile LONG *)(destPtr),             \
@@ -160,16 +181,18 @@
                                 == (LONG64)(oldValue))
 
 #define jimi_lock_test_and_set32(destPtr, newValue)                     \
-    InterlockedExchange((volatile LONG *)(destPtr), (LONG)(newValue))
+    (uint32_t)(InterlockedExchange((volatile LONG *)(destPtr), (LONG)(newValue)))
 
 #define jimi_lock_test_and_set64(destPtr, newValue)                     \
-    InterlockedExchange64((volatile LONGLONG *)(destPtr), (LONGLONG)(newValue))
+    (uint64_t)(InterlockedExchange64((volatile LONGLONG *)(destPtr),    \
+                                    (LONGLONG)(newValue)))
 
 #define jimi_fetch_and_add32(destPtr, addValue)                         \
-    InterlockedExchangeAdd((volatile LONG *)(destPtr), (LONG)(addValue))
+    (uint32_t)(InterlockedExchangeAdd((volatile LONG *)(destPtr), (LONG)(addValue)))
 
 #define jimi_fetch_and_add64(destPtr, addValue)                         \
-    InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), (LONGLONG)(addValue))
+    (uint64_t)(InterlockedExchangeAdd64((volatile LONGLONG *)(destPtr), \
+                                        (LONGLONG)(addValue)))
 
 #elif defined(__GUNC__) || defined(__linux__) \
    || defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__) \

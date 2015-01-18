@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include "dump_mem.h"
 
@@ -75,6 +76,7 @@ public:
     DisruptorRingQueueHead  info;
 
     Sequence                cursor, next;
+    Sequence                gatingSequenceCache;
     Sequence                gatingSequences[kConsumersAlloc];
 
 #if 0
@@ -109,6 +111,7 @@ public:
     DisruptorRingQueueHead  info;
 
     Sequence                cursor, next;
+    Sequence                gatingSequenceCache;
     Sequence                gatingSequences[kConsumersAlloc];
 
 #if 0
@@ -131,6 +134,7 @@ class DisruptorRingQueueBase
 {
 public:
     typedef uint32_t                    size_type;
+    typedef uint32_t                    sequence_type;
     typedef uint32_t                    index_type;
     typedef CoreTy                      core_type;
     typedef typename CoreTy::item_type  item_type;
@@ -143,7 +147,8 @@ public:
 
 public:
     static const size_type  kCapacity       = CoreTy::kCapacityCore;
-    static const index_type kMask           = (index_type)(kCapacity - 1);
+    static const index_type kIndexMask      = (index_type)(kCapacity - 1);
+    static const uint32_t   kIndexShift     = JIMI_POPCONUT32(kIndexMask);
 
     static const size_type  kProducers      = CoreTy::kProducers;
     static const size_type  kConsumers      = CoreTy::kConsumers;
@@ -154,20 +159,31 @@ public:
     ~DisruptorRingQueueBase();
 
 public:
+    static sequence_type getMinimumSequence(const Sequence *sequences, sequence_type mininum);
+
     void dump();
     void dump_core();
     void dump_info();
     void dump_detail();
 
-    index_type mask() const       { return kMask;     };
-    size_type  capacity() const   { return kCapacity; };
-    size_type  length() const     { return sizes();   };
+    index_type mask() const     { return kIndexMask; };
+    size_type  capacity() const { return kCapacity;  };
+    size_type  length() const   { return sizes();    };
     size_type  sizes() const;
 
     void init(bool bInitHead = false);
 
+    void publish(sequence_type sequence);
+    void setAvailable(sequence_type sequence)
+        ;
+    bool isAvailable(sequence_type sequence);
+    sequence_type getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence);
+
     int push(const T & entry);
     int pop (T & entry);
+
+    int q3_push(const T & entry);
+    int q3_pop (T & entry);
 
     int spin_push(const T & entry);
     int spin_pop (T & entry);
@@ -215,7 +231,12 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::init(boo
     core.next.set(0x5678);
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-    printf("CoreTy::kConsumersAlloc = %d\n", kConsumersAlloc);
+    printf("CoreTy::kProducers      = %d\n",    kProducers);
+    printf("CoreTy::kConsumers      = %d\n",    kConsumers);
+    printf("CoreTy::kConsumersAlloc = %d\n",    kConsumersAlloc);
+    printf("CoreTy::kCapacity       = %d\n",    kCapacity);
+    printf("CoreTy::kIndexMask      = %d\n",    kIndexMask);
+    printf("CoreTy::kIndexShift     = %d\n",    kIndexShift);
 #endif
 
     for (int i = 0; i < kConsumersAlloc; ++i) {
@@ -275,7 +296,7 @@ inline
 typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::size_type
 DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sizes() const
 {
-    index_type head, tail;
+    sequence_type head, tail;
 
     Jimi_ReadWriteBarrier();
 
@@ -283,31 +304,162 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sizes() const
 
     tail = core.info.tail;
 
-    return (size_type)((head - tail) <= kMask) ? (head - tail) : (size_type)-1;
+    return (size_type)((head - tail) <= kIndexMask) ? (head - tail) : (size_type)(-1);
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+/* static */
+inline
+typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sequence_type
+DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
+    getMinimumSequence(const Sequence *sequences, sequence_type mininum)
+{
+    assert(sequences != NULL);
+
+    Sequence *localSequences = const_cast<Sequence *>(sequences);
+    sequence_type minSequence = localSequences->get();
+    for (int i = 1; i < kConsumers; ++i) {
+        ++localSequences;
+        sequence_type seq = localSequences->get();
+#if 1
+        minSequence = (seq < minSequence) ? seq : minSequence;
+#else
+        if (seq < minSequence)
+            minSequence = seq;
+#endif
+    }
+    if (mininum < minSequence)
+        minSequence = mininum;
+    return minSequence;
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
+void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::publish(sequence_type sequence)
+{
+    setAvailable(sequence);
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
+void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::setAvailable(sequence_type sequence)
+{
+    index_type index = ((index_type)sequence & kIndexMask);
+    flag_type  flag  = ((flag_type) sequence >> kIndexShift);
+
+    if (core_type::kIsAllocOnHeap) {
+        assert(core.availableBuffer != NULL);
+    }
+    core.availableBuffer[index] = flag;
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
+bool DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::isAvailable(sequence_type sequence)
+{
+    index_type index = ((index_type)sequence & kIndexMask);
+    flag_type  flag  = ((flag_type) sequence >> kIndexShift);
+
+    return (core.availableBuffer[index] == flag);
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
+typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sequence_type
+DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
+getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence)
+{
+    for (sequence_type sequence = lowerBound; sequence <= availableSequence; ++sequence) {
+        if (!isAvailable(sequence)) {
+            return (sequence - 1);
+        }
+    }
+
+    return availableSequence;
 }
 
 template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(const T & entry)
 {
-    index_type head, tail, next;
-    bool ok = false;
-
     Jimi_ReadWriteBarrier();
 
+#if 0
+    sequence_type current, next;
     do {
-        head = core.info.head;
-        tail = core.info.tail;
-        if ((head - tail) > kMask)
-            return -1;
-        next = head + 1;
-        ok = jimi_bool_compare_and_swap32(&core.info.head, head, next);
-    } while (!ok);
+        current = core.cursor.get();
+        next = current + 1;
 
-    //core.entries[head & kMask] = entry;
-    core.entries[head & kMask].copy(entry);
+        sequence_type wrapPoint = next - kCapacity;
+        sequence_type cachedGatingSequence = core.gatingSequenceCache.get();
+
+        if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current) {
+            sequence_type gatingSequence = DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>
+                                            ::getMinimumSequence(core.gatingSequences, current);
+            if (wrapPoint > gatingSequence) {
+                // Push() failed, maybe queue is full.
+                return -1;
+            }
+
+            core.gatingSequenceCache.set(gatingSequence);
+        }
+        else if (core.cursor.compareAndSwap(current, next) != current) {
+            // Need yiled() or sleep() a while.
+        }
+        else {
+            // Claim a sequence succeeds.
+            break;
+        }
+    } while (true);
+
+    core.entries[current & kIndexMask] = entry;
+    //core.entries[current & kMask].copy(entry);
+
+    publish(current);
 
     Jimi_ReadWriteBarrier();
+
+#else
+    sequence_type head, tail, next;
+    sequence_type wrapPoint;
+    do {
+        head = core.cursor.get();
+        tail = core.gatingSequenceCache.get();
+        if ((head - tail) > kIndexMask) {
+            // Push() failed, maybe queue is full.
+            return -1;
+        }
+
+        next = head + 1;
+        wrapPoint = next - kCapacity;
+
+        if (tail < wrapPoint || tail > head) {
+            sequence_type gatingSequence = DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>
+                                            ::getMinimumSequence(core.gatingSequences, head);
+            if (wrapPoint > gatingSequence) {
+                // Push() failed, maybe queue is full.
+                return -1;
+            }
+
+            core.gatingSequenceCache.set(gatingSequence);
+        }
+
+        if (core.cursor.compareAndSwap(head, next) != head) {
+            // Need yiled() or sleep() a while.
+        }
+        else {
+            // Claim a sequence succeeds.
+            break;
+        }
+    } while (true);
+
+    core.entries[head & kIndexMask] = entry;
+    //core.entries[head & kMask].copy(entry);
+
+    publish(head);
+
+    Jimi_ReadWriteBarrier();
+#endif
 
     return 0;
 }
@@ -316,7 +468,7 @@ template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers,
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & entry)
 {
-    index_type head, tail, next;
+    sequence_type head, tail, next;
     bool ok = false;
 
     Jimi_ReadWriteBarrier();
@@ -324,13 +476,64 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & e
     do {
         head = core.info.head;
         tail = core.info.tail;
-        if ((tail == head) || (tail > head && (head - tail) > kMask))
+        if ((tail == head) || (tail > head && (head - tail) > kIndexMask))
             return -1;
         next = tail + 1;
         ok = jimi_bool_compare_and_swap32(&core.info.tail, tail, next);
     } while (!ok);
 
-    entry = core.entries[tail & kMask];
+    entry = core.entries[tail & kIndexMask];
+
+    Jimi_ReadWriteBarrier();
+
+    return 0;
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
+int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_push(const T & entry)
+{
+    sequence_type head, tail, next;
+    bool ok = false;
+
+    Jimi_ReadWriteBarrier();
+
+    do {
+        head = core.info.head;
+        tail = core.info.tail;
+        if ((head - tail) > kIndexMask)
+            return -1;
+        next = head + 1;
+        ok = jimi_bool_compare_and_swap32(&core.info.head, head, next);
+    } while (!ok);
+
+    core.entries[head & kIndexMask] = entry;
+    //core.entries[head & kMask].copy(entry);
+
+    Jimi_ReadWriteBarrier();
+
+    return 0;
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
+int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_pop(T & entry)
+{
+    sequence_type head, tail, next;
+    bool ok = false;
+
+    Jimi_ReadWriteBarrier();
+
+    do {
+        head = core.info.head;
+        tail = core.info.tail;
+        if ((tail == head) || (tail > head && (head - tail) > kIndexMask))
+            return -1;
+        next = tail + 1;
+        ok = jimi_bool_compare_and_swap32(&core.info.tail, tail, next);
+    } while (!ok);
+
+    entry = core.entries[tail & kIndexMask];
 
     Jimi_ReadWriteBarrier();
 
@@ -341,7 +544,7 @@ template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers,
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push(const T & entry)
 {
-    index_type head, tail, next;
+    sequence_type head, tail, next;
     int32_t pause_cnt;
     uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
@@ -398,7 +601,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push
 
     head = core.info.head;
     tail = core.info.tail;
-    if ((head - tail) > kMask) {
+    if ((head - tail) > kIndexMask) {
         Jimi_ReadWriteBarrier();
         spin_mutex.locked = 0;
         return -1;
@@ -406,7 +609,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push
     next = head + 1;
     core.info.head = next;
 
-    core.entries[head & kMask] = entry;
+    core.entries[head & kIndexMask] = entry;
 
     Jimi_ReadWriteBarrier();
 
@@ -419,7 +622,7 @@ template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers,
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(T & entry)
 {
-    index_type head, tail, next;
+    sequence_type head, tail, next;
     int32_t pause_cnt;
     uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
@@ -476,7 +679,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
 
     head = core.info.head;
     tail = core.info.tail;
-    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+    if ((tail == head) || (tail > head && (head - tail) > kIndexMask)) {
         Jimi_ReadWriteBarrier();
         spin_mutex.locked = 0;
         return -1;
@@ -484,7 +687,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
     next = tail + 1;
     core.info.tail = next;
 
-    entry = core.entries[tail & kMask];
+    entry = core.entries[tail & kIndexMask];
 
     Jimi_ReadWriteBarrier();
 
@@ -497,7 +700,7 @@ template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers,
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_push(const T & entry)
 {
-    index_type head, tail, next;
+    sequence_type head, tail, next;
 
     Jimi_ReadWriteBarrier();
 
@@ -505,14 +708,14 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pus
 
     head = core.info.head;
     tail = core.info.tail;
-    if ((head - tail) > kMask) {
+    if ((head - tail) > kIndexMask) {
         pthread_mutex_unlock(&queue_mutex);
         return -1;
     }
     next = head + 1;
     core.info.head = next;
 
-    core.entries[head & kMask] = entry;
+    core.entries[head & kIndexMask] = entry;
 
     Jimi_ReadWriteBarrier();
 
@@ -525,7 +728,7 @@ template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers,
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pop(T & entry)
 {
-    index_type head, tail, next;
+    sequence_type head, tail, next;
 
     Jimi_ReadWriteBarrier();
 
@@ -534,14 +737,14 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pop
     head = core.info.head;
     tail = core.info.tail;
     //if (tail >= head && (head - tail) <= kMask)
-    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+    if ((tail == head) || (tail > head && (head - tail) > kIndexMask)) {
         pthread_mutex_unlock(&queue_mutex);
         return -1;
     }
     next = tail + 1;
     core.info.tail = next;
 
-    entry = core.entries[tail & kMask];
+    entry = core.entries[tail & kIndexMask];
 
     Jimi_ReadWriteBarrier();
 
