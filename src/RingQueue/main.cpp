@@ -1606,12 +1606,15 @@ void run_some_queue_tests(void)
     CValueEvent<uint64_t> ev3(ev2);
     CValueEvent<uint64_t> ev4(ev3);
     CValueEvent<uint64_t> ev5;
+    Sequence tailSequence;
+    uint32_t cachedAvailableSequence = 0;
     ev5 = ev2;
     ev5 = ev3;
 
     event2.update(ev2);
     disRingQueue2.push(event2);
-    disRingQueue2.pop (event2);
+    disRingQueue2.pop (event2, tailSequence, cachedAvailableSequence);
+    disRingQueue2.pop (event2, tailSequence, cachedAvailableSequence);
 
     disRingQueue2.dump_detail();
     //disRingQueue2.dump_info();
