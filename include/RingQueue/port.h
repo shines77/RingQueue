@@ -61,8 +61,8 @@
 #define jimi_popcnt1(n)         ((n) - (((n) >> 1) & 0x55555555U))
 #define jimi_popcnt2(n)         ((jimi_popcnt1(n) & 0x33333333U) + ((jimi_popcnt1(n) >> 2) & 0x33333333U))
 #define jimi_popcnt3(n)         ((jimi_popcnt2(n) & 0x0F0F0F0FU) + ((jimi_popcnt2(n) >> 4) & 0x0F0F0F0FU))
-#define jimi_popcnt4(n)         ((jimi_popcnt3(n) & 0x0000FFFFU) + ((jimi_popcnt3(n) >>16) & 0x0000FFFFU))
-#define jimi_popcnt5(n)         ((jimi_popcnt4(n) & 0x000000FFU) + ((jimi_popcnt4(n) >> 8) & 0x000000FFU))
+#define jimi_popcnt4(n)         ((jimi_popcnt3(n) & 0x0000FFFFU) +  (jimi_popcnt3(n) >>16))
+#define jimi_popcnt5(n)         ((jimi_popcnt4(n) & 0x000000FFU) +  (jimi_popcnt4(n) >> 8))
 
 #ifndef JIMI_POPCONUT32
 #define JIMI_POPCONUT32(N)      jimi_popcnt5(N)

@@ -154,6 +154,16 @@ public:
     static const size_type  kConsumers      = CoreTy::kConsumers;
     static const size_type  kConsumersAlloc = CoreTy::kConsumersAlloc;
 
+    struct PopThreadStackData
+    {
+        Sequence       *tailSequence;
+        sequence_type   current;
+        sequence_type   cachedAvailableSequence;
+        bool            processedSequence;
+    };
+
+    typedef struct PopThreadStackData PopThreadStackData;
+
 public:
     DisruptorRingQueueBase(bool bInitHead = false);
     ~DisruptorRingQueueBase();
@@ -173,14 +183,20 @@ public:
 
     void init(bool bInitHead = false);
 
+    Sequence *getGatingSequences(int index);
+
     void publish(sequence_type sequence);
     void setAvailable(sequence_type sequence)
         ;
     bool isAvailable(sequence_type sequence);
-    sequence_type getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence);
+    sequence_type getHighestPublishedSequence(sequence_type lowerBound,
+                                              sequence_type availableSequence);
 
     int push(const T & entry);
-    int pop (T & entry, Sequence &tailSequence, sequence_type &cachedAvailableSequence);
+    int pop (T & entry, PopThreadStackData &stackData);
+    int pop (T & entry, Sequence &tailSequence, sequence_type &nextSequence,
+             sequence_type &cachedAvailableSequence, bool &processedSequence);
+
     sequence_type waitFor(sequence_type sequence);
 
     int q3_push(const T & entry);
@@ -228,8 +244,8 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::init(boo
         memset((void *)&core.info, 0, sizeof(core.info));
     }
 
-    core.cursor.set(0);
-    core.workSequence.set(0);
+    core.cursor.set(Sequence::INITIAL_CURSOR_VALUE);
+    core.workSequence.set(Sequence::INITIAL_CURSOR_VALUE);
     //core.cursor.set(0x1234);
     //core.workSequence.set(0x5678);
 
@@ -245,7 +261,7 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::init(boo
 
     for (int i = 0; i < kConsumersAlloc; ++i) {
         //core.gatingSequences[i].set(0x00111111U * (i + 1));
-        core.gatingSequences[i].set(0);
+        core.gatingSequences[i].set(Sequence::INITIAL_CURSOR_VALUE);
     }
 
     Jimi_ReadWriteBarrier();
@@ -378,7 +394,7 @@ template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers,
 inline
 typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sequence_type
 DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
-getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence)
+        getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence)
 {
     for (sequence_type sequence = lowerBound; sequence <= availableSequence; ++sequence) {
         if (!isAvailable(sequence)) {
@@ -390,32 +406,44 @@ getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSeq
 }
 
 template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+Sequence * DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::getGatingSequences(int index)
+{
+
+    if (index >= 0 && index < kCapacity) {
+        return &core.gatingSequences[index];
+    }
+    return NULL;
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(const T & entry)
 {
     Jimi_ReadWriteBarrier();
 
 #if 1
-    sequence_type current, next;
+    sequence_type current, nextSequence;
     do {
         current = core.cursor.get();
-        next = current + 1;
+        nextSequence = current + 1;
 
         //sequence_type wrapPoint = next - kCapacity;
-        sequence_type wrapPoint = current - kIndexMask;
+        //sequence_type wrapPoint = current - kIndexMask;
         sequence_type cachedGatingSequence = core.gatingSequenceCache.get();
 
-        if ((int32_t)wrapPoint > (int32_t)cachedGatingSequence || (int32_t)cachedGatingSequence > current) {
+        //if ((int32_t)wrapPoint > (int32_t)cachedGatingSequence || (int32_t)cachedGatingSequence > current) {
+        if ((current - cachedGatingSequence) > kIndexMask) {
             sequence_type gatingSequence = DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>
                                             ::getMinimumSequence(core.gatingSequences, current);
-            if ((int32_t)wrapPoint > (int32_t)gatingSequence) {
+            //if ((int32_t)wrapPoint > (int32_t)gatingSequence) {
+            if ((current - gatingSequence) > kIndexMask) {
                 // Push() failed, maybe queue is full.
                 return -1;
             }
 
             core.gatingSequenceCache.set(gatingSequence);
         }
-        else if (core.cursor.compareAndSwap(current, next) != current) {
+        else if (core.cursor.compareAndSwap(current, nextSequence) != current) {
             // Need yiled() or sleep() a while.
             jimi_wsleep(1);
         }
@@ -426,13 +454,16 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(cons
     } while (true);
 
     core.entries[current & kIndexMask] = entry;
-    //core.entries[current & kMask].copy(entry);
+    //core.entries[current & kIndexMask].copy(entry);
 
     Jimi_WriteBarrier();
+
+    Jimi_MemoryBarrier();
 
     publish(current);
 
     Jimi_WriteBarrier();
+    Jimi_MemoryBarrier();
 
 #else
     sequence_type head, tail, next;
@@ -476,7 +507,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(cons
     Jimi_WriteBarrier();
 
     core.entries[head & kIndexMask] = entry;
-    //core.entries[head & kMask].copy(entry);
+    //core.entries[head & kIndexMask].copy(entry);
 
     publish(head);
 
@@ -488,31 +519,50 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(cons
 
 template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
+int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, PopThreadStackData &stackData)
+{
+    assert(stackData.tailSequence != NULL);
+    return pop(entry, *stackData.tailSequence, stackData.current,
+               stackData.cachedAvailableSequence, stackData.processedSequence);
+}
+
+template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
 int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, Sequence &tailSequence,
-                                                                           sequence_type &cachedAvailableSequence)
+                                                                           sequence_type &nextSequence,
+                                                                           sequence_type &cachedAvailableSequence,
+                                                                           bool &processedSequence)
 {
     Jimi_ReadWriteBarrier();
 
 #if 1
-    sequence_type current, nextSequence;
-    //sequence_type cachedAvailableSequence;
-    //bool processedSequence = true;
+    sequence_type current;
 
-    do {
-        current = core.workSequence.get();
-        nextSequence = current + 1;
-        tailSequence.set(current);
-    } while (core.workSequence.compareAndSwap(current, nextSequence) != current);
+    if (processedSequence) {
+        processedSequence = false;
+        do {
+            current = core.workSequence.get();
+            nextSequence = current + 1;
+            tailSequence.set(current);
+        } while (core.workSequence.compareAndSwap(current, nextSequence) != current);
+    }
 
-    if (cachedAvailableSequence >= current) {
+    //if (cachedAvailableSequence >= current) {
+    //if ((cachedAvailableSequence - current) <= kIndexMask * 2) {
+    if ((cachedAvailableSequence - nextSequence) <= kIndexMask * 2) {
         // Read the message data
-        entry = core.entries[current & kIndexMask];
+        //entry = core.entries[current & kIndexMask];
+        entry = core.entries[nextSequence & kIndexMask];
+
+        Jimi_ReadBarrier();
+        processedSequence = true;
 
         Jimi_ReadBarrier();
         return 0;
     }
     else {
         // Maybe queue is empty now.
+        //cachedAvailableSequence = waitFor(current + 1);
         cachedAvailableSequence = waitFor(nextSequence);
         return -1;
     }
@@ -561,7 +611,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_push(c
     Jimi_WriteBarrier();
 
     core.entries[head & kIndexMask] = entry;
-    //core.entries[head & kMask].copy(entry);
+    //core.entries[head & kIndexMask].copy(entry);
 
     return 0;
 }
@@ -787,7 +837,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pop
 
     head = core.info.head;
     tail = core.info.tail;
-    //if (tail >= head && (head - tail) <= kMask)
+    //if (tail >= head && (head - tail) <= kIndexMask)
     if ((tail == head) || (tail > head && (head - tail) > kIndexMask)) {
         pthread_mutex_unlock(&queue_mutex);
         return -1;
@@ -953,7 +1003,10 @@ void DisruptorRingQueue<T, Capacity, Producers, Consumers>::init_queue(bool bFil
     flag_type *newBufferData = new flag_type[kCapacity];
     if (newBufferData != NULL) {
         if (bFillQueue) {
-            memset((void *)newBufferData, 0, sizeof(flag_type) * kCapacity);
+            //memset((void *)newBufferData, 0, sizeof(flag_type) * kCapacity);
+            for (int i = 0; i < kCapacity; ++i) {
+                newBufferData[i] = (flag_type)-1;
+            }
         }
         this->core.availableBuffer = newBufferData;
     }

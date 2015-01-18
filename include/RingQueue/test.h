@@ -17,10 +17,10 @@
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
-#if 1
-#define MAX_MSG_COUNT           (8000000 * 1)
+#if defined(_DEBUG)
+#define MAX_MSG_COUNT           800000
 #else
-#define MAX_MSG_COUNT           8000
+#define MAX_MSG_COUNT           (8000000 * 1)
 #endif
 
 /// 等同于MAX_MSG_COUNT
@@ -107,21 +107,27 @@
 /// 通用型spin_mutex自旋锁, 调用RingQueue::spin2_push(), RingQueue::spin2_pop(), 最稳定, 且速度快
 #define FUNC_RINGQUEUE_SPIN2_PUSH       3
 
-/// 仿制的spin_mutex自旋锁(会死锁), 调用RingQueue::spin3_push(), RingQueue::spin3_pop(), 不推荐
-#define FUNC_RINGQUEUE_SPIN3_PUSH       9
-
-/// TODO:
-#define FUNC_RINGQUEUE_SPIN6_PUSH       6
-
 /// 系统自带的互斥锁, Windows上为临界区, Linux上为pthread_mutex_t,
 /// 调用: RingQueue::mutex_push(), RingQueue::mutex_pop();
 #define FUNC_RINGQUEUE_MUTEX_PUSH       4
 
+/// 豆瓣上q3.h的原版文件
+#define FUNC_DOUBAN_Q3H                 5
+
 /// 豆瓣上 q3.h 的lock-free改进版, 调用RingQueue.push(), RingQueue.pop();
-#define FUNC_RINGQUEUE_PUSH             8
+#define FUNC_RINGQUEUE_PUSH             6
+
+/// 仿制的spin_mutex自旋锁(会死锁), 调用RingQueue::spin3_push(), RingQueue::spin3_pop(), 不推荐
+#define FUNC_RINGQUEUE_SPIN3_PUSH       7
 
 /// TODO:
-#define FUNC_RINGQUEUE_SPIN9_PUSH       10
+#define FUNC_RINGQUEUE_SPIN8_PUSH       8
+
+/// 仿制的spin_mutex自旋锁(会死锁)
+#define FUNC_RINGQUEUE_SPIN9_PUSH       9
+
+/// disruptor 3.3 (C++版)
+#define FUNC_DISRUPTOR_RINGQUEUE        20
 
 ///
 /// RingQueue测试函数类型定义: (如果该宏TEST_FUNC_TYPE未定义, 则等同于定义为0)
@@ -135,7 +141,7 @@
 ///          或者 FUNC_RINGQUEUE_SPIN2_PUSH (只测最全面的一个)
 ///
 #ifndef TEST_FUNC_TYPE
-#define TEST_FUNC_TYPE          FUNC_RINGQUEUE_MULTI_TEST
+#define TEST_FUNC_TYPE          FUNC_DISRUPTOR_RINGQUEUE
 #endif
 
 /// 是否显示 push 次数, pop 次数 和 rdtsc计数 等额外的测试信息

@@ -96,19 +96,25 @@ using namespace jimi;
 
 typedef RingQueue<msg_t, QSIZE> RingQueue_t;
 
+typedef CValueEvent<uint64_t>   ValueEvent_t;
+typedef DisruptorRingQueue<ValueEvent_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueue_t;
+
 typedef struct thread_arg_t
 {
-    int             idx;
-    int             funcType;
-    RingQueue_t    *queue;
-    struct queue   *q;
+    int                   idx;
+    int                   funcType;
+    RingQueue_t          *queue;
+    DisruptorRingQueue_t *disQueue;
+    struct queue         *q;
 } thread_arg_t;
 
 static volatile struct msg_t *msgs = NULL;
+static volatile ValueEvent_t *valEvents = NULL;
 
 //static struct msg_t **popmsg_list = NULL;
 
 static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_COUNT];
+static ValueEvent_t dis_popevent_list[POP_CNT][MAX_POP_MSG_COUNT];
 
 int  test_msg_init(void);
 void test_msg_reset(void);
@@ -182,12 +188,15 @@ RingQueue_push_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue_t *queue;
+    DisruptorRingQueue_t *disRingQueue;
     struct queue *q;
     msg_t *msg;
+    ValueEvent_t *valueEvent;
     uint64_t start;
     int i, idx, funcType;
 #if (!defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)) \
-    || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3))
+    || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
+        || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE))
     int32_t pause_cnt;
     uint32_t loop_cnt, yeild_cnt;
 #endif
@@ -197,17 +206,19 @@ RingQueue_push_task(void *arg)
     idx = 0;
     funcType = 0;
     queue = NULL;
+    disRingQueue = NULL;
     q = NULL;
 
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
-        idx         = thread_arg->idx;
-        funcType    = thread_arg->funcType;
-        queue       = (RingQueue_t *)thread_arg->queue;
-        q           = thread_arg->q;
+        idx          = thread_arg->idx;
+        funcType     = thread_arg->funcType;
+        queue        = (RingQueue_t *)thread_arg->queue;
+        disRingQueue = (DisruptorRingQueue_t *)thread_arg->disQueue;
+        q            = thread_arg->q;
     }
 
-    if (queue == NULL)
+    if (queue == NULL || disRingQueue == NULL || q == NULL)
         return NULL;
 
     if (thread_arg)
@@ -241,10 +252,11 @@ RingQueue_push_task(void *arg)
 
     fail_cnt = 0;
     msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
+    valueEvent = (ValueEvent_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
     start = read_rdtsc();
 
 #if !defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)
-    if (funcType == 1) {
+    if (funcType == FUNC_RINGQUEUE_SPIN_PUSH) {
         // 细粒度的标准spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             while (queue->spin_push(msg) == -1) {
@@ -253,7 +265,7 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
-    else if (funcType == 2) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN1_PUSH) {
         // 细粒度的改进型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             while (queue->spin1_push(msg) == -1) {
@@ -262,7 +274,7 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
-    else if (funcType == 3) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN2_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             loop_cnt = 0;
@@ -291,20 +303,13 @@ RingQueue_push_task(void *arg)
                 loop_cnt++;
 #elif 0
                 jimi_wsleep(0);
-                //jimi_mm_pause();
-                //jimi_mm_pause();
-#else
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
 #endif
                 fail_cnt++;
             };
             msg++;
         }
     }
-    else if (funcType == 4) {
+    else if (funcType == FUNC_RINGQUEUE_MUTEX_PUSH) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             while (queue->mutex_push(msg) == -1) {
@@ -313,7 +318,7 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
-    else if (funcType == 5) {
+    else if (funcType == FUNC_DOUBAN_Q3H) {
         // 豆瓣上q3.h的原版文件
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             while (push(q, (void *)msg) == -1) {
@@ -322,7 +327,7 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
-    else if (funcType == 6) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN3_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             loop_cnt = 0;
@@ -351,20 +356,13 @@ RingQueue_push_task(void *arg)
                 loop_cnt++;
 #elif 1
                 jimi_wsleep(0);
-                //jimi_mm_pause();
-                //jimi_mm_pause();
-#else
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
 #endif
                 fail_cnt++;
             };
             msg++;
         }
     }
-    else if (funcType == 9) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN9_PUSH) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             while (queue->spin9_push(msg) == -1) {
@@ -373,7 +371,7 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
-    else {
+    else if (funcType == FUNC_RINGQUEUE_PUSH) {
         // 豆瓣上q3.h的lock-free改良型方案
         for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
             while (queue->push(msg) == -1) {
@@ -382,15 +380,55 @@ RingQueue_push_task(void *arg)
             msg++;
         }
     }
+    else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
+        // disruptor 3.3 (C++版), FUNC_DISRUPTOR_RINGQUEUE
+        for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
+            loop_cnt = 0;
+            while (disRingQueue->push(*valueEvent) == -1) {
+#if 1
+                if (loop_cnt >= YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                            //jimi_mm_pause();
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                }
+                loop_cnt++;
+#elif 0
+                jimi_wsleep(0);
+#endif
+                fail_cnt++;
+            };
+            valueEvent++;
+        }
+    }
+    else {
+        // Unknown test function type
+    }
 
 #else  /* !TEST_FUNC_TYPE */
 
     for (i = 0; i < MAX_PUSH_MSG_COUNT; i++) {
-#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 1)
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
         while (queue->spin_push(msg) == -1) { fail_cnt++; };
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 2)
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN1_PUSH)
         while (queue->spin1_push(msg) == -1) { fail_cnt++; };
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3)
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH)
         loop_cnt = 0;
         while (queue->spin2_push(msg) == -1) {
 #if 1
@@ -417,32 +455,61 @@ RingQueue_push_task(void *arg)
             loop_cnt++;
 #endif
             fail_cnt++;
-        };
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 4)
-        while (queue->mutex_push(msg) == -1) { fail_cnt++; };
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 5)
-        while (push(q, (void *)msg) == -1) { fail_cnt++; };
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 6)
-        while (queue->spin3_push(msg) == -1) { fail_cnt++; };
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 9)
-        while (queue->spin9_push(msg) == -1) { fail_cnt++; };
-#else
-        while (queue->push(msg) == -1) { fail_cnt++; };
-#endif
-        msg++;
-#if 0
-        //if ((i & 0x3FFFU) == 0x3FFFU) {
-        if ((i & 0xFFFFU) == 0xFFFFU) {
-            printf("thread [%d] have push %d\n", idx, i);
         }
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_MUTEX_PUSH)
+        while (queue->mutex_push(msg) == -1) { fail_cnt++; };
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DOUBAN_Q3H)
+        while (push(q, (void *)msg) == -1) { fail_cnt++; };
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN3_PUSH)
+        while (queue->spin3_push(msg) == -1) { fail_cnt++; };
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN9_PUSH)
+        while (queue->spin9_push(msg) == -1) { fail_cnt++; };
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_PUSH)
+        while (queue->push(msg) == -1) { fail_cnt++; };
+        msg++;
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+        loop_cnt = 0;
+        while (disRingQueue->push(*valueEvent) == -1) {
+#if 1
+            if (loop_cnt >= YIELD_THRESHOLD) {
+                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                if ((yeild_cnt & 63) == 63) {
+                    jimi_wsleep(1);
+                }
+                else if ((yeild_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
+                }
+            }
+            else {
+                for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                }
+            }
+            loop_cnt++;
+#endif
+            fail_cnt++;
+        };
+        valueEvent++;
+        if ((i & 0x00FF) == 0x00FF) {
+            printf("Push(): Thread id = %2d, count = %8d, fail_cnt = %8d\n", idx, i, fail_cnt);
+        }
+#else
+        // Unknown test function type.
 #endif
     }
 
 #endif  /* TEST_FUNC_TYPE */
-
-#if 0
-    printf("thread [%d] have push %d\n", idx, i);
-#endif
 
     //push_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&push_cycles, read_rdtsc() - start);
@@ -467,13 +534,17 @@ RingQueue_pop_task(void *arg)
 {
     thread_arg_t *thread_arg;
     RingQueue_t *queue;
+    DisruptorRingQueue_t *disRingQueue;
     struct queue *q;
-    msg_t *msg;
+    msg_t *msg = NULL;
     msg_t **record_list;
+    ValueEvent_t *valueEvent;
+    ValueEvent_t *dis_record_list;
     uint64_t start;
     int idx, funcType;
 #if (!defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)) \
-    || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3))
+    || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
+        || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE))
     int32_t pause_cnt;
     uint32_t loop_cnt, yeild_cnt;
 #endif
@@ -483,17 +554,19 @@ RingQueue_pop_task(void *arg)
     idx = 0;
     funcType = 0;
     queue = NULL;
+    disRingQueue = NULL;
     q = NULL;
 
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
-        idx         = thread_arg->idx;
-        funcType    = thread_arg->funcType;
-        queue       = (RingQueue_t *)thread_arg->queue;
-        q           = thread_arg->q;
+        idx          = thread_arg->idx;
+        funcType     = thread_arg->funcType;
+        queue        = (RingQueue_t *)thread_arg->queue;
+        disRingQueue = (DisruptorRingQueue_t *)thread_arg->disQueue;
+        q            = thread_arg->q;
     }
 
-    if (queue == NULL)
+    if (queue == NULL || disRingQueue == NULL || q == NULL)
         return NULL;
 
     if (thread_arg)
@@ -529,10 +602,11 @@ RingQueue_pop_task(void *arg)
     fail_cnt = 0;
     record_list = &popmsg_list[idx][0];
     //record_list = &popmsg_list[idx * MAX_POP_MSG_COUNT];
+    dis_record_list = &dis_popevent_list[idx][0];
     start = read_rdtsc();
 
 #if !defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)
-    if (funcType == 1) {
+    if (funcType == FUNC_RINGQUEUE_SPIN_PUSH) {
         // 细粒度的标准spin_mutex自旋锁
         while (true) {
             msg = (msg_t *)queue->spin_pop();
@@ -547,7 +621,7 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
-    else if (funcType == 2) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN1_PUSH) {
         // 细粒度的改进型spin_mutex自旋锁
         while (true) {
             msg = (msg_t *)queue->spin1_pop();
@@ -562,7 +636,7 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
-    else if (funcType == 3) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN2_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
         loop_cnt = 0;
         while (true) {
@@ -600,18 +674,11 @@ RingQueue_pop_task(void *arg)
                 loop_cnt++;
 #elif 0
                 jimi_wsleep(0);
-                //jimi_mm_pause();
-                //jimi_mm_pause();
-#else
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
 #endif
             }
         }
     }
-    else if (funcType == 4) {
+    else if (funcType == FUNC_RINGQUEUE_MUTEX_PUSH) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         while (true) {
             msg = (msg_t *)queue->mutex_pop();
@@ -626,7 +693,7 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
-    else if (funcType == 5) {
+    else if (funcType == FUNC_DOUBAN_Q3H) {
         // 豆瓣上q3.h的原版文件
         while (true) {
             msg = (struct msg_t *)pop(q);
@@ -641,7 +708,7 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
-    else if (funcType == 6) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN3_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
         loop_cnt = 0;
         while (true) {
@@ -679,18 +746,11 @@ RingQueue_pop_task(void *arg)
                 loop_cnt++;
 #elif 1
                 jimi_wsleep(0);
-                //jimi_mm_pause();
-                //jimi_mm_pause();
-#else
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
-                jimi_mm_pause();
 #endif
             }
         }
     }
-    else if (funcType == 9) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN9_PUSH) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         while (true) {
             msg = (msg_t *)queue->spin9_pop();
@@ -705,7 +765,7 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
-    else {
+    else if (funcType == FUNC_RINGQUEUE_PUSH) {
         // 豆瓣上q3.h的lock-free改良型方案
         while (true) {
             msg = (msg_t *)queue->pop();
@@ -720,43 +780,53 @@ RingQueue_pop_task(void *arg)
             }
         }
     }
+    else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
+        //
+    }
+    else {
+        //
+    }
 
 #else  /* !TEST_FUNC_TYPE */
 
-#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3)
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
+        || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
     loop_cnt = 0;
 #endif
 
-    while (true || !quit) {
-#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 1)
-        msg = (msg_t *)queue->spin_pop();
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 2)
-        msg = (msg_t *)queue->spin1_pop();
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3)
-        msg = (msg_t *)queue->spin2_pop();
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 4)
-        msg = (msg_t *)queue->mutex_pop();
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 5)
-        msg = (msg_t *)pop(q);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 6)
-        msg = (msg_t *)queue->spin3_pop();
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 9)
-        msg = (msg_t *)queue->spin9_pop();
-#else
-        msg = (msg_t *)queue->pop();
-#endif
-        if (msg != NULL) {
-            *record_list++ = (struct msg_t *)msg;
-#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3)
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+    int succeeded = 0;
+    ValueEvent_t oValueEvent;
+    valueEvent = &oValueEvent;
+    DisruptorRingQueue_t::PopThreadStackData stackData;
+    Sequence tailSequence;
+    Sequence *pTailSequence = disRingQueue->getGatingSequences(idx);
+    if (pTailSequence == NULL)
+        pTailSequence = &tailSequence;
+    tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
+    stackData.tailSequence = pTailSequence;
+    stackData.current = stackData.tailSequence->get();
+    stackData.cachedAvailableSequence = Sequence::INITIAL_CURSOR_VALUE;
+    stackData.processedSequence = true;
+
+    while (true) {
+        succeeded = disRingQueue->pop(*valueEvent, stackData);
+        if (succeeded == 0) {
+            *dis_record_list++ = *valueEvent;
             loop_cnt = 0;
-#endif
             cnt++;
             if (cnt >= MAX_POP_MSG_COUNT)
                 break;
+
+            if ((cnt & 0x00FF) == 0x00FF) {
+                printf("Pop():  Thread id = %2d, count = %8d, fail_cnt = %8d\n", idx, cnt, fail_cnt);
+            }
         }
         else {
+            if (cnt >= MAX_POP_MSG_COUNT - 1)
+                break;
+
             fail_cnt++;
-#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3)
   #if 1
             if (loop_cnt >= YIELD_THRESHOLD) {
                 yeild_cnt = loop_cnt - YIELD_THRESHOLD;
@@ -780,9 +850,70 @@ RingQueue_pop_task(void *arg)
             }
             loop_cnt++;
   #endif
-#endif  /* TEST_FUNC_TYPE == 3 */
         }
     }
+#else
+    while (true || !quit) {
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
+        msg = (msg_t *)queue->spin_pop();
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN1_PUSH)
+        msg = (msg_t *)queue->spin1_pop();
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH)
+        msg = (msg_t *)queue->spin2_pop();
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_MUTEX_PUSH)
+        msg = (msg_t *)queue->mutex_pop();
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DOUBAN_Q3H)
+        msg = (msg_t *)pop(q);
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN3_PUSH)
+        msg = (msg_t *)queue->spin3_pop();
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN9_PUSH)
+        msg = (msg_t *)queue->spin9_pop();
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_PUSH)
+        msg = (msg_t *)queue->pop();
+#else
+        msg = NULL;
+#endif
+        if (msg != NULL) {
+            *record_list++ = (struct msg_t *)msg;
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
+            || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+            loop_cnt = 0;
+#endif
+            cnt++;
+            if (cnt >= MAX_POP_MSG_COUNT)
+                break;
+        }
+        else {
+            fail_cnt++;
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
+            || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+  #if 1
+            if (loop_cnt >= YIELD_THRESHOLD) {
+                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+                if ((yeild_cnt & 63) == 63) {
+                    jimi_wsleep(1);
+                }
+                else if ((yeild_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
+                }
+            }
+            else {
+                for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                }
+            }
+            loop_cnt++;
+  #endif
+#endif  /* TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH */
+        }
+    }
+#endif  /* TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE */
 
 #endif  /* TEST_FUNC_TYPE */
 
@@ -1109,10 +1240,72 @@ int pop_list_verify(void)
     return correct;
 }
 
+int disruptor_pop_list_verify(void)
+{
+    int i, j;
+    uint32_t index;
+    uint32_t *verify_list;
+    ValueEvent_t event;
+    int empty, overlay, correct, errors, times;
+
+    verify_list = (uint32_t *)calloc(MAX_MSG_CNT, sizeof(uint32_t));
+    if (verify_list == NULL)
+        return -1;
+
+    //printf("dis_popevent_list = %016p\n", dis_popevent_list);
+
+    for (i = 0; i < POP_CNT; ++i) {
+        for (j = 0; j < MAX_POP_MSG_COUNT; ++j) {
+            //event = dis_popevent_list[i * MAX_POP_MSG_COUNT + j];
+            event = dis_popevent_list[i][j];
+            index = (uint32_t)(event.getValue() - 1);
+            if (index < MAX_MSG_CNT)
+                verify_list[index] = verify_list[index] + 1;
+        }
+    }
+
+    empty = 0;
+    overlay = 0;
+    correct = 0;
+    errors = 0;
+    for (i = 0; i < MAX_MSG_CNT; ++i) {
+        times = verify_list[i];
+        if (times == 0) {
+            empty++;
+        }
+        else if (times > 1) {
+            overlay++;
+            if (times >= 3) {
+                if (errors == 0)
+                    printf("Serious Errors:\n");
+                errors++;
+                printf("verify_list[%8d] = %d\n", i, times);
+            }
+        }
+        else {
+            correct++;
+        }
+    }
+
+    if (errors > 0)
+        printf("\n");
+    //printf("pop-list verify result:\n\n");
+    printf("empty = %d, overlay = %d, correct = %d, totals = %d.\n\n",
+           empty, overlay, correct, empty + overlay + correct);
+
+    if (verify_list)
+        free(verify_list);
+
+    //jimi_console_readkeyln(false, true, false);
+
+    return correct;
+}
+
 void
 RingQueue_Test(int funcType, bool bContinue = true)
 {
     RingQueue_t ringQueue(true, true);
+    DisruptorRingQueue_t disRingQueue;
     struct queue *q;
     int i;
     pthread_t kids[POP_CNT + PUSH_CNT] = { 0 };
@@ -1130,57 +1323,66 @@ RingQueue_Test(int funcType, bool bContinue = true)
 
     printf("---------------------------------------------------------------\n");
 
-    if (funcType == 1) {
+    if (funcType == FUNC_RINGQUEUE_SPIN_PUSH) {
         // 细粒度的标准spin_mutex自旋锁
         printf("This is RingQueue.spin_push() test: (%d)\n", funcType);
     }
-    else if (funcType == 2) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN1_PUSH) {
         // 细粒度的改进型spin_mutex自旋锁
         printf("This is RingQueue.spin1_push() test: (%d)\n", funcType);
     }
-    else if (funcType == 3) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN2_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
         printf("This is RingQueue.spin2_push() test: (%d)\n", funcType);
     }
-    else if (funcType == 4) {
+    else if (funcType == FUNC_RINGQUEUE_MUTEX_PUSH) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
     }
-    else if (funcType == 5) {
+    else if (funcType == FUNC_DOUBAN_Q3H) {
         // 豆瓣上q3.h的原版文件
         printf("This is DouBan's q3.h test: (%d)\n", funcType);
     }
-    else if (funcType == 6) {
+    else if (funcType == FUNC_RINGQUEUE_PUSH) {
+        // 豆瓣上q3.h的lock-free改良型方案
+        printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
+    }
+    else if (funcType == FUNC_RINGQUEUE_SPIN3_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
         printf("This is RingQueue.spin3_push() test: (%d)\n", funcType);
     }
-    else if (funcType == 9) {
+    else if (funcType == FUNC_RINGQUEUE_SPIN9_PUSH) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         printf("This is RingQueue.spin9_push() test (maybe deadlock): (%d)\n", funcType);
     }
+    else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
+        // disruptor 3.3 (C++版)
+        printf("This is DisruptorRingQueue test: (%d)\n", funcType);
+    }
     else {
-        // 豆瓣上q3.h的lock-free改良型方案
-        printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
+        printf("This is a unknown test function: (%d)\n", funcType);
     }
 
 #if 0
     //printf("\n");
-#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 1)
+#if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
     printf("This is RingQueue.spin_push() test: (%d)\n", funcType);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 2)
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN1_PUSH)
     printf("This is RingQueue.spin1_push() test: (%d)\n", funcType);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 3)
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH)
     printf("This is RingQueue.spin2_push() test: (%d)\n", funcType);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 4)
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_MUTEX_PUSH)
     printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 5)
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DOUBAN_Q3H)
     printf("This is DouBan's q3.h test: (%d)\n", funcType);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 6)
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN3_PUSH)
     printf("This is RingQueue.spin3_push() test: (%d)\n", funcType);
-#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == 9)
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN9_PUSH)
     printf("This is RingQueue.spin9_push() test (maybe deadlock): (%d)\n", funcType);
-#else
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_PUSH)
     printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
+#else
+    printf("This is a unknown test function: (%d)\n", funcType);
 #endif
 #endif
 
@@ -1199,6 +1401,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         thread_arg->idx = i;
         thread_arg->funcType = funcType;
         thread_arg->queue = &ringQueue;
+        thread_arg->disQueue = &disRingQueue;
         thread_arg->q = q;
         RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg, &kids[i]);
     }
@@ -1207,6 +1410,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
         thread_arg->idx = i;
         thread_arg->funcType = funcType;
         thread_arg->queue = &ringQueue;
+        thread_arg->disQueue = &disRingQueue;
         thread_arg->q = q;
         RingQueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
                                &kids[i + PUSH_CNT]);
@@ -1250,7 +1454,12 @@ RingQueue_Test(int funcType, bool bContinue = true)
 
     //jimi_console_readkeyln(false, true, false);
 
-    pop_list_verify();
+    if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
+        disruptor_pop_list_verify();
+    }
+    else  {
+        pop_list_verify();
+    }
 
     //printf("---------------------------------------------------------------\n\n");
 
@@ -1606,15 +1815,28 @@ void run_some_queue_tests(void)
     CValueEvent<uint64_t> ev3(ev2);
     CValueEvent<uint64_t> ev4(ev3);
     CValueEvent<uint64_t> ev5;
-    Sequence tailSequence;
-    uint32_t cachedAvailableSequence = 0;
+    CValueEvent<uint64_t> event6(0x66666666U);
     ev5 = ev2;
     ev5 = ev3;
 
+    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE, PUSH_CNT, POP_CNT>::PopThreadStackData stackData;
+    Sequence tailSequence;
+    tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
+    stackData.tailSequence = &tailSequence;
+    stackData.current = stackData.tailSequence->get();
+    stackData.cachedAvailableSequence = Sequence::INITIAL_CURSOR_VALUE;
+    stackData.processedSequence = true;
+
     event2.update(ev2);
     disRingQueue2.push(event2);
-    disRingQueue2.pop (event2, tailSequence, cachedAvailableSequence);
-    disRingQueue2.pop (event2, tailSequence, cachedAvailableSequence);
+    disRingQueue2.push(event6);
+
+    disRingQueue2.pop (ev3, stackData);
+    disRingQueue2.pop (ev4, stackData);
+    disRingQueue2.pop (ev5, stackData);
+    //disRingQueue2.pop (event2, tailSequence, current, cachedAvailableSequence, processedSequence);
+    //disRingQueue2.pop (event2, tailSequence, current, cachedAvailableSequence, processedSequence);
+    //disRingQueue2.pop (event2, tailSequence, current, cachedAvailableSequence, processedSequence);
 
     disRingQueue2.dump_detail();
     //disRingQueue2.dump_info();
@@ -1664,7 +1886,7 @@ main(int argn, char * argv[])
     jimi_cpu_warmup(500);
 
 #ifdef _DEBUG
-    run_some_queue_tests();
+    //run_some_queue_tests();
 #endif
 
     test_msg_init();
@@ -1685,13 +1907,21 @@ main(int argn, char * argv[])
 
     //RingQueue_Test(3, true);
 
-    RingQueue_Test(4, true);    // 使用pthread_mutex_t, 调用RingQueue.mutex_push().
+    // 使用pthread_mutex_t, 调用RingQueue.mutex_push().
+    RingQueue_Test(FUNC_RINGQUEUE_MUTEX_PUSH, true);
 
-    RingQueue_Test(1, true);    // 使用自旋锁, 调用RingQueue.spin_push().
-    RingQueue_Test(2, true);    //             调用RingQueue.spin1_push().
-    RingQueue_Test(3, bConti);  //             调用RingQueue.spin2_push().
+    // 混合自旋锁, 速度较快, 不够稳定, 调用RingQueue.spin_push().
+    RingQueue_Test(FUNC_RINGQUEUE_SPIN_PUSH,  true);
 
-    //RingQueue_Test(6, bConti);  //             调用RingQueue.spin3_push().
+    // 混合自旋锁, 速度较快, 不够稳定, 调用RingQueue.spin1_push().
+    RingQueue_Test(FUNC_RINGQUEUE_SPIN1_PUSH, true);
+
+    // 混合自旋锁, 速度快, 且稳定, 调用RingQueue.spin2_push().
+    RingQueue_Test(FUNC_RINGQUEUE_SPIN2_PUSH, bConti);
+
+    // 调用RingQueue.spin3_push().
+    //RingQueue_Test(FUNC_RINGQUEUE_SPIN3_PUSH, bConti);
+
   #else
     // 连续测试3次
     static const int kMaxPassNum = 3;
@@ -1712,7 +1942,7 @@ main(int argn, char * argv[])
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     // 豆瓣上的 q3.h 的修正版
     q3_test();
-    //RingQueue_Test(5, false);
+    //RingQueue_Test(FUNC_DOUBAN_Q3H, false);
 #endif
 
     SpinMutex_Test();

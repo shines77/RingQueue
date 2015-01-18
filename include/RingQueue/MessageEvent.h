@@ -76,6 +76,14 @@ public:
     }
 #endif
 
+    T getValue() {
+        return value;
+    }
+
+    void setValue(T newValue) {
+        value = newValue;
+    }
+
     // Read data from event
     void read(CValueEvent & event) {
         event.value = this->value;

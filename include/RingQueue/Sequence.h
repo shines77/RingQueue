@@ -105,12 +105,13 @@ public:
 
     T get() {
         T val = value;
-        Jimi_ReadBarrier();
+        //Jimi_ReadBarrier();
+        Jimi_MemoryBarrier();
         return val;
     }
 
     void set(T newValue) {
-#if 1
+#if 0
         Jimi_WriteBarrier();
         T oldValue;
         // Loop until the update is successful.
@@ -118,7 +119,8 @@ public:
             oldValue = this->value;
         } while (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) != oldValue);
 #else
-        Jimi_WriteBarrier();
+        //Jimi_WriteBarrier();
+        Jimi_MemoryBarrier();
         this->value = newValue;
 #endif
     }
