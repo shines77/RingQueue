@@ -12,8 +12,8 @@
 #define QMASK               (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT            1
-#define POP_CNT             1
+#define PUSH_CNT            2
+#define POP_CNT             2
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
@@ -129,7 +129,7 @@
 #define FUNC_RINGQUEUE_SPIN9_PUSH       9
 
 /// disruptor 3.3 (C++版)
-#define FUNC_DISRUPTOR_RINGQUEUE        20
+#define FUNC_DISRUPTOR_RINGQUEUE        10
 
 ///
 /// RingQueue测试函数类型定义: (如果该宏TEST_FUNC_TYPE未定义, 则等同于定义为0)

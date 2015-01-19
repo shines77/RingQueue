@@ -30,7 +30,7 @@ template <typename T>
 class CValueEvent
 {
 private:
-    T  value;
+    T value;
 
 public:
     CValueEvent() : value(0) {}

@@ -7,6 +7,8 @@
 #define __USE_GNU
 #endif
 
+#define __STDC_LIMIT_MACROS     // for INT64_MAX
+
 #include "msvc/targetver.h"
 #include "test.h"
 
@@ -18,7 +20,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include "msvc/sched.h"
-#include "msvc/pthread.h"   // For define PTW32_API
+#include "msvc/pthread.h"       // For define PTW32_API
 #else
 #include "msvc/sched.h"
 #include "msvc/pthread.h"
@@ -421,6 +423,7 @@ RingQueue_push_task(void *arg)
 
 #else  /* !TEST_FUNC_TYPE */
 
+    int cnt = 0;
     for (i = 0; i < MAX_PUSH_MSG_COUNT; ++i) {
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
         while (queue->spin_push(msg) == -1) { fail_cnt++; };
@@ -475,10 +478,7 @@ RingQueue_push_task(void *arg)
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
         loop_cnt = 0;
         int succeeded;
-        while (true) {;
-            succeeded = disRingQueue->push(*pValueEvent, idx);
-            if (succeeded == 0)
-                break;
+        while ((succeeded = disRingQueue->push(*pValueEvent, idx)) == -1) {
 #if 1
             if (loop_cnt >= YIELD_THRESHOLD) {
                 yeild_cnt = loop_cnt - YIELD_THRESHOLD;
@@ -503,8 +503,9 @@ RingQueue_push_task(void *arg)
             loop_cnt++;
 #endif
             fail_cnt++;
-        };
+        }
         pValueEvent++;
+        cnt++;
         if (i == MAX_PUSH_MSG_COUNT - 1)
             fail_cnt++;
 #if defined(DISPLAY_DEBUG_INFO) && (DISPLAY_DEBUG_INFO != 0)
@@ -525,6 +526,8 @@ RingQueue_push_task(void *arg)
     jimi_fetch_and_add32(&push_total, fail_cnt);
     if (push_total == MAX_MSG_CNT)
         quit = 1;
+
+    //printf("Push() Thread %d has exited.\n", idx);
 
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) && (0) \
     && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
@@ -818,8 +821,6 @@ RingQueue_pop_task(void *arg)
     stackData.processedSequence = true;
 
     while (true) {
-        if (idx == 1)
-            idx = 1;
         succeeded = disRingQueue->pop(*valueEvent, stackData);
         if (succeeded == 0) {
             *dis_record_list++ = *valueEvent;
@@ -835,9 +836,6 @@ RingQueue_pop_task(void *arg)
 #endif
         }
         else {
-            if (cnt >= MAX_POP_MSG_COUNT - 1)
-                break;
-
             fail_cnt++;
   #if 1
             if (loop_cnt >= YIELD_THRESHOLD) {
@@ -863,6 +861,10 @@ RingQueue_pop_task(void *arg)
             loop_cnt++;
   #endif
         }
+    }
+
+    if (pTailSequence) {
+        pTailSequence->set(INT64_MAX);
     }
 #else
     while (true || !quit) {
@@ -935,6 +937,8 @@ RingQueue_pop_task(void *arg)
     jimi_fetch_and_add32(&pop_total, cnt);
     //pop_fail_total += cnt;
     jimi_fetch_and_add32(&pop_fail_total, fail_cnt);
+
+    //printf("Pop()  Thread %d has exited: message cnt = %d\n", idx, cnt);
 
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) && (0) \
     && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
@@ -1291,6 +1295,11 @@ int disruptor_pop_list_verify(void)
     for (i = 0; i < MAX_MSG_CNT; ++i) {
         times = verify_list[i];
         if (times == 0) {
+#if 0
+            if (errors == 0)
+                printf("Empty Errors:\n");
+            printf("verify_list[%8d] = %d\n", i, times);
+#endif
             empty++;
         }
         else if (times > 1) {
@@ -1307,7 +1316,7 @@ int disruptor_pop_list_verify(void)
         }
     }
 
-    if (errors > 0)
+    if (errors > 0 || empty > 0)
         printf("\n");
     //printf("pop-list verify result:\n\n");
     printf("empty = %d, overlay = %d, correct = %d, totals = %d.\n\n",
@@ -1750,7 +1759,7 @@ display_test_info(int time_noerror)
     printf("USE_THREAD_AFFINITY = No\n");
 #endif
 #if defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__)
-  #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) 
+  #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0))
     if ((mm_result == MMSYSERR_NOERROR) && (time_noerror != 0))
         printf("USE_TIME_PERIOD     = Yes (%u)\n", tc.wPeriodMin);
     else

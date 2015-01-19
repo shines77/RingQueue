@@ -98,7 +98,13 @@ public:
     static const uint32_t kSizeOfValue = sizeof(T);
 
     static const T INITIAL_VALUE        = static_cast<T>(0);
-    static const T INITIAL_CURSOR_VALUE = static_cast<T>(0);
+    static const T INITIAL_CURSOR_VALUE = static_cast<T>(-1);
+
+protected:
+    volatile T  value;
+    char        padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
+                      ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
+                      : (JIMI_CACHE_LINE_SIZE)];
 
 public:
     SequenceBase() : value(INITIAL_CURSOR_VALUE) {
@@ -162,7 +168,7 @@ public:
         } while (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) != oldValue);
 #else
         Jimi_WriteBarrier();
-        seq_spinlock spinlock;
+        //seq_spinlock spinlock;
         this->value = newValue;
 #endif
     }
@@ -187,15 +193,10 @@ public:
 
     bool compareAndSwapBool(T oldValue, T newValue) {
         Jimi_WriteBarrier();
-        seq_spinlock spinlock;
+        //seq_spinlock spinlock;
         return (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) == oldValue);
     }
 
-protected:
-    volatile T  value;
-    char        padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
-                      ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
-                      : (JIMI_CACHE_LINE_SIZE)];
 } CACHE_ALIGN_SUFFIX;
 
 #if defined(_MSC_VER) || defined(__GNUC__)
@@ -204,7 +205,7 @@ protected:
 
 template <>
 void SequenceBase<int64_t>::set(int64_t newValue) {
-#if 1
+#if 0
     Jimi_WriteBarrier();
     int64_t oldValue;
     // Loop until the update is successful.
@@ -219,7 +220,7 @@ void SequenceBase<int64_t>::set(int64_t newValue) {
 
 template <>
 void SequenceBase<uint64_t>::set(uint64_t newValue) {
-#if 1
+#if 0
     Jimi_WriteBarrier();
     uint64_t oldValue;
     // Loop until the update is successful.
@@ -235,25 +236,48 @@ void SequenceBase<uint64_t>::set(uint64_t newValue) {
 template <>
 uint64_t SequenceBase<uint64_t>::compareAndSwap(uint64_t oldValue, uint64_t newValue) {
     Jimi_WriteBarrier();
+    //seq_spinlock spinlock;
     return jimi_val_compare_and_swap64(&(this->value), oldValue, newValue);
 }
 
 template <>
 bool SequenceBase<uint64_t>::compareAndSwapBool(uint64_t oldValue, uint64_t newValue) {
     Jimi_WriteBarrier();
+    //seq_spinlock spinlock;
     return (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) == oldValue);
 }
 
-typedef SequenceBase<uint64_t> Sequence64;
-typedef SequenceBase<uint32_t> Sequence32;
-typedef SequenceBase<uint16_t> Sequence16;
-typedef SequenceBase<uint8_t>  Sequence8;
+template <>
+int64_t SequenceBase<int64_t>::compareAndSwap(int64_t oldValue, int64_t newValue) {
+    Jimi_WriteBarrier();
+    //seq_spinlock spinlock;
+    return jimi_val_compare_and_swap64(&(this->value), oldValue, newValue);
+}
+
+template <>
+bool SequenceBase<int64_t>::compareAndSwapBool(int64_t oldValue, int64_t newValue) {
+    Jimi_WriteBarrier();
+    //seq_spinlock spinlock;
+    return (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) == oldValue);
+}
+
+typedef SequenceBase<uint64_t> SequenceU64;
+typedef SequenceBase<uint32_t> SequenceU32;
+typedef SequenceBase<uint16_t> SequenceU16;
+typedef SequenceBase<uint8_t>  SequenceU8;
+
+typedef SequenceBase<int64_t> Sequence64;
+typedef SequenceBase<int32_t> Sequence32;
+typedef SequenceBase<int16_t> Sequence16;
+typedef SequenceBase<int8_t>  Sequence8;
 
 #if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
-typedef SequenceBase<uint64_t> Sequence;
+typedef SequenceBase<uint64_t> SequenceStd;
 #else
-typedef SequenceBase<uint32_t> Sequence;
+typedef SequenceBase<uint32_t> SequenceStd;
 #endif
+
+typedef SequenceBase<int64_t> Sequence;
 
 #endif  /* __cplusplus */
 
