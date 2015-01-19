@@ -30,7 +30,7 @@ template <typename T>
 class CValueEvent
 {
 private:
-    T   value;
+    T  value;
 
 public:
     CValueEvent() : value(0) {}
@@ -76,7 +76,7 @@ public:
     }
 #endif
 
-    T getValue() {
+    T getValue() const {
         return value;
     }
 
@@ -85,7 +85,7 @@ public:
     }
 
     // Read data from event
-    void read(CValueEvent & event) {
+    void read(CValueEvent & event) const {
         event.value = this->value;
     }
 

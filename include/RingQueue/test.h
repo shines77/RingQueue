@@ -12,13 +12,13 @@
 #define QMASK               (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT            2
-#define POP_CNT             2
+#define PUSH_CNT            1
+#define POP_CNT             1
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
 #if defined(_DEBUG)
-#define MAX_MSG_COUNT           800000
+#define MAX_MSG_COUNT           80000
 #else
 #define MAX_MSG_COUNT           (8000000 * 1)
 #endif
@@ -31,6 +31,8 @@
 
 /// 分发给每个(pop)线程的消息数量
 #define MAX_POP_MSG_COUNT       (MAX_MSG_COUNT / POP_CNT)
+
+#define DISPLAY_DEBUG_INFO      0
 
 ////////////////////////////////////////////////////////////////////////////////
 

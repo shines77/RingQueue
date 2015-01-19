@@ -10,6 +10,7 @@
 #include "port.h"
 
 #include "vs_stdint.h"
+#include "sleep.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,6 +56,34 @@ typedef struct seqence_c32 seqence_c;
 // Class Sequence() use in C++ only
 #ifdef __cplusplus
 
+// Use a spinlock for multi-word accesses
+class seq_spinlock
+{
+    static volatile uint32_t lock;
+
+public:
+    seq_spinlock()
+    {
+        while (jimi_val_compare_and_swap32(&lock, 0, 1) != 0) {
+            // Thread.Yield()
+            jimi_wsleep(0);
+        }
+    }
+
+    ~seq_spinlock()
+    {
+        Jimi_ReadWriteBarrier();
+        lock = 0;
+    }
+};
+  
+// This is a single lock that is used for all synchronized accesses if
+// the compiler can't generate inline compare-and-swap operations.  In
+// most cases it'll never be used, but the i386 needs it for 64-bit
+// locked accesses and so does PPC32.  It's worth building libgcj with
+// target=i486 (or above) to get the inlines.
+volatile uint32_t seq_spinlock::lock = 0U;
+
 #if defined(_MSC_VER) || defined(__GNUC__)
 #pragma pack(push)
 #pragma pack(1)
@@ -69,7 +98,7 @@ public:
     static const uint32_t kSizeOfValue = sizeof(T);
 
     static const T INITIAL_VALUE        = static_cast<T>(0);
-    static const T INITIAL_CURSOR_VALUE = static_cast<T>(-1);
+    static const T INITIAL_CURSOR_VALUE = static_cast<T>(0);
 
 public:
     SequenceBase() : value(INITIAL_CURSOR_VALUE) {
@@ -103,29 +132,42 @@ public:
 #endif
     }
 
-    T get() {
+    T get() const {
         T val = value;
-        //Jimi_ReadBarrier();
-        Jimi_MemoryBarrier();
+        Jimi_ReadBarrier();
+        //Jimi_MemoryBarrier();
         return val;
     }
 
     void set(T newValue) {
 #if 0
-        Jimi_WriteBarrier();
         T oldValue;
-        // Loop until the update is successful.
+        int cnt = 0;
+        Jimi_WriteBarrier();
+        Jimi_MemoryBarrier();
+        Jimi_ReadWriteBarrier();
+        oldValue = this->value;
         do {
-            oldValue = this->value;
+            // Loop until the update is successful.
+            T nowValue = this->value;
+            if ((int)(nowValue - newValue) > 0) {
+#ifdef _DEBUG
+                cnt++;
+                if (cnt >= 1)
+                    break;
+#else
+                break;
+#endif
+            }
         } while (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) != oldValue);
 #else
-        //Jimi_WriteBarrier();
-        Jimi_MemoryBarrier();
+        Jimi_WriteBarrier();
+        seq_spinlock spinlock;
         this->value = newValue;
 #endif
     }
 
-    T getVolatile() {
+    T getVolatile() const {
         T val = value;
         Jimi_ReadBarrier();
         return val;
@@ -133,16 +175,19 @@ public:
 
     void setVolatile(T newValue) {
         Jimi_WriteBarrier();
+        //seq_spinlock spinlock;
         this->value = newValue;
     }
 
     T compareAndSwap(T oldValue, T newValue) {
         Jimi_WriteBarrier();
+        //seq_spinlock spinlock;
         return jimi_val_compare_and_swap32(&(this->value), oldValue, newValue);
     }
 
     bool compareAndSwapBool(T oldValue, T newValue) {
         Jimi_WriteBarrier();
+        seq_spinlock spinlock;
         return (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) == oldValue);
     }
 
