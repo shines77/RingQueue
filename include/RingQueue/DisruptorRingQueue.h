@@ -78,7 +78,7 @@ public:
 
     Sequence                cursor, workSequence;
     Sequence                gatingSequenceCache;
-    Sequence                gatingSequenceCaches[kProducersAlloc];
+    //Sequence                gatingSequenceCaches[kProducersAlloc];
     Sequence                gatingSequences[kConsumersAlloc];
 
 #if 0
@@ -115,7 +115,7 @@ public:
 
     Sequence                cursor, workSequence;
     Sequence                gatingSequenceCache;
-    Sequence                gatingSequenceCaches[kProducersAlloc];
+    //Sequence                gatingSequenceCaches[kProducersAlloc];
     Sequence                gatingSequences[kConsumersAlloc];
 
 #if 0
@@ -354,9 +354,11 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::start()
     core.gatingSequenceCache.set(cursor);
 
     int i;
+    /*
     for (i = 0; i < kProducersAlloc; ++i) {
         core.gatingSequenceCaches[i].set(cursor);
     }
+    //*/
 
     for (i = 0; i < kConsumersAlloc; ++i) {
         core.gatingSequences[i].set(cursor);
@@ -490,7 +492,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(cons
 
         sequence_type wrapPoint = nextSequence - kCapacity;
         //sequence_type wrapPoint = current - kIndexMask;
-        sequence_type cachedGatingSequence = core.gatingSequenceCaches[id].get();
+        sequence_type cachedGatingSequence = core.gatingSequenceCache.get();
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current) {
         //if ((current - cachedGatingSequence) >= kIndexMask) {
@@ -506,7 +508,7 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(cons
                 return -1;
             }
 
-            core.gatingSequenceCaches[id].set(gatingSequence);
+            core.gatingSequenceCache.set(gatingSequence);
         }
         else if (core.cursor.compareAndSwap(current, nextSequence) != current) {
             // Need yiled() or sleep() a while.
