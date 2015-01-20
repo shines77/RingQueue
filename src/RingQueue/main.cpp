@@ -99,7 +99,11 @@ using namespace jimi;
 typedef RingQueue<msg_t, QSIZE> RingQueue_t;
 
 typedef CValueEvent<uint64_t>   ValueEvent_t;
-typedef DisruptorRingQueue<ValueEvent_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueue_t;
+#if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
+typedef DisruptorRingQueue<ValueEvent_t, int64_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueue_t;
+#else
+typedef DisruptorRingQueue<ValueEvent_t, int32_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueue_t;
+#endif
 
 typedef struct thread_arg_t
 {
@@ -810,8 +814,8 @@ RingQueue_pop_task(void *arg)
     ValueEvent_t oValueEvent;
     valueEvent = &oValueEvent;
     DisruptorRingQueue_t::PopThreadStackData stackData;
-    Sequence tailSequence;
-    Sequence *pTailSequence = disRingQueue->getGatingSequences(idx);
+    DisruptorRingQueue_t::Sequence tailSequence;
+    DisruptorRingQueue_t::Sequence *pTailSequence = disRingQueue->getGatingSequences(idx);
     if (pTailSequence == NULL)
         pTailSequence = &tailSequence;
     tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
@@ -864,7 +868,8 @@ RingQueue_pop_task(void *arg)
     }
 
     if (pTailSequence) {
-        pTailSequence->set(INT64_MAX);
+        //pTailSequence->set(INT64_MAX);
+        pTailSequence->setMaxValue();
     }
 #else
     while (true || !quit) {
@@ -1843,7 +1848,7 @@ void run_some_queue_tests(void)
     //disRingQueue.dump_info();
     //*/
 
-    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
+    DisruptorRingQueue<CValueEvent<uint64_t>, int64_t, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
     CValueEvent<uint64_t> event2;
     volatile CValueEvent<uint64_t> ev2(0x12345678ULL);
     CValueEvent<uint64_t> ev3(ev2);
@@ -1853,7 +1858,7 @@ void run_some_queue_tests(void)
     ev5 = ev2;
     ev5 = ev3;
 
-    DisruptorRingQueue<CValueEvent<uint64_t>, QSIZE, PUSH_CNT, POP_CNT>::PopThreadStackData stackData;
+    DisruptorRingQueue<CValueEvent<uint64_t>, int64_t, QSIZE, PUSH_CNT, POP_CNT>::PopThreadStackData stackData;
     Sequence tailSequence;
     tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
     stackData.tailSequence = &tailSequence;

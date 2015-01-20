@@ -313,9 +313,21 @@ int get_num_of_processors(void)
 }
 
 static JIMIC_INLINE
-uint32_t __internal_val_compare_and_swap32(volatile uint32_t *destPtr,
-                                           uint32_t oldValue,
-                                           uint32_t newValue)
+int32_t __internal_val_compare_and_swap32(volatile int32_t *destPtr,
+                                          int32_t oldValue,
+                                          int32_t newValue)
+{
+    int32_t origValue = *destPtr;
+    if (*destPtr == oldValue) {
+        *destPtr = newValue;
+    }
+    return origValue;
+}
+
+static JIMIC_INLINE
+uint32_t __internal_val_compare_and_swap32u(volatile uint32_t *destPtr,
+                                            uint32_t oldValue,
+                                            uint32_t newValue)
 {
     uint32_t origValue = *destPtr;
     if (*destPtr == oldValue) {
@@ -325,9 +337,21 @@ uint32_t __internal_val_compare_and_swap32(volatile uint32_t *destPtr,
 }
 
 static JIMIC_INLINE
-uint64_t __internal_val_compare_and_swap64(volatile uint64_t *destPtr,
-                                           uint64_t oldValue,
-                                           uint64_t newValue)
+int64_t __internal_val_compare_and_swap64(volatile int64_t *destPtr,
+                                          int64_t oldValue,
+                                          int64_t newValue)
+{
+    int64_t origValue = *destPtr;
+    if (*destPtr == oldValue) {
+        *destPtr = newValue;
+    }
+    return origValue;
+}
+
+static JIMIC_INLINE
+uint64_t __internal_val_compare_and_swap64u(volatile uint64_t *destPtr,
+                                            uint64_t oldValue,
+                                            uint64_t newValue)
 {
     uint64_t origValue = *destPtr;
     if (*destPtr == oldValue) {
@@ -345,21 +369,31 @@ bool __internal_bool_compare_and_swap32(volatile uint32_t *destPtr,
         *destPtr = newValue;
         return 1;
     }
-    else
-        return 0;
+    else return 0;
 }
 
 static JIMIC_INLINE
-bool __internal_bool_compare_and_swap64(volatile uint64_t *destPtr,
-                                        uint64_t oldValue,
-                                        uint64_t newValue)
+bool __internal_bool_compare_and_swap64(volatile int64_t *destPtr,
+                                        int64_t oldValue,
+                                        int64_t newValue)
 {
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
     }
-    else
-        return 0;
+    else return 0;
+}
+
+static JIMIC_INLINE
+bool __internal_bool_compare_and_swap64u(volatile uint64_t *destPtr,
+                                         uint64_t oldValue,
+                                         uint64_t newValue)
+{
+    if (*destPtr == oldValue) {
+        *destPtr = newValue;
+        return 1;
+    }
+    else return 0;
 }
 
 static JIMIC_INLINE

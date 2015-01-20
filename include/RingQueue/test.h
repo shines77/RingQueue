@@ -39,7 +39,7 @@
 /// 是否根据编译环境自动决定是否使用 64bit 的 sequence (序号), 默认为 0 (不自动)
 #define AUTO_SCAN_64BIT_SEQUENCE    0
 
-/// 是否使用 64bit 的 sequence (序号), 默认值为 0 (不使用)
+/// 是否使用 64bit 的 sequence (序号), 默认值为 1 (使用)
 #define USE_64BIT_SEQUENCE          0
 
 /// 根据实际编译环境决定是否使用 64 bit sequence ?
@@ -51,6 +51,9 @@
     #define USE_64BIT_SEQUENCE      0
   #endif
 #endif
+
+/// 在 Sequence 类中是否使用 seq_spinlock() 锁 ?
+#define USE_SEQUENCE_SPIN_LOCK      1
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -73,7 +76,7 @@
 
 /// 是否运行q3.h的测试代码
 #ifndef USE_DOUBAN_QUEUE
-#define USE_DOUBAN_QUEUE        1
+#define USE_DOUBAN_QUEUE        0
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

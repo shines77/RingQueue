@@ -35,13 +35,13 @@
 namespace jimi {
 
 #if 0
-struct DisruptorRingQueueHead
+struct DisruptorRingQueueInfo
 {
     volatile uint32_t head;
     volatile uint32_t tail;
 };
 #else
-struct DisruptorRingQueueHead
+struct DisruptorRingQueueInfo
 {
     volatile uint32_t head;
     char padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
@@ -51,19 +51,25 @@ struct DisruptorRingQueueHead
 };
 #endif
 
-typedef struct DisruptorRingQueueHead DisruptorRingQueueHead;
+typedef struct DisruptorRingQueueInfo DisruptorRingQueueInfo;
 
 ///////////////////////////////////////////////////////////////////
 // class SmallDisruptorRingQueueCore<Capacity>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
 class SmallDisruptorRingQueueCore
 {
 public:
-    typedef size_t      size_type;
-    typedef uint32_t    flag_type;
     typedef T           item_type;
+    typedef uint32_t    flag_type;
+#if 1
+    typedef size_t      size_type;    
+#else
+    typedef uint32_t    size_type;
+#endif
+
+    typedef SequenceBase<SequenceType>  Sequence;
 
 public:
     static const size_type  kCapacityCore   = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
@@ -74,33 +80,33 @@ public:
     static const bool       kIsAllocOnHeap  = false;
 
 public:
-    DisruptorRingQueueHead  info;
+    DisruptorRingQueueInfo  info;
 
     Sequence                cursor, workSequence;
     Sequence                gatingSequenceCache;
-    //Sequence                gatingSequenceCaches[kProducersAlloc];
     Sequence                gatingSequences[kConsumersAlloc];
 
-#if 0
-    volatile item_type      entries[kCapacityCore];
-    volatile flag_type      availableBuffer[kCapacityCore];
-#else
     item_type               entries[kCapacityCore];
     flag_type               availableBuffer[kCapacityCore];
-#endif
 };
 
 ///////////////////////////////////////////////////////////////////
 // class DisruptorRingQueueCore<Capacity>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
 class DisruptorRingQueueCore
 {
 public:
-    typedef size_t      size_type;
-    typedef uint32_t    flag_type;
     typedef T           item_type;
+    typedef uint32_t    flag_type;
+#if 1
+    typedef size_t      size_type;    
+#else
+    typedef uint32_t    size_type;
+#endif
+
+    typedef SequenceBase<SequenceType>  Sequence;
 
 public:
     static const size_type  kCapacityCore   = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
@@ -111,38 +117,34 @@ public:
     static const bool       kIsAllocOnHeap  = true;
 
 public:
-    DisruptorRingQueueHead  info;
+    DisruptorRingQueueInfo  info;
 
     Sequence                cursor, workSequence;
     Sequence                gatingSequenceCache;
-    //Sequence                gatingSequenceCaches[kProducersAlloc];
     Sequence                gatingSequences[kConsumersAlloc];
 
-#if 0
-    volatile item_type *    entries;
-    volatile flag_type *    availableBuffer;
-#else
     item_type *             entries;
     flag_type *             availableBuffer;
-#endif
 };
 
 ///////////////////////////////////////////////////////////////////
-// class DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>
+// class DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity = 1024U,
+template <typename T, typename SequenceType = int64_t, uint32_t Capacity = 1024U,
           uint32_t Producers = 0, uint32_t Consumers = 0,
-          typename CoreTy = DisruptorRingQueueCore<T, Capacity, Producers, Consumers> >
+          typename CoreTy = DisruptorRingQueueCore<T, SequenceType, Capacity, Producers, Consumers> >
 class DisruptorRingQueueBase
 {
 public:
-    typedef size_t                      size_type;
-    typedef int64_t                     sequence_type;
-    typedef uint32_t                    index_type;
     typedef CoreTy                      core_type;
     typedef typename CoreTy::item_type  item_type;
+    typedef typename CoreTy::size_type  size_type;
     typedef typename CoreTy::flag_type  flag_type;
+    typedef uint32_t                    index_type;
+    typedef SequenceType                sequence_type;
+    typedef typename CoreTy::Sequence   Sequence;
+
     typedef item_type                   value_type;
     typedef item_type *                 pointer;
     typedef const item_type *           const_pointer;
@@ -225,14 +227,14 @@ protected:
     pthread_mutex_t queue_mutex;
 };
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::DisruptorRingQueueBase(bool bInitHead /* = false */)
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::DisruptorRingQueueBase(bool bInitHead /* = false */)
 {
     init(bInitHead);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::~DisruptorRingQueueBase()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::~DisruptorRingQueueBase()
 {
     // Do nothing!
     Jimi_ReadWriteBarrier();
@@ -242,9 +244,9 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::~DisruptorRin
     pthread_mutex_destroy(&queue_mutex);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::init(bool bInitHead /* = false */)
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::init(bool bInitHead /* = false */)
 {
     if (!bInitHead) {
         core.info.head = 0;
@@ -289,29 +291,29 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::init(boo
     pthread_mutex_init(&queue_mutex, NULL);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::dump()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump()
 {
     //ReleaseUtils::dump(&core, sizeof(core));
     memory_dump(this, sizeof(*this), false, 16, 0, 0);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::dump_core()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump_core()
 {
     //ReleaseUtils::dump(&core, sizeof(core));
     memory_dump(&core, sizeof(core), false, 16, 0, 0);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::dump_info()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump_info()
 {
     //ReleaseUtils::dump(&core.info, sizeof(core.info));
     memory_dump(&core.info, sizeof(core.info), false, 16, 0, 0);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::dump_detail()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump_detail()
 {
 #if 0
     printf("---------------------------------------------------------\n");
@@ -329,10 +331,10 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::dump_det
 #endif
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::size_type
-DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sizes() const
+typename DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::size_type
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::sizes() const
 {
     sequence_type head, tail;
 
@@ -345,9 +347,9 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sizes() const
     return (size_type)((head - tail) <= kIndexMask) ? (head - tail) : (size_type)(-1);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::start()
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::start()
 {
     sequence_type cursor = core.cursor.get();
     core.workSequence.set(cursor);
@@ -365,18 +367,18 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::start()
     }
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::shutdown(int32_t timeOut /* = -1 */)
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::shutdown(int32_t timeOut /* = -1 */)
 {
     //
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 /* static */
 inline
-typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sequence_type
-DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
+typename DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::sequence_type
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::
     getMinimumSequence(const Sequence *sequences, const Sequence &workSequence, sequence_type mininum)
 {
     assert(sequences != NULL);
@@ -423,21 +425,21 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
     return minSequence;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::publish(sequence_type sequence)
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::publish(sequence_type sequence)
 {
     Jimi_WriteBarrier();
 
     setAvailable(sequence);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::setAvailable(sequence_type sequence)
+void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::setAvailable(sequence_type sequence)
 {
-    index_type index = ((index_type)sequence & kIndexMask);
-    flag_type  flag  = ((flag_type) sequence >> kIndexShift);
+    index_type index = (index_type)((index_type)sequence &  kIndexMask);
+    flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
 
     if (core_type::kIsAllocOnHeap) {
         assert(core.availableBuffer != NULL);
@@ -446,22 +448,22 @@ void DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::setAvail
     core.availableBuffer[index] = flag;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-bool DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::isAvailable(sequence_type sequence)
+bool DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::isAvailable(sequence_type sequence)
 {
-    index_type index = ((index_type)sequence & kIndexMask);
-    flag_type  flag  = ((flag_type) sequence >> kIndexShift);
+    index_type index = (index_type)((index_type)sequence &  kIndexMask);
+    flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
 
-    flag_type  flagBuffer = core.availableBuffer[index];
+    flag_type  flagValue = core.availableBuffer[index];
     Jimi_ReadBarrier();
-    return (flagBuffer == flag);
+    return (flagValue == flag);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sequence_type
-DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
+typename DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::sequence_type
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::
         getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence)
 {
     for (sequence_type sequence = lowerBound; sequence <= availableSequence; ++sequence) {
@@ -473,8 +475,9 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::
     return availableSequence;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-Sequence * DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::getGatingSequences(int index)
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+typename DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::Sequence *
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::getGatingSequences(int index)
 {
     if (index >= 0 && index < kCapacity) {
         return &core.gatingSequences[index];
@@ -482,30 +485,33 @@ Sequence * DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::ge
     return NULL;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(const volatile T & entry, int id /* = 0 */)
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::push(const volatile T & entry, int id /* = 0 */)
 {
     sequence_type current, nextSequence;
     do {
         current = core.cursor.get();
         nextSequence = current + 1;
 
-        sequence_type wrapPoint = nextSequence - kCapacity;
-        //sequence_type wrapPoint = current - kIndexMask;
+        //sequence_type wrapPoint = nextSequence - kCapacity;
+        sequence_type wrapPoint = current - kIndexMask;
         sequence_type cachedGatingSequence = core.gatingSequenceCache.get();
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current) {
         //if ((current - cachedGatingSequence) >= kIndexMask) {
-            sequence_type gatingSequence = DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>
+            sequence_type gatingSequence = DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>
                                             ::getMinimumSequence(core.gatingSequences, core.workSequence, current);
             //current = core.cursor.get();
             if (wrapPoint > gatingSequence) {
             //if ((current - gatingSequence) >= kIndexMask) {
                 // Push() failed, maybe queue is full.
                 //core.gatingSequenceCaches[id].set(gatingSequence);
-                //jimi_sleep(1);
-                //continue;
+#if 0
+                jimi_sleep(0);
+                continue;
+#else
                 return -1;
+#endif
             }
 
             core.gatingSequenceCache.set(gatingSequence);
@@ -531,17 +537,17 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::push(cons
     return 0;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, PopThreadStackData &stackData)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, PopThreadStackData &stackData)
 {
     assert(stackData.tailSequence != NULL);
     return pop(entry, *stackData.tailSequence, stackData.current,
                stackData.cachedAvailableSequence, stackData.processedSequence);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, Sequence &tailSequence,
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, Sequence &tailSequence,
                                                                            sequence_type &nextSequence,
                                                                            sequence_type &cachedAvailableSequence,
                                                                            bool &processedSequence)
@@ -556,13 +562,17 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & e
                 nextSequence = current + 1;
                 limit = cursor - 1;
                 tailSequence.set(current);
-                /*
+#if 0
                 if ((current == limit) || (current > limit && (limit - current) > kIndexMask)) {
+#if 0
                     Jimi_ReadBarrier();
                     //processedSequence = true;
                     return -1;
+#else
+                    //jimi_wsleep(0);
+#endif
                 }
-                //*/
+#endif
             } while (core.workSequence.compareAndSwap(current, nextSequence) != current);
         }
 
@@ -571,7 +581,6 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & e
         //if ((cachedAvailableSequence - nextSequence) <= (kIndexMask + 1)) {
             // Read the message data
             entry = core.entries[nextSequence & kIndexMask];
-            //static_cast<T>(entry).setValue(static_cast<T>(core.entries[nextSequence & kIndexMask]).getValue());
 
             Jimi_ReadBarrier();
             //tailSequence.set(nextSequence);
@@ -590,10 +599,10 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::pop(T & e
     }
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-typename DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::sequence_type
-DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::waitFor(sequence_type sequence)
+typename DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::sequence_type
+DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::waitFor(sequence_type sequence)
 {
     sequence_type availableSequence;
 
@@ -634,6 +643,8 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::waitFor(seque
 }
 
 #if 0
+void reserve_code()
+{
     sequence_type head, tail, next;
     sequence_type wrapPoint;
     bool maybeIsFull = false;
@@ -652,7 +663,7 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::waitFor(seque
         }
 
         if (maybeIsFull || tail < wrapPoint || tail > head) {
-            sequence_type gatingSequence = DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>
+            sequence_type gatingSequence = DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>
                                             ::getMinimumSequence(core.gatingSequences, core.workSequence, head);
             if (maybeIsFull || wrapPoint > gatingSequence) {
                 // Push() failed, maybe queue is full.
@@ -680,11 +691,12 @@ DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::waitFor(seque
     publish(head);
 
     Jimi_WriteBarrier();
+}
 #endif
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_push(const T & entry)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::q3_push(const T & entry)
 {
     sequence_type head, tail, next;
     bool ok = false;
@@ -708,9 +720,9 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_push(c
     return 0;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_pop(T & entry)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::q3_pop(T & entry)
 {
     sequence_type head, tail, next;
     bool ok = false;
@@ -733,9 +745,9 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::q3_pop(T 
     return 0;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push(const T & entry)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::spin_push(const T & entry)
 {
     sequence_type head, tail, next;
     int32_t pause_cnt;
@@ -811,9 +823,9 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_push
     return 0;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(T & entry)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::spin_pop(T & entry)
 {
     sequence_type head, tail, next;
     int32_t pause_cnt;
@@ -889,9 +901,9 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::spin_pop(
     return 0;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_push(const T & entry)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::mutex_push(const T & entry)
 {
     sequence_type head, tail, next;
 
@@ -917,9 +929,9 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pus
     return 0;
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 inline
-int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pop(T & entry)
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::mutex_pop(T & entry)
 {
     sequence_type head, tail, next;
 
@@ -950,19 +962,20 @@ int DisruptorRingQueueBase<T, Capacity, Producers, Consumers, CoreTy>::mutex_pop
 // class SmallRingQueue<T, Capacity>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity = 1024U,
+template <typename T, typename SequenceType = int64_t, uint32_t Capacity = 1024U,
           uint32_t Producers = 0, uint32_t Consumers = 0>
-class SmallDisruptorRingQueue : public DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-                                         SmallDisruptorRingQueueCore<T, Capacity, Producers, Consumers> >
+class SmallDisruptorRingQueue : public DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers,
+                                         SmallDisruptorRingQueueCore<T, SequenceType, Capacity, Producers, Consumers> >
 {
 public:
-    typedef DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-                SmallDisruptorRingQueueCore<T, Capacity, Producers, Consumers> > parent;
-    typedef SmallDisruptorRingQueueCore<T, Capacity, Producers, Consumers>   core_type;
+    typedef SmallDisruptorRingQueueCore<T, SequenceType,Capacity, Producers, Consumers> core_type;
+    typedef DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, core_type> parent_type;
+    
 
-    typedef typename parent::size_type  size_type;
-    typedef typename parent::index_type index_type;
-    typedef typename parent::flag_type  flag_type;
+    typedef typename parent_type::size_type     size_type;
+    typedef typename parent_type::index_type    index_type;
+    typedef typename parent_type::flag_type     flag_type;
+
     typedef T                           item_type;
     typedef T *                         value_type;
     typedef T *                         pointer;
@@ -970,8 +983,7 @@ public:
     typedef T &                         reference;
     typedef const T &                   const_reference;
 
-    static const size_type kCapacity = DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-                                         SmallDisruptorRingQueueCore<T, Capacity, Producers, Consumers> >::kCapacity;
+    static const size_type kCapacity = parent_type::kCapacity;
 
 public:
     SmallDisruptorRingQueue(bool bFillQueue = true, bool bInitHead = false);
@@ -985,38 +997,38 @@ protected:
     void init_queue(bool bFillQueue = true);
 };
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-SmallDisruptorRingQueue<T, Capacity, Producers, Consumers>::SmallDisruptorRingQueue(bool bFillQueue /* = true */,
-                                                                                    bool bInitHead  /* = false */)
-: DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-    SmallDisruptorRingQueueCore<T, Capacity, Producers, Consumers> >(bInitHead)
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+SmallDisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::
+    SmallDisruptorRingQueue(bool bFillQueue /* = true */,
+                            bool bInitHead  /* = false */)
+: parent_type(bInitHead)
 {
     init_queue(bFillQueue);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-SmallDisruptorRingQueue<T, Capacity, Producers, Consumers>::~SmallDisruptorRingQueue()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+SmallDisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::~SmallDisruptorRingQueue()
 {
     // Do nothing!
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
 inline
-void SmallDisruptorRingQueue<T, Capacity, Producers, Consumers>::init_queue(bool bFillQueue /* = true */)
+void SmallDisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::init_queue(bool bFillQueue /* = true */)
 {
     if (bFillQueue) {
         memset((void *)this->core.entries, 0, sizeof(item_type) * kCapacity);
     }
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-void SmallDisruptorRingQueue<T, Capacity, Producers, Consumers>::dump()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+void SmallDisruptorRingQueue<T,SequenceType,  Capacity, Producers, Consumers>::dump()
 {
     memory_dump(&this->core, sizeof(this->core), false, 16, 0, 0);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-void SmallDisruptorRingQueue<T, Capacity, Producers, Consumers>::dump_detail()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+void SmallDisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::dump_detail()
 {
     printf("SmallRingQueue: (head = %u, tail = %u)\n",
            this->core.info.head, this->core.info.tail);
@@ -1028,19 +1040,19 @@ void SmallDisruptorRingQueue<T, Capacity, Producers, Consumers>::dump_detail()
 // class DisruptorRingQueue<T, Capacity>
 ///////////////////////////////////////////////////////////////////
 
-template <typename T, uint32_t Capacity = 1024U,
+template <typename T, typename SequenceType = int64_t, uint32_t Capacity = 1024U,
           uint32_t Producers = 0, uint32_t Consumers = 0>
-class DisruptorRingQueue : public DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-                                    DisruptorRingQueueCore<T, Capacity, Producers, Consumers> >
+class DisruptorRingQueue : public DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers,
+                                    DisruptorRingQueueCore<T, SequenceType, Capacity, Producers, Consumers> >
 {
 public:
-    typedef DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-                DisruptorRingQueueCore<T, Capacity, Producers, Consumers> > parent;
-    typedef DisruptorRingQueueCore<T, Capacity, Producers, Consumers>   core_type;
+    typedef DisruptorRingQueueCore<T, SequenceType, Capacity, Producers, Consumers> core_type;
+    typedef DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, core_type> parent_type;    
 
-    typedef typename parent::size_type  size_type;
-    typedef typename parent::index_type index_type;
-    typedef typename parent::flag_type  flag_type;
+    typedef typename parent_type::size_type     size_type;
+    typedef typename parent_type::index_type    index_type;
+    typedef typename parent_type::flag_type     flag_type;
+
     typedef T                           item_type;
     typedef T *                         value_type;
     typedef T *                         pointer;
@@ -1048,8 +1060,7 @@ public:
     typedef T &                         reference;
     typedef const T &                   const_reference;
 
-    static const size_type kCapacity = DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-                                         DisruptorRingQueueCore<T, Capacity, Producers, Consumers> >::kCapacity;
+    static const size_type kCapacity = parent_type::kCapacity;
 
 public:
     DisruptorRingQueue(bool bFillQueue = true, bool bInitHead = false);
@@ -1062,20 +1073,19 @@ protected:
     void init_queue(bool bFillQueue = true);
 };
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-DisruptorRingQueue<T, Capacity, Producers, Consumers>::DisruptorRingQueue(bool bFillQueue /* = true */,
-                                                                          bool bInitHead  /* = false */)
-: DisruptorRingQueueBase<T, Capacity, Producers, Consumers,
-    DisruptorRingQueueCore<T, Capacity, Producers, Consumers> >(bInitHead)
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::DisruptorRingQueue(bool bFillQueue /* = true */,
+                                                                                        bool bInitHead  /* = false */)
+: parent_type(bInitHead)
 {
     init_queue(bFillQueue);
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-DisruptorRingQueue<T, Capacity, Producers, Consumers>::~DisruptorRingQueue()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::~DisruptorRingQueue()
 {
     // If the queue is allocated on system heap, release them.
-    if (DisruptorRingQueueCore<T, Capacity, Producers, Consumers>::kIsAllocOnHeap) {
+    if (core_type::kIsAllocOnHeap) {
         if (this->core.availableBuffer) {
             delete [] this->core.availableBuffer;
             this->core.availableBuffer = NULL;
@@ -1088,9 +1098,9 @@ DisruptorRingQueue<T, Capacity, Producers, Consumers>::~DisruptorRingQueue()
     }
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
 inline
-void DisruptorRingQueue<T, Capacity, Producers, Consumers>::init_queue(bool bFillQueue /* = true */)
+void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::init_queue(bool bFillQueue /* = true */)
 {
     item_type *newData = new T[kCapacity];
     if (newData != NULL) {
@@ -1112,8 +1122,8 @@ void DisruptorRingQueue<T, Capacity, Producers, Consumers>::init_queue(bool bFil
     }
 }
 
-template <typename T, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
-void DisruptorRingQueue<T, Capacity, Producers, Consumers>::dump_detail()
+template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
+void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::dump_detail()
 {
     printf("---------------------------------------------------------\n");
     printf("DisruptorRingQueue: (head = %u, tail = %u)\n",
