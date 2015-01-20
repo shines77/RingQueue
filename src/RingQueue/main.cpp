@@ -204,7 +204,7 @@ RingQueue_push_task(void *arg)
     || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
         || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE))
     int32_t pause_cnt;
-    uint32_t loop_cnt, yeild_cnt;
+    uint32_t loop_cnt, yeild_cnt, spin_cnt = 0;
 #endif
     uint32_t fail_cnt;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
@@ -480,12 +480,13 @@ RingQueue_push_task(void *arg)
         while (queue->push(msg) == -1) { fail_cnt++; };
         msg++;
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+        static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 20;
         loop_cnt = 0;
-        int succeeded;
-        while ((succeeded = disRingQueue->push(*pValueEvent, idx)) == -1) {
+        spin_cnt = 1;
+        while (disRingQueue->push(*pValueEvent) == -1) {
 #if 1
-            if (loop_cnt >= YIELD_THRESHOLD) {
-                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+            if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
+                yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
                 if ((yeild_cnt & 63) == 63) {
                     jimi_wsleep(1);
                 }
@@ -500,9 +501,10 @@ RingQueue_push_task(void *arg)
                 }
             }
             else {
-                for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                 }
+                spin_cnt = spin_cnt + 1;
             }
             loop_cnt++;
 #endif
@@ -553,7 +555,7 @@ RingQueue_pop_task(void *arg)
     struct queue *q;
     msg_t *msg = NULL;
     msg_t **record_list;
-    ValueEvent_t *valueEvent;
+    ValueEvent_t *valueEvent = NULL;
     ValueEvent_t *dis_record_list;
     uint64_t start;
     int idx, funcType;
@@ -561,7 +563,7 @@ RingQueue_pop_task(void *arg)
     || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
         || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE))
     int32_t pause_cnt;
-    uint32_t loop_cnt, yeild_cnt;
+    uint32_t loop_cnt, yeild_cnt, spin_cnt;
 #endif
     uint32_t cnt, fail_cnt;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
@@ -807,6 +809,7 @@ RingQueue_pop_task(void *arg)
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
         || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
     loop_cnt = 0;
+    spin_cnt = 1;
 #endif
 
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
@@ -823,6 +826,8 @@ RingQueue_pop_task(void *arg)
     stackData.current = stackData.tailSequence->get();
     stackData.cachedAvailableSequence = Sequence::INITIAL_CURSOR_VALUE;
     stackData.processedSequence = true;
+
+    static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 5;
 
     while (true) {
         succeeded = disRingQueue->pop(*valueEvent, stackData);
@@ -842,8 +847,8 @@ RingQueue_pop_task(void *arg)
         else {
             fail_cnt++;
   #if 1
-            if (loop_cnt >= YIELD_THRESHOLD) {
-                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
+            if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
+                yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
                 if ((yeild_cnt & 63) == 63) {
                     jimi_wsleep(1);
                 }
@@ -858,9 +863,10 @@ RingQueue_pop_task(void *arg)
                 }
             }
             else {
-                for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
                     jimi_mm_pause();
                 }
+                spin_cnt = spin_cnt + 1;
             }
             loop_cnt++;
   #endif
@@ -1867,8 +1873,8 @@ void run_some_queue_tests(void)
     stackData.processedSequence = true;
 
     event2.update(ev2);
-    disRingQueue2.push(event2, 0);
-    disRingQueue2.push(event6, 0);
+    disRingQueue2.push(event2);
+    disRingQueue2.push(event6);
 
     disRingQueue2.pop (ev3, stackData);
     disRingQueue2.pop (ev4, stackData);

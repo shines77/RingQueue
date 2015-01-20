@@ -318,6 +318,7 @@ int32_t __internal_val_compare_and_swap32(volatile int32_t *destPtr,
                                           int32_t newValue)
 {
     int32_t origValue = *destPtr;
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -330,6 +331,7 @@ uint32_t __internal_val_compare_and_swap32u(volatile uint32_t *destPtr,
                                             uint32_t newValue)
 {
     uint32_t origValue = *destPtr;
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -342,6 +344,7 @@ int64_t __internal_val_compare_and_swap64(volatile int64_t *destPtr,
                                           int64_t newValue)
 {
     int64_t origValue = *destPtr;
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -354,6 +357,7 @@ uint64_t __internal_val_compare_and_swap64u(volatile uint64_t *destPtr,
                                             uint64_t newValue)
 {
     uint64_t origValue = *destPtr;
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -365,6 +369,7 @@ bool __internal_bool_compare_and_swap32(volatile uint32_t *destPtr,
                                         uint32_t oldValue,
                                         uint32_t newValue)
 {
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
@@ -377,6 +382,7 @@ bool __internal_bool_compare_and_swap64(volatile int64_t *destPtr,
                                         int64_t oldValue,
                                         int64_t newValue)
 {
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
@@ -389,6 +395,7 @@ bool __internal_bool_compare_and_swap64u(volatile uint64_t *destPtr,
                                          uint64_t oldValue,
                                          uint64_t newValue)
 {
+    Jimi_ReadWriteBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
@@ -402,6 +409,7 @@ uint32_t __internal_lock_test_and_set32(volatile uint32_t *destPtr,
 {
     uint32_t origValue = *destPtr;
     *destPtr = newValue;
+    Jimi_ReadWriteBarrier();
     return origValue;
 }
 
@@ -411,6 +419,7 @@ uint64_t __internal_lock_test_and_set64(volatile uint64_t *destPtr,
 {
     uint64_t origValue = *destPtr;
     *destPtr = newValue;
+    Jimi_ReadWriteBarrier();
     return origValue;
 }
 
@@ -420,6 +429,7 @@ uint32_t __internal_fetch_and_add32(volatile uint32_t *destPtr,
 {
     uint32_t origValue = *destPtr;
     *destPtr += addValue;
+    Jimi_ReadWriteBarrier();
     return origValue;
 }
 
@@ -429,6 +439,7 @@ uint64_t __internal_fetch_and_add64(volatile uint64_t *destPtr,
 {
     uint64_t origValue = *destPtr;
     *destPtr += addValue;
+    Jimi_ReadWriteBarrier();
     return origValue;
 }
 

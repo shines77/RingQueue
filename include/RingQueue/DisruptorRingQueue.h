@@ -63,7 +63,7 @@ class SmallDisruptorRingQueueCore
 public:
     typedef T           item_type;
     typedef uint32_t    flag_type;
-#if 1
+#if 0
     typedef size_t      size_type;    
 #else
     typedef uint32_t    size_type;
@@ -100,7 +100,7 @@ class DisruptorRingQueueCore
 public:
     typedef T           item_type;
     typedef uint32_t    flag_type;
-#if 1
+#if 0
     typedef size_t      size_type;    
 #else
     typedef uint32_t    size_type;
@@ -204,7 +204,7 @@ public:
     sequence_type getHighestPublishedSequence(sequence_type lowerBound,
                                               sequence_type availableSequence);
 
-    int push(const volatile T & entry, int id = 0);
+    int push(const T & entry);
     int pop (T & entry, PopThreadStackData &stackData);
     int pop (T & entry, Sequence &tailSequence, sequence_type &nextSequence,
              sequence_type &cachedAvailableSequence, bool &processedSequence);
@@ -486,7 +486,8 @@ DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>:
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
-int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::push(const volatile T & entry, int id /* = 0 */)
+inline
+int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::push(const T & entry)
 {
     sequence_type current, nextSequence;
     do {
@@ -547,6 +548,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
+inline
 int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::pop(T & entry, Sequence &tailSequence,
                                                                            sequence_type &nextSequence,
                                                                            sequence_type &cachedAvailableSequence,
@@ -594,7 +596,8 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
             //cachedAvailableSequence = waitFor(current + 1);
             cachedAvailableSequence = waitFor(nextSequence);
             //tailSequence.set(cachedAvailableSequence);
-            return -1;
+            if (cachedAvailableSequence < nextSequence)
+                return -1;
         }
     }
 }
@@ -606,32 +609,38 @@ DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>:
 {
     sequence_type availableSequence;
 
-    static const uint32_t YIELD_THRESHOLD = 10;
+#if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
+    static const uint32_t YIELD_THRESHOLD = 20;
+#else
+    static const uint32_t YIELD_THRESHOLD = 8;
+#endif
     int32_t  pause_cnt;
-    uint32_t loop_cnt, yeild_cnt;
+    uint32_t loop_cnt, yeild_cnt, spin_cnt;
 
     loop_cnt = 0;
+    spin_cnt = 1;
     while ((availableSequence = core.cursor.get()) < sequence) {
         // Need yiled() or sleep() a while.
         if (loop_cnt >= YIELD_THRESHOLD) {
             yeild_cnt = loop_cnt - YIELD_THRESHOLD;
             if ((yeild_cnt & 63) == 63) {
-                jimi_wsleep(1);
+                jimi_sleep(1);
             }
             else if ((yeild_cnt & 3) == 3) {
-                jimi_wsleep(0);
+                jimi_sleep(0);
             }
             else {
                 if (!jimi_yield()) {
-                    jimi_wsleep(0);
+                    jimi_sleep(0);
                     //jimi_mm_pause();
                 }
             }
         }
         else {
-            for (pause_cnt = 1; pause_cnt > 0; --pause_cnt) {
+            for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
                 jimi_mm_pause();
             }
+            spin_cnt = spin_cnt + 1;
         }
         loop_cnt++;
     }

@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
-#define QSIZE                   (1 << 10)
+#define QSIZE                   (1 << 12)
 /// 下面一行请不要修改, 切记!!! qmask = qsize - 1
 #define QMASK                   (QSIZE - 1)
 
@@ -40,7 +40,7 @@
 #define AUTO_SCAN_64BIT_SEQUENCE    0
 
 /// 是否使用 64bit 的 sequence (序号), 默认值为 1 (使用)
-#define USE_64BIT_SEQUENCE          0
+#define USE_64BIT_SEQUENCE          1
 
 /// 根据实际编译环境决定是否使用 64 bit sequence ?
 #if defined(AUTO_SCAN_64BIT_SEQUENCE) && (AUTO_SCAN_64BIT_SEQUENCE != 0)
@@ -54,6 +54,11 @@
 
 /// 在 Sequence 类中是否使用 seq_spinlock() 锁 ?
 #define USE_SEQUENCE_SPIN_LOCK      1
+
+#if (PUSH_CNT <= 1) && (POP_CNT <= 1)
+#undef  USE_SEQUENCE_SPIN_LOCK
+#define USE_SEQUENCE_SPIN_LOCK      0
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -144,7 +149,7 @@
 ///
 /// 建议你定义为: FUNC_RINGQUEUE_MULTI_TEST (测多个),
 ///          或者 FUNC_RINGQUEUE_SPIN2_PUSH (只测最全面的一个)
-///
+///          或者 FUNC_DISRUPTOR_RINGQUEUE  (Disruptor C++版)
 #ifndef TEST_FUNC_TYPE
 #define TEST_FUNC_TYPE          FUNC_DISRUPTOR_RINGQUEUE
 #endif

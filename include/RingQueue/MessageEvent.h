@@ -48,7 +48,7 @@ public:
         //
     }
 
-#if 1
+#if 0
   #if 0
     // Copy assignment operator
     CValueEvent & operator = (const CValueEvent & rhs) {
