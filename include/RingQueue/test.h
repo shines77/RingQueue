@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
-#define QSIZE                   (1 << 12)
+#define QSIZE                   (1 << 10)
 /// 下面一行请不要修改, 切记!!! qmask = qsize - 1
 #define QMASK                   (QSIZE - 1)
 
@@ -34,6 +34,17 @@
 
 #define DISPLAY_DEBUG_INFO      0
 
+///
+/// 在 Sequence 类中是否使用 seq_spinlock() 锁 ?
+/// 对于Disruptor C++: 如果当 (PUSH_CNT + POP_CNT) 大于 CPU核心总数时, 把该值设为 1 可能更快.
+///         但当 (PUSH_CNT + POP_CNT) 小于等于 CPU核心总数时, x64模式下把该值设为 0 可能更快.
+#define USE_SEQUENCE_SPIN_LOCK      0
+
+#if (PUSH_CNT <= 1) && (POP_CNT <= 1)
+#undef  USE_SEQUENCE_SPIN_LOCK
+#define USE_SEQUENCE_SPIN_LOCK      0
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /// 是否根据编译环境自动决定是否使用 64bit 的 sequence (序号), 默认为 0 (不自动)
@@ -50,14 +61,6 @@
   #else
     #define USE_64BIT_SEQUENCE      0
   #endif
-#endif
-
-/// 在 Sequence 类中是否使用 seq_spinlock() 锁 ?
-#define USE_SEQUENCE_SPIN_LOCK      1
-
-#if (PUSH_CNT <= 1) && (POP_CNT <= 1)
-#undef  USE_SEQUENCE_SPIN_LOCK
-#define USE_SEQUENCE_SPIN_LOCK      0
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
