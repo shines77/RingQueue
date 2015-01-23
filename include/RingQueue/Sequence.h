@@ -67,152 +67,14 @@ typedef struct seqence_c32 seqence_c;
 
 #define SEQUENCE_YILED_THRESHOLD        1
 
-// Use a spinlock for multi-word accesses
 template <typename T>
-class CACHE_ALIGN_PREFIX seq_spinlock
+class CACHE_ALIGN_PREFIX seq_spinlock_core
 {
+public:
     static volatile CACHE_ALIGN_PREFIX T lock;
     static char padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
                       ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
                       : (JIMI_CACHE_LINE_SIZE)];
-public:
-    seq_spinlock()
-    {
-        static const uintptr_t YIELD_THRESHOLD = SEQUENCE_YILED_THRESHOLD;
-        intptr_t pause_cnt;
-        uintptr_t loop_cnt, yeild_cnt, spin_cnt;
-        loop_cnt = 0;
-        spin_cnt = 1;
-        while (jimi_val_compare_and_swap32(&lock, 0, 1) != 0) {
-            // Thread.Yield()
-            if (loop_cnt >= YIELD_THRESHOLD) {
-                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
-                if ((yeild_cnt & 63) == 63) {
-                    jimi_wsleep(1);
-                }
-                else if ((yeild_cnt & 3) == 3) {
-                    jimi_wsleep(0);
-                }
-                else {
-                    if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
-                    }
-                }
-            }
-            else {
-                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
-                    jimi_mm_pause();
-                }
-                spin_cnt = spin_cnt + 1;
-            }
-            loop_cnt++;
-        }
-    }
-
-    ~seq_spinlock()
-    {
-        Jimi_ReadWriteBarrier();
-        lock = 0;
-    }
-} CACHE_ALIGN_SUFFIX;
-
-template <>
-class CACHE_ALIGN_PREFIX seq_spinlock<int64_t>
-{
-    static volatile CACHE_ALIGN_PREFIX int64_t lock;
-    static char padding[(JIMI_CACHE_LINE_SIZE >= sizeof(int64_t))
-                      ? (JIMI_CACHE_LINE_SIZE - sizeof(int64_t))
-                      : (JIMI_CACHE_LINE_SIZE)];
-public:
-    seq_spinlock()
-    {
-        static const uintptr_t YIELD_THRESHOLD = SEQUENCE_YILED_THRESHOLD;
-        intptr_t pause_cnt;
-        uintptr_t loop_cnt, yeild_cnt, spin_cnt;
-        loop_cnt = 0;
-        spin_cnt = 1;
-        while (jimi_val_compare_and_swap64(&lock, 0, 1) != 0) {
-            // Thread.Yield()
-            if (loop_cnt >= YIELD_THRESHOLD) {
-                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
-                if ((yeild_cnt & 63) == 63) {
-                    jimi_wsleep(1);
-                }
-                else if ((yeild_cnt & 3) == 3) {
-                    jimi_wsleep(0);
-                }
-                else {
-                    if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
-                    }
-                }
-            }
-            else {
-                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
-                    jimi_mm_pause();
-                }
-                spin_cnt = spin_cnt + 1;
-            }
-            loop_cnt++;
-        }
-    }
-
-    ~seq_spinlock()
-    {
-        Jimi_ReadWriteBarrier();
-        lock = 0;
-    }
-} CACHE_ALIGN_SUFFIX;
-
-template <>
-class CACHE_ALIGN_PREFIX seq_spinlock<uint64_t>
-{
-    static volatile CACHE_ALIGN_PREFIX uint64_t lock;
-    static char padding[(JIMI_CACHE_LINE_SIZE >= sizeof(uint64_t))
-                      ? (JIMI_CACHE_LINE_SIZE - sizeof(uint64_t))
-                      : (JIMI_CACHE_LINE_SIZE)];
-public:
-    seq_spinlock()
-    {
-        static const uintptr_t YIELD_THRESHOLD = SEQUENCE_YILED_THRESHOLD;
-        intptr_t pause_cnt;
-        uintptr_t loop_cnt, yeild_cnt, spin_cnt;
-        loop_cnt = 0;
-        spin_cnt = 1;
-        while (jimi_val_compare_and_swap64(&lock, 0, 1) != 0) {
-            // Thread.Yield()
-            if (loop_cnt >= YIELD_THRESHOLD) {
-                yeild_cnt = loop_cnt - YIELD_THRESHOLD;
-                if ((yeild_cnt & 63) == 63) {
-                    jimi_wsleep(1);
-                }
-                else if ((yeild_cnt & 3) == 3) {
-                    jimi_wsleep(0);
-                }
-                else {
-                    if (!jimi_yield()) {
-                        jimi_wsleep(0);
-                        //jimi_mm_pause();
-                    }
-                }
-            }
-            else {
-                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
-                    jimi_mm_pause();
-                }
-                spin_cnt = spin_cnt + 1;
-            }
-            loop_cnt++;
-        }
-    }
-
-    ~seq_spinlock()
-    {
-        Jimi_ReadWriteBarrier();
-        lock = 0;
-    }
 } CACHE_ALIGN_SUFFIX;
 
 // This is a single lock that is used for all synchronized accesses if
@@ -221,25 +83,138 @@ public:
 // locked accesses and so does PPC32.  It's worth building libgcj with
 // target=i486 (or above) to get the inlines.
 
-volatile CACHE_ALIGN_PREFIX int64_t seq_spinlock<int64_t>::lock = static_cast<int64_t>(0);
-
-char seq_spinlock<int64_t>::padding[(JIMI_CACHE_LINE_SIZE >= sizeof(int64_t))
-                            ? (JIMI_CACHE_LINE_SIZE - sizeof(int64_t))
-                            : (JIMI_CACHE_LINE_SIZE)] = { 0 };
-
-volatile CACHE_ALIGN_PREFIX uint64_t seq_spinlock<uint64_t>::lock = static_cast<uint64_t>(0);
-
-char seq_spinlock<uint64_t>::padding[(JIMI_CACHE_LINE_SIZE >= sizeof(uint64_t))
-                            ? (JIMI_CACHE_LINE_SIZE - sizeof(uint64_t))
-                            : (JIMI_CACHE_LINE_SIZE)] = { 0 };
+template <typename T>
+volatile CACHE_ALIGN_PREFIX T seq_spinlock_core<T>::lock = static_cast<T>(0);
 
 template <typename T>
-volatile CACHE_ALIGN_PREFIX T seq_spinlock<T>::lock = static_cast<T>(0);
+char seq_spinlock_core<T>::padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
+                                 ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
+                                 : (JIMI_CACHE_LINE_SIZE)] = { 0 };
 
+// Use a spinlock for multi-word accesses
 template <typename T>
-char seq_spinlock<T>::padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
-                            ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
-                            : (JIMI_CACHE_LINE_SIZE)] = { 0 };
+class seq_spinlock
+{
+public:
+    static const uintptr_t kYieldThreshold = SEQUENCE_YILED_THRESHOLD;
+
+    typedef seq_spinlock_core<T> core_type;
+
+public:
+    seq_spinlock()
+    {
+        Jimi_ReadBarrier();
+        spin_wait();
+    }
+
+    ~seq_spinlock()
+    {
+        Jimi_WriteBarrier();
+        core_type::lock = 0;
+    }
+
+private:
+    void spin_wait()
+    {
+        intptr_t pause_cnt;
+        uintptr_t loop_cnt, yeild_cnt, spin_cnt;
+        loop_cnt = 0;
+        spin_cnt = 1;
+        while (jimi_val_compare_and_swap32(&core_type::lock, 0, 1) != 0) {
+            // Thread.Yield()
+            if (loop_cnt >= kYieldThreshold) {
+                yeild_cnt = loop_cnt - kYieldThreshold;
+                if ((yeild_cnt & 63) == 63) {
+                    jimi_wsleep(1);
+                }
+                else if ((yeild_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
+                }
+            }
+            else {
+                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                }
+                spin_cnt = spin_cnt + 1;
+            }
+            loop_cnt++;
+        }
+    }
+};
+
+template <>
+void seq_spinlock<int64_t>::spin_wait()
+{
+    intptr_t pause_cnt;
+    uintptr_t loop_cnt, yeild_cnt, spin_cnt;
+    loop_cnt = 0;
+    spin_cnt = 1;
+    while (jimi_val_compare_and_swap64(&core_type::lock, 0, 1) != 0) {
+        // Thread.Yield()
+        if (loop_cnt >= kYieldThreshold) {
+            yeild_cnt = loop_cnt - kYieldThreshold;
+            if ((yeild_cnt & 63) == 63) {
+                jimi_wsleep(1);
+            }
+            else if ((yeild_cnt & 3) == 3) {
+                jimi_wsleep(0);
+            }
+            else {
+                if (!jimi_yield()) {
+                    jimi_wsleep(0);
+                    //jimi_mm_pause();
+                }
+            }
+        }
+        else {
+            for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                jimi_mm_pause();
+            }
+            spin_cnt = spin_cnt + 1;
+        }
+        loop_cnt++;
+    }
+}
+
+template <>
+void seq_spinlock<uint64_t >::spin_wait()
+{
+    intptr_t pause_cnt;
+    uintptr_t loop_cnt, yeild_cnt, spin_cnt;
+    loop_cnt = 0;
+    spin_cnt = 1;
+    while (jimi_val_compare_and_swap64u(&core_type::lock, 0, 1) != 0) {
+        // Thread.Yield()
+        if (loop_cnt >= kYieldThreshold) {
+            yeild_cnt = loop_cnt - kYieldThreshold;
+            if ((yeild_cnt & 63) == 63) {
+                jimi_wsleep(1);
+            }
+            else if ((yeild_cnt & 3) == 3) {
+                jimi_wsleep(0);
+            }
+            else {
+                if (!jimi_yield()) {
+                    jimi_wsleep(0);
+                    //jimi_mm_pause();
+                }
+            }
+        }
+        else {
+            for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                jimi_mm_pause();
+            }
+            spin_cnt = spin_cnt + 1;
+        }
+        loop_cnt++;
+    }
+}
 
 #else  /* !USE_SEQUENCE_SPIN_LOCK */
 
@@ -292,7 +267,7 @@ public:
     ~SequenceBase() {}
 
 public:
-    void init(T initial_val) {
+    inline void init(T initial_val) {
 #if 0
         if (sizeof(padding) > 0) {
             memset(&padding[0], 0, sizeof(padding));
@@ -315,21 +290,20 @@ public:
     }
 
     void setMinValue() {
-        set(kMinSequenceValue);
+        setOrder(kMinSequenceValue);
     }
 
     void setMaxValue() {
-        set(kMaxSequenceValue);
+        setOrder(kMaxSequenceValue);
     }
 
-    T get() const {
+    inline T get() const {
         T val = value;
         Jimi_ReadBarrier();
-        //Jimi_MemoryBarrier();
         return val;
     }
 
-    void set(T newValue) {
+    inline void set(T newValue) {
 #if 0
         T oldValue;
         int cnt = 0;
@@ -352,30 +326,34 @@ public:
         } while (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) != oldValue);
 #else
         Jimi_WriteBarrier();
-        //seq_spinlock_t spinlock;
         this->value = newValue;
 #endif
     }
 
-    void setOrder(T newValue) {
-        Jimi_WriteBarrier();
-        seq_spinlock_t spinlock;
-        this->value = newValue;
-    }
-
-    T getVolatile() const {
+    inline T getOrder() const {
         T val = value;
         Jimi_ReadBarrier();
         return val;
     }
 
-    void setVolatile(T newValue) {
+    inline void setOrder(T newValue) {
+        Jimi_WriteBarrier();
+        this->value = newValue;
+    }
+
+    inline T getVolatile() const {
+        T val = value;
+        Jimi_ReadBarrier();
+        return val;
+    }
+
+    inline void setVolatile(T newValue) {
         Jimi_WriteBarrier();
         seq_spinlock_t spinlock;
         this->value = newValue;
     }
 
-    T compareAndSwap(T oldValue, T newValue) {
+    inline T compareAndSwap(T oldValue, T newValue) {
         Jimi_WriteBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
         seq_spinlock_t spinlock;
@@ -385,7 +363,7 @@ public:
 #endif
     }
 
-    bool compareAndSwapBool(T oldValue, T newValue) {
+    inline bool compareAndSwapBool(T oldValue, T newValue) {
         Jimi_WriteBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
         seq_spinlock_t spinlock;
@@ -433,19 +411,58 @@ const T SequenceBase<T>::kMinSequenceValue          = static_cast<T>(SequenceBas
 template <typename T>
 const T SequenceBase<T>::kMaxSequenceValue          = static_cast<T>(SequenceBase<T>::MAX_VALUE);
 
-/* For set(), int64_t and uint64_t */
+/* For getOrder(), int64_t and uint64_t */
 
 template <>
 inline
-void SequenceBase<int64_t>::set(int64_t newValue) {
-#if 0
-    Jimi_WriteBarrier();
-    int64_t oldValue;
-    // Loop until the update is successful.
-    do {
-        oldValue = this->value;
-    } while (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) != oldValue);
+int64_t SequenceBase<int64_t>::getOrder() const
+{
+    int64_t val;
+#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+    Jimi_ReadBarrier();
+    val = this->value;
 #else
+  #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
+    seq_spinlock_t spinlock;
+    Jimi_ReadBarrier();
+    val = this->value;
+  #else
+    int64_t oldValue = this->value;
+    Jimi_ReadBarrier();
+    val = jimi_val_compare_and_swap64(&(this->value), oldValue, oldValue);
+  #endif  /* USE_SEQUENCE_SPIN_LOCK */
+#endif  /* _M_X64 */
+    return val;
+}
+
+template <>
+inline
+uint64_t SequenceBase<uint64_t>::getOrder() const
+{
+    uint64_t val;
+#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+    Jimi_ReadBarrier();
+    val = this->value;
+#else
+  #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
+    seq_spinlock_t spinlock;
+    Jimi_ReadBarrier();
+    val = this->value;
+  #else
+    uint64_t oldValue = this->value;
+    Jimi_ReadBarrier();
+    val = jimi_val_compare_and_swap64u(&(this->value), oldValue, oldValue);
+  #endif  /* USE_SEQUENCE_SPIN_LOCK */
+#endif  /* _M_X64 */
+    return val;
+}
+
+/* For setOrder(), int64_t and uint64_t */
+
+template <>
+inline
+void SequenceBase<int64_t>::setOrder(int64_t newValue)
+{
     Jimi_WriteBarrier();
 #if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
     this->value = newValue;
@@ -475,20 +492,12 @@ void SequenceBase<int64_t>::set(int64_t newValue) {
     } while (1);
   #endif  /* USE_SEQUENCE_SPIN_LOCK */
 #endif  /* _M_X64 */
-#endif
 }
 
 template <>
 inline
-void SequenceBase<uint64_t>::set(uint64_t newValue) {
-#if 0
-    Jimi_WriteBarrier();
-    uint64_t oldValue;
-    // Loop until the update is successful.
-    do {
-        oldValue = this->value;
-    } while (jimi_val_compare_and_swap64u(&(this->value), oldValue, newValue) != oldValue);
-#else
+void SequenceBase<uint64_t>::setOrder(uint64_t newValue)
+{
     Jimi_WriteBarrier();
 #if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
     this->value = newValue;
@@ -518,12 +527,12 @@ void SequenceBase<uint64_t>::set(uint64_t newValue) {
     } while (1);
   #endif  /* USE_SEQUENCE_SPIN_LOCK */
 #endif  /* _M_X64 */
-#endif
 }
 
 template <>
 inline
-uint32_t SequenceBase<uint32_t>::compareAndSwap(uint32_t oldValue, uint32_t newValue) {
+uint32_t SequenceBase<uint32_t>::compareAndSwap(uint32_t oldValue, uint32_t newValue) 
+{
     Jimi_WriteBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
@@ -537,7 +546,8 @@ uint32_t SequenceBase<uint32_t>::compareAndSwap(uint32_t oldValue, uint32_t newV
 
 template <>
 inline
-int64_t SequenceBase<int64_t>::compareAndSwap(int64_t oldValue, int64_t newValue) {
+int64_t SequenceBase<int64_t>::compareAndSwap(int64_t oldValue, int64_t newValue)
+{
     Jimi_WriteBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
@@ -549,7 +559,8 @@ int64_t SequenceBase<int64_t>::compareAndSwap(int64_t oldValue, int64_t newValue
 
 template <>
 inline
-bool SequenceBase<int64_t>::compareAndSwapBool(int64_t oldValue, int64_t newValue) {
+bool SequenceBase<int64_t>::compareAndSwapBool(int64_t oldValue, int64_t newValue)
+{
     Jimi_WriteBarrier();
     seq_spinlock_t spinlock;
     return (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) == oldValue);
@@ -559,7 +570,8 @@ bool SequenceBase<int64_t>::compareAndSwapBool(int64_t oldValue, int64_t newValu
 
 template <>
 inline
-uint64_t SequenceBase<uint64_t>::compareAndSwap(uint64_t oldValue, uint64_t newValue) {
+uint64_t SequenceBase<uint64_t>::compareAndSwap(uint64_t oldValue, uint64_t newValue)
+{
     Jimi_WriteBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
@@ -571,21 +583,22 @@ uint64_t SequenceBase<uint64_t>::compareAndSwap(uint64_t oldValue, uint64_t newV
 
 template <>
 inline
-bool SequenceBase<uint64_t>::compareAndSwapBool(uint64_t oldValue, uint64_t newValue) {
+bool SequenceBase<uint64_t>::compareAndSwapBool(uint64_t oldValue, uint64_t newValue)
+{
     Jimi_WriteBarrier();
     seq_spinlock_t spinlock;
     return (jimi_val_compare_and_swap64u(&(this->value), oldValue, newValue) == oldValue);
 }
 
-typedef SequenceBase<uint64_t> SequenceU64;
-typedef SequenceBase<uint32_t> SequenceU32;
-typedef SequenceBase<uint16_t> SequenceU16;
-typedef SequenceBase<uint8_t>  SequenceU8;
+typedef SequenceBase<uint64_t>  SequenceU64;
+typedef SequenceBase<uint32_t>  SequenceU32;
+typedef SequenceBase<uint16_t>  SequenceU16;
+typedef SequenceBase<uint8_t>   SequenceU8;
 
-typedef SequenceBase<int64_t> Sequence64;
-typedef SequenceBase<int32_t> Sequence32;
-typedef SequenceBase<int16_t> Sequence16;
-typedef SequenceBase<int8_t>  Sequence8;
+typedef SequenceBase<int64_t>   Sequence64;
+typedef SequenceBase<int32_t>   Sequence32;
+typedef SequenceBase<int16_t>   Sequence16;
+typedef SequenceBase<int8_t>    Sequence8;
 
 #if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
 typedef SequenceBase<uint64_t> SequenceStd;

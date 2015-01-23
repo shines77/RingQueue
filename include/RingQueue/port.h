@@ -174,8 +174,8 @@
     (int64_t)(InterlockedCompareExchange64((volatile LONG64 *)(destPtr),   \
                             (LONG64)(newValue), (LONG64)(oldValue)))
 
-#define jimi_val_compare_and_swap64u(destPtr, oldValue, newValue)           \
-    (uint64_t)(InterlockedCompareExchange64((volatile LONG64 *)(destPtr),   \
+#define jimi_val_compare_and_swap64u(destPtr, oldValue, newValue)          \
+    (uint64_t)(InterlockedCompareExchange64((volatile LONG64 *)(destPtr),  \
                             (LONG64)(newValue), (LONG64)(oldValue)))
 
 #define jimi_bool_compare_and_swap32(destPtr, oldValue, newValue)       \

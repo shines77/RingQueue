@@ -83,8 +83,9 @@ public:
     DisruptorRingQueueInfo  info;
 
     Sequence                cursor, workSequence;
-    Sequence                gatingSequenceCache;
     Sequence                gatingSequences[kConsumersAlloc];
+    Sequence                gatingSequenceCache;
+    Sequence                gatingSequenceCaches[kProducersAlloc];
 
     item_type               entries[kCapacityCore];
     flag_type               availableBuffer[kCapacityCore];
@@ -120,8 +121,9 @@ public:
     DisruptorRingQueueInfo  info;
 
     Sequence                cursor, workSequence;
-    Sequence                gatingSequenceCache;
     Sequence                gatingSequences[kConsumersAlloc];
+    Sequence                gatingSequenceCache;
+    Sequence                gatingSequenceCaches[kProducersAlloc];
 
     item_type *             entries;
     flag_type *             availableBuffer;
@@ -508,14 +510,15 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
                 // Push() failed, maybe queue is full.
                 //core.gatingSequenceCaches[id].set(gatingSequence);
 #if 0
-                jimi_sleep(0);
+                for (int i = 2; i > 0; --i)
+                    jimi_mm_pause();
                 continue;
 #else
                 return -1;
 #endif
             }
 
-            core.gatingSequenceCache.set(gatingSequence);
+            core.gatingSequenceCache.setOrder(gatingSequence);
         }
         else if (core.cursor.compareAndSwap(current, nextSequence) != current) {
             // Need yiled() or sleep() a while.
@@ -679,7 +682,7 @@ void reserve_code()
                 return -1;
             }
 
-            core.gatingSequenceCache.set(gatingSequence);
+            core.gatingSequenceCache.setOrder(gatingSequence);
         }
 
         if (core.cursor.compareAndSwap(head, next) != head) {
@@ -1124,7 +1127,7 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::init_q
         if (bFillQueue) {
             //memset((void *)newBufferData, 0, sizeof(flag_type) * kCapacity);
             for (int i = 0; i < kCapacity; ++i) {
-                newBufferData[i] = (flag_type)-1;
+                newBufferData[i] = (flag_type)(-1);
             }
         }
         this->core.availableBuffer = newBufferData;
