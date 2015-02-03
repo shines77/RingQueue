@@ -297,21 +297,21 @@ template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Produce
 void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump()
 {
     //ReleaseUtils::dump(&core, sizeof(core));
-    memory_dump(this, sizeof(*this), false, 16, 0, 0);
+    dump_memory(this, sizeof(*this), false, 16, 0, 0);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump_core()
 {
     //ReleaseUtils::dump(&core, sizeof(core));
-    memory_dump(&core, sizeof(core), false, 16, 0, 0);
+    dump_memory(&core, sizeof(core), false, 16, 0, 0);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
 void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::dump_info()
 {
     //ReleaseUtils::dump(&core.info, sizeof(core.info));
-    memory_dump(&core.info, sizeof(core.info), false, 16, 0, 0);
+    dump_memory(&core.info, sizeof(core.info), false, 16, 0, 0);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, typename CoreTy>
@@ -1036,7 +1036,7 @@ void SmallDisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers>::i
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
 void SmallDisruptorRingQueue<T,SequenceType,  Capacity, Producers, Consumers>::dump()
 {
-    memory_dump(&this->core, sizeof(this->core), false, 16, 0, 0);
+    dump_memory(&this->core, sizeof(this->core), false, 16, 0, 0);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers>
