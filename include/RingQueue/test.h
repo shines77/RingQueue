@@ -154,7 +154,7 @@
 ///          或者 FUNC_RINGQUEUE_SPIN2_PUSH (只测最全面的一个)
 ///          或者 FUNC_DISRUPTOR_RINGQUEUE  (Disruptor C++版)
 #ifndef TEST_FUNC_TYPE
-#define TEST_FUNC_TYPE          FUNC_DISRUPTOR_RINGQUEUE
+#define TEST_FUNC_TYPE                  FUNC_RINGQUEUE_MULTI_TEST
 #endif
 
 /// 是否显示 push 次数, pop 次数 和 rdtsc计数 等额外的测试信息
