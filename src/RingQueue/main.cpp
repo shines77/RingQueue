@@ -1430,64 +1430,64 @@ RingQueue_Test(int funcType, bool bContinue = true)
 
     if (funcType == FUNC_RINGQUEUE_SPIN_PUSH) {
         // 细粒度的标准spin_mutex自旋锁
-        printf("This is RingQueue.spin_push() test: (%d)\n", funcType);
+        printf("RingQueue.spin_push() test: (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_RINGQUEUE_SPIN1_PUSH) {
         // 细粒度的改进型spin_mutex自旋锁
-        printf("This is RingQueue.spin1_push() test: (%d)\n", funcType);
+        printf("RingQueue.spin1_push() test: (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_RINGQUEUE_SPIN2_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
-        printf("This is RingQueue.spin2_push() test: (%d)\n", funcType);
+        printf("RingQueue.spin2_push() test: (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_RINGQUEUE_MUTEX_PUSH) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
-        printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
+        printf("RingQueue.mutex_push() test: (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_DOUBAN_Q3H) {
         // 豆瓣上q3.h的原版文件
-        printf("This is DouBan's q3.h test: (%d)\n", funcType);
+        printf("DouBan's q3.h test: (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_RINGQUEUE_PUSH) {
         // 豆瓣上q3.h的lock-free改良型方案
-        printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
+        printf("RingQueue.push() test (modified base on q3.h): (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_RINGQUEUE_SPIN3_PUSH) {
         // 细粒度的通用型spin_mutex自旋锁
-        printf("This is RingQueue.spin3_push() test: (%d)\n", funcType);
+        printf("RingQueue.spin3_push() test: (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_RINGQUEUE_SPIN9_PUSH) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
-        printf("This is RingQueue.spin9_push() test (maybe deadlock): (%d)\n", funcType);
+        printf("RingQueue.spin9_push() test (maybe deadlock): (FuncId = %d)\n", funcType);
     }
     else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
         // disruptor 3.3 (C++版)
-        printf("This is DisruptorRingQueue test: (%d)\n", funcType);
+        printf("DisruptorRingQueue test: (FuncId = %d)\n", funcType);
     }
     else {
-        printf("This is a unknown test function: (%d)\n", funcType);
+        printf("a unknown test function: (FuncId = %d)\n", funcType);
     }
 
 #if 0
     //printf("\n");
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
-    printf("This is RingQueue.spin_push() test: (%d)\n", funcType);
+    printf("RingQueue.spin_push() test: (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN1_PUSH)
-    printf("This is RingQueue.spin1_push() test: (%d)\n", funcType);
+    printf("RingQueue.spin1_push() test: (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH)
-    printf("This is RingQueue.spin2_push() test: (%d)\n", funcType);
+    printf("RingQueue.spin2_push() test: (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_MUTEX_PUSH)
-    printf("This is RingQueue.mutex_push() test: (%d)\n", funcType);
+    printf("RingQueue.mutex_push() test: (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DOUBAN_Q3H)
-    printf("This is DouBan's q3.h test: (%d)\n", funcType);
+    printf("DouBan's q3.h test: (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN3_PUSH)
-    printf("This is RingQueue.spin3_push() test: (%d)\n", funcType);
+    printf("RingQueue.spin3_push() test: (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN9_PUSH)
-    printf("This is RingQueue.spin9_push() test (maybe deadlock): (%d)\n", funcType);
+    printf("RingQueue.spin9_push() test (maybe deadlock): (FuncId = %d)\n", funcType);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_PUSH)
-    printf("This is RingQueue.push() test (modified base on q3.h): (%d)\n", funcType);
+    printf("RingQueue.push() test (modified base on q3.h): (FuncId = %d)\n", funcType);
 #else
-    printf("This is a unknown test function: (%d)\n", funcType);
+    printf("a unknown test function: (%d)\n", funcType);
 #endif
 #endif
 
@@ -1616,7 +1616,7 @@ q3_test(void)
     q = qinit();
 
     printf("---------------------------------------------------------------\n");
-    printf("This is DouBan's q3.h test:\n");
+    printf("DouBan's q3.h test:\n");
     printf("---------------------------------------------------------------\n");
 
     init_globals();
@@ -1704,7 +1704,7 @@ void SerialRingQueue_Test()
     const static int max_step = JIMI_MIN(16, QSIZE);
 
     printf("---------------------------------------------------------------\n");
-    printf("This is SerialRingQueue test: (Step = %d)\n", max_step);
+    printf("SerialRingQueue test: (Step = %d)\n", max_step);
     printf("---------------------------------------------------------------\n");
 
     init_globals();
