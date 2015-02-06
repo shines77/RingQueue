@@ -1690,6 +1690,67 @@ q3_test(void)
     jimi_console_readkeyln(false, true, false);
 }
 
+void SerialRingQueue_Test()
+{
+    SerialRingQueue<ValueEvent_t, QSIZE>  srq;
+    ValueEvent_t *pushEvent, popEvent;
+    ValueEvent_t *popEventList;
+    jmc_timestamp_t startTime, stopTime;
+    jmc_timefloat_t elapsedTime = 0.0;
+
+    int i;
+    int remain, step;
+    int push_cnt = 0, pop_cnt = 0;
+    const static int max_step = JIMI_MIN(16, QSIZE);
+
+    printf("---------------------------------------------------------------\n");
+    printf("This is SerialRingQueue test: (Step = %d)\n", max_step);
+    printf("---------------------------------------------------------------\n");
+
+    init_globals();
+    setaffinity(0);
+
+    test_msg_reset();
+    pop_list_reset();
+
+    startTime = jmc_get_timestamp();
+
+    pushEvent = (ValueEvent_t *)&msgs[0];
+    popEventList = &dis_popevent_list[0][0];
+
+    remain = MAX_MSG_CNT;
+    while (remain > 0) {
+        step = JIMI_MIN(max_step, remain);
+        for (i = 0; i < step; ++i) {
+            if (srq.push(*pushEvent) != -1) {
+                pushEvent++;
+                push_cnt++;
+            }
+        }
+        for (i = 0; i < step; ++i) {
+            if (srq.pop(popEvent) != -1) {
+                *popEventList = popEvent;
+                popEventList++;
+                pop_cnt++;
+            }
+        }
+        remain -= step;
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime += jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("\n");
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    if (elapsedTime != 0.0)
+        printf("throughput: %u ops/sec\n", (uint32_t)((MAX_MSG_CNT * 1000.0) / elapsedTime));
+    else
+        printf("throughput: %u ops/sec\n", 0U);
+    printf("\n");
+
+    disruptor_pop_list_verify();
+}
+
 void
 RingQueue_UnitTest(void)
 {
@@ -2004,6 +2065,9 @@ main(int argn, char * argv[])
 #else
     display_test_info(0);
 #endif
+
+    // 单线程顺序执行的版本, 每次push(), pop()的消息数量(即步长)由max_step决定, 最大步长为QSIZE
+    SerialRingQueue_Test();
 
 #if defined(USE_JIMI_RINGQUEUE) && (USE_JIMI_RINGQUEUE != 0)
   #if !defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)

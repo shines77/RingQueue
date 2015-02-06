@@ -182,7 +182,7 @@ template <typename T, uint32_t Capacity, typename CoreTy>
 RingQueueBase<T, Capacity, CoreTy>::~RingQueueBase()
 {
     // Do nothing!
-    Jimi_ReadWriteBarrier();
+    Jimi_WriteBarrier();
 
     spin_mutex.locked = 0;
 
@@ -1357,6 +1357,130 @@ void RingQueue<T, Capacity>::dump_detail()
 {
     printf("RingQueue: (head = %u, tail = %u)\n",
            this->core.info.head, this->core.info.tail);
+}
+
+template <typename T, uint32_t Capacity = 1024U>
+class SerialRingQueue
+{
+public:
+    typedef uint32_t            size_type;
+    typedef uint32_t            index_type;
+    typedef uint32_t            sequence_type;
+    typedef T                   item_type;
+    typedef item_type           value_type;
+    typedef T *                 pointer;
+    typedef const T *           const_pointer;
+    typedef T &                 reference;
+    typedef const T &           const_reference;
+
+public:
+    static const bool       kIsAllocOnHeap  = true;
+    static const size_type  kCapacity       = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
+    static const index_type kMask           = (index_type)(kCapacity - 1);
+
+public:
+    SerialRingQueue();
+    ~SerialRingQueue();
+
+public:
+    index_type mask() const      { return kMask;     };
+    size_type capacity() const   { return kCapacity; };
+    size_type length() const     { return sizes();   };
+    size_type sizes() const;
+
+    void init();
+
+    int push(T & entry);
+    int pop(T & entry);
+
+protected:
+    sequence_type   head, tail;
+    item_type *     entries;
+};
+
+template <typename T, uint32_t Capacity>
+SerialRingQueue<T, Capacity>::SerialRingQueue()
+: head(0)
+, tail(0)
+, entries(NULL)
+{
+    init();
+}
+
+template <typename T, uint32_t Capacity>
+SerialRingQueue<T, Capacity>::~SerialRingQueue()
+{
+    Jimi_WriteBarrier();
+
+    // If the queue is allocated on system heap, release them.
+    if (SerialRingQueue<T, Capacity>::kIsAllocOnHeap) {
+        if (this->entries != NULL) {
+            delete [] this->entries;
+            this->entries = NULL;
+        }
+    }
+}
+
+template <typename T, uint32_t Capacity>
+inline
+void SerialRingQueue<T, Capacity>::init()
+{
+    value_type * newData = new T[kCapacity];
+    if (newData != NULL) {
+        memset((void *)newData, 0, sizeof(value_type) * kCapacity);
+        this->entries = newData;
+    }
+}
+
+template <typename T, uint32_t Capacity>
+inline
+typename SerialRingQueue<T, Capacity>::size_type
+SerialRingQueue<T, Capacity>::sizes() const
+{
+    index_type head, tail;
+
+    Jimi_WriteBarrier();
+
+    head = this->head;
+    tail = this->tail;
+
+    return (size_type)((head - tail) <= kMask) ? (head - tail) : (size_type)(-1);
+}
+
+template <typename T, uint32_t Capacity>
+inline
+int jimi::SerialRingQueue<T, Capacity>::push(T & entry)
+{
+    sequence_type head, tail, next;
+    head = this->head;
+    tail = this->tail;
+    if ((head - tail) > kMask) {
+        Jimi_WriteBarrier();
+        return -1;
+    }
+    next = head + 1;
+    this->head = next;
+
+    this->entries[head & kMask] = entry;
+    return 0;
+}
+
+template <typename T, uint32_t Capacity>
+inline
+int jimi::SerialRingQueue<T, Capacity>::pop(T & entry)
+{
+    sequence_type head, tail, next;
+    head = this->head;
+    tail = this->tail;
+    if ((tail == head) || (tail > head && (head - tail) > kMask)) {
+        Jimi_WriteBarrier();
+        return -1;
+    }
+    next = tail + 1;
+    this->tail = next;
+
+    entry = this->entries[tail & kMask];
+    return 0;
 }
 
 }  /* namespace jimi */

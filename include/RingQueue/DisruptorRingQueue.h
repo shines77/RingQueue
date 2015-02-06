@@ -74,7 +74,7 @@ public:
 
     struct PopThreadStackData
     {
-        Sequence       *tailSequence;
+        Sequence *      tailSequence;
         sequence_type   nextSequence;
         sequence_type   cachedAvailableSequence;
         bool            processedSequence;
