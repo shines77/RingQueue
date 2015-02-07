@@ -13,6 +13,11 @@ https://github.com/shines77/RingQueue
 
 https://github.com/shines77/RingQueue-utf8
 
+### Supported Systems
+* Windows XP or later (32-bit or 64-bit) 
+* Linux OS (32-bit or 64-bit)
+* MacOS X10.6 or higher (32-bit or 64-bit)
+
 ### Blog Topic(s):
 
 http://www.cnblogs.com/shines77/p/4192787.html
