@@ -12,8 +12,8 @@
 #define QMASK                   (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT                2
-#define POP_CNT                 2
+#define PUSH_CNT                1
+#define POP_CNT                 1
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
@@ -157,7 +157,7 @@
 #define TEST_FUNC_TYPE                  FUNC_RINGQUEUE_MULTI_TEST
 #endif
 
-/// 是否显示 push 次数, pop 次数 和 rdtsc计数 等额外的测试信息
+/// 是否显示 push 失败次数, pop 失败次数 和 rdtsc计数 等额外的测试信息
 #define DISPLAY_EXTRA_RESULT    0
 
 ///

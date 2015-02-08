@@ -86,7 +86,7 @@ SingleRingQueue<T, SequenceType, Capacity>::~SingleRingQueue()
     Jimi_WriteBarrier();
 
     // If the queue is allocated on system heap, release them.
-    if (SingleRingQueue<T, Capacity>::kIsAllocOnHeap) {
+    if (SingleRingQueue<T, SequenceType, Capacity>::kIsAllocOnHeap) {
         if (this->entries != NULL) {
             delete [] this->entries;
             this->entries = NULL;
