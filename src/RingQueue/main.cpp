@@ -36,12 +36,16 @@
 #include "get_char.h"
 #include "sys_timer.h"
 #include "console.h"
+
 #include "RingQueue.h"
-#include "SpinMutex.h"
+#include "SerialRingQueue.h"
+#include "SingleRingQueue.h"
 
 #include "MessageEvent.h"
 #include "DisruptorRingQueue.h"
 #include "DisruptorRingQueueOld.h"
+
+#include "SpinMutex.h"
 
 //#include <vld.h>
 #include <errno.h>
@@ -681,7 +685,6 @@ RingQueue_pop_task(void *arg)
                     else {
                         if (!jimi_yield()) {
                             jimi_wsleep(0);
-                            //jimi_mm_pause();
                         }
                     }
                 }
@@ -863,7 +866,6 @@ RingQueue_pop_task(void *arg)
         }
 
         if (pTailSequence) {
-            //pTailSequence->set(INT64_MAX);
             pTailSequence->setMaxValue();
         }
     }
@@ -989,7 +991,6 @@ RingQueue_pop_task(void *arg)
                 else {
                     if (!jimi_yield()) {
                         jimi_wsleep(0);
-                        //jimi_mm_pause();
                     }
                 }
             }
@@ -1406,8 +1407,7 @@ int disruptor_pop_list_verify(void)
     return correct;
 }
 
-void
-RingQueue_Test(int funcType, bool bContinue = true)
+void RingQueue_Test(int funcType, bool bContinue = true)
 {
     RingQueue_t ringQueue(true, true);
     DisruptorRingQueue_t disRingQueue;
@@ -1603,8 +1603,7 @@ RingQueue_Test(int funcType, bool bContinue = true)
     }
 }
 
-void
-q3_test(void)
+void q3_test(void)
 {
     struct queue *q;
     int i;
@@ -2012,8 +2011,7 @@ void run_some_queue_tests(void)
     jimi_console_readkeyln(true, true, false);
 }
 
-int
-main(int argn, char * argv[])
+int main(int argn, char * argv[])
 {
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
     bool bConti = true;

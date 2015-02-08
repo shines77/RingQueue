@@ -122,6 +122,12 @@
     <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueueOld.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\RingQueue\SerialRingQueue.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\RingQueue\SingleRingQueue.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
