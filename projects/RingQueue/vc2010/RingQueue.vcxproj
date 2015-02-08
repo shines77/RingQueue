@@ -192,6 +192,8 @@
     <ClInclude Include="..\..\..\include\RingQueue\q3.h" />
     <ClInclude Include="..\..\..\include\RingQueue\RingQueue.h" />
     <ClInclude Include="..\..\..\include\RingQueue\Sequence.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\SerialRingQueue.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\SingleRingQueue.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sleep.h" />
     <ClInclude Include="..\..\..\include\RingQueue\SpinMutex.h" />
     <ClInclude Include="..\..\..\include\RingQueue\sys_timer.h" />

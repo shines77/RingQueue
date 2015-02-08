@@ -72,7 +72,9 @@ header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include
     include/RingQueue/msvc/stdint.h include/RingQueue/msvc/targetver.h \
     include/RingQueue/msvc/pthread.h include/RingQueue/msvc/sched.h \
     include/RingQueue/SpinMutex.h include/RingQueue/MessageEvent.h \
-    include/RingQueue/Sequence.h include/RingQueue/DisruptorRingQueue.h
+    include/RingQueue/Sequence.h include/RingQueue/DisruptorRingQueue.h \
+    include/RingQueue/DisruptorRingQueueOld.h include/RingQueue/SerialRingQueue.h \
+    include/RingQueue/SingleRingQueue.h
 
 enable_autogen := 0
 enable_code_coverage := 0
@@ -105,7 +107,9 @@ C_HDRS := $(objroot)include/RingQueue/console.h $(objroot)include/RingQueue/dump
 	$(objroot)include/RingQueue/msvc/stdint.h $(objroot)include/RingQueue/msvc/targetver.h \
     $(objroot)include/RingQueue/msvc/pthread.h $(objroot)include/RingQueue/msvc/sched.h \
     $(objroot)include/RingQueue/SpinMutex.h $(objroot)include/RingQueue/MessageEvent.h \
-    $(objroot)include/RingQueue/Sequence.h $(objroot)include/RingQueue/DisruptorRingQueue.h
+    $(objroot)include/RingQueue/Sequence.h $(objroot)include/RingQueue/DisruptorRingQueue.h \
+    $(objroot)include/RingQueue/DisruptorRingQueueOld.h $(objroot)include/RingQueue/SerialRingQueue.h \
+    $(objroot)include/RingQueue/SingleRingQueue.h
 
 C_SRCS := $(srcroot)src/RingQueue/console.c \
 	$(srcroot)src/RingQueue/dump_mem.c $(srcroot)src/RingQueue/get_char.c $(srcroot)src/RingQueue/mq.c \

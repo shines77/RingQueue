@@ -262,6 +262,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\include\RingQueue\SerialRingQueue.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\include\RingQueue\SingleRingQueue.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\include\RingQueue\sleep.h"
 				>
 			</File>

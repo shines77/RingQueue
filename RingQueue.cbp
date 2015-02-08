@@ -57,9 +57,12 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="include/RingQueue/DisruptorRingQueue.h" />
+		<Unit filename="include/RingQueue/DisruptorRingQueueOld.h" />
 		<Unit filename="include/RingQueue/MessageEvent.h" />
 		<Unit filename="include/RingQueue/RingQueue.h" />
 		<Unit filename="include/RingQueue/Sequence.h" />
+		<Unit filename="include/RingQueue/SerialRingQueue.h" />
+		<Unit filename="include/RingQueue/SingleRingQueue.h" />
 		<Unit filename="include/RingQueue/SpinMutex.h" />
 		<Unit filename="include/RingQueue/console.h" />
 		<Unit filename="include/RingQueue/dump_mem.h" />
