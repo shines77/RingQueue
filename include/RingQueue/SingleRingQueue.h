@@ -67,14 +67,15 @@ public:
     int pop(T & entry);
 
 protected:
-    Sequence        head, tail;
+    Sequence        headSequence;
+    Sequence        tailSequence;
     item_type *     entries;
 };
 
 template <typename T, typename SequenceType, uint32_t Capacity>
 SingleRingQueue<T, SequenceType, Capacity>::SingleRingQueue()
-: head(0)
-, tail(0)
+: headSequence(0)
+, tailSequence(0)
 , entries(NULL)
 {
     init();
@@ -112,10 +113,10 @@ SingleRingQueue<T, SequenceType, Capacity>::sizes() const
 {
     sequence_type head, tail;
 
-    Jimi_WriteBarrier();
+    Jimi_ReadBarrier();
 
-    head = this->head.get();
-    tail = this->tail.get();
+    head = this->headSequence.get();
+    tail = this->tailSequence.get();
 
     return (size_type)((head - tail) <= kMask) ? (head - tail) : (size_type)(-1);
 }
@@ -125,21 +126,27 @@ inline
 int SingleRingQueue<T, SequenceType, Capacity>::push(T & entry)
 {
     sequence_type head, tail, next;
-    head = this->head.getOrder();
-    tail = this->tail.getOrder();
+
+    head = this->headSequence.getOrder();
+    tail = this->tailSequence.getOrder();
     if ((head - tail) > kMask) {
         Jimi_WriteBarrier();
         return -1;
     }
+
+    Jimi_WriteBarrier();
+#if 0
+    this->entries[((index_type)head) & kMask] = entry;
+#else
+    this->entries[head & (sequence_type)kMask] = entry;
+#endif
+
     next = head + 1;
 
-    Jimi_ReadBarrier();
-    //this->entries[(index_type)(head & kMask)] = entry;
-    this->entries[head & (sequence_type)kMask] = entry;
+    //Jimi_MemoryBarrier();
+    Jimi_ReadWriteBarrier();
+    this->headSequence.setOrder(next);
 
-    Jimi_MemoryBarrier();
-
-    this->head.setOrder(next);
     return 0;
 }
 
@@ -148,21 +155,27 @@ inline
 int SingleRingQueue<T, SequenceType, Capacity>::pop(T & entry)
 {
     sequence_type head, tail, next;
-    head = this->head.getOrder();
-    tail = this->tail.getOrder();
+
+    head = this->headSequence.getOrder();
+    tail = this->tailSequence.getOrder();
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
         Jimi_WriteBarrier();
         return -1;
     }
+
+    Jimi_WriteBarrier();
+#if 0
+    entry = this->entries[((index_type)tail) & kMask];
+#else
+    entry = this->entries[tail & (sequence_type)kMask];
+#endif
+
     next = tail + 1;
 
-    Jimi_ReadBarrier();
-    //entry = this->entries[(index_type)(tail & kMask)];
-    entry = this->entries[tail & (sequence_type)kMask];
+    //Jimi_MemoryBarrier();
+    Jimi_ReadWriteBarrier();
+    this->tailSequence.setOrder(next);
 
-    Jimi_MemoryBarrier();
-
-    this->tail.setOrder(next);
     return 0;
 }
 

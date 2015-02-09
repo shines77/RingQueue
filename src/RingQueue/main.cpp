@@ -165,6 +165,7 @@ read_rdtsc(void)
 
 static volatile int quit = 0;
 static volatile unsigned int push_total = 0;
+static volatile unsigned int push_fail_total = 0;
 static volatile unsigned int pop_total = 0;
 static volatile unsigned int pop_fail_total = 0;
 
@@ -187,6 +188,7 @@ init_globals(void)
     quit = 0;
 
     push_total = 0;
+    push_fail_total = 0;
     pop_total = 0;
     pop_fail_total = 0;
 
@@ -443,7 +445,7 @@ RingQueue_push_task(void * arg)
 
 #else  /* !TEST_FUNC_TYPE */
 
-    int cnt = 0;
+    int push_cnt = 0;
     for (i = 0; i < MAX_PUSH_MSG_COUNT; ++i) {
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
         while (queue->spin_push(msg) == -1) { fail_cnt++; };
@@ -527,7 +529,7 @@ RingQueue_push_task(void * arg)
             fail_cnt++;
         }
         valueEvent++;
-        cnt++;
+        push_cnt++;
         if (i == MAX_PUSH_MSG_COUNT - 1)
             fail_cnt++;
 #if defined(DISPLAY_DEBUG_INFO) && (DISPLAY_DEBUG_INFO != 0)
@@ -545,7 +547,9 @@ RingQueue_push_task(void * arg)
     //push_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&push_cycles, read_rdtsc() - start);
     //push_total += MAX_PUSH_MSG_COUNT;
-    jimi_fetch_and_add32(&push_total, fail_cnt);
+    jimi_fetch_and_add32(&push_total, MAX_PUSH_MSG_COUNT);
+    //push_fail_total += fail_cnt;
+    jimi_fetch_and_add32(&push_fail_total, fail_cnt);
     if (push_total == MAX_MSG_CNT)
         quit = 1;
 
@@ -846,6 +850,7 @@ RingQueue_pop_task(void * arg)
             if (disRingQueue->pop(*valueEvent, stackData) == 0) {
                 *dis_record_list++ = *valueEvent;
                 loop_cnt = 0;
+                spin_cnt = 1;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -920,6 +925,7 @@ RingQueue_pop_task(void * arg)
         if (disRingQueue->pop(*valueEvent, stackData) == 0) {
             *dis_record_list++ = *valueEvent;
             loop_cnt = 0;
+            spin_cnt = 1;
             pop_cnt++;
             if (pop_cnt >= MAX_POP_MSG_COUNT)
                 break;
@@ -1080,7 +1086,7 @@ single_push_task(void * arg)
     valueEvent = (ValueEvent_t *)&msgs[0];
     start = read_rdtsc();
 
-    static const uint32_t YIELD_THRESHOLD = 5;
+    static const uint32_t YIELD_THRESHOLD = 4;
 
     for (i = 0; i < MAX_MSG_COUNT; ++i) {
         loop_cnt = 0;
@@ -1116,8 +1122,10 @@ single_push_task(void * arg)
 
     //push_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&push_cycles, read_rdtsc() - start);
-    //push_total += MAX_PUSH_MSG_COUNT;
-    jimi_fetch_and_add32(&push_total, fail_cnt);
+    //push_total += MAX_MSG_COUNT;
+    jimi_fetch_and_add32(&push_total, MAX_MSG_COUNT);
+    //push_fail_total += fail_cnt;
+    jimi_fetch_and_add32(&push_fail_total, fail_cnt);
 
     return NULL;
 }
@@ -1162,13 +1170,14 @@ single_pop_task(void * arg)
     loop_cnt = 0;
     spin_cnt = 1;
 
-    static const uint32_t YIELD_THRESHOLD = 5;
+    static const uint32_t YIELD_THRESHOLD = 4;
 
     ValueEvent_t valueEvent;
     while (true) {
         if (queue->pop(valueEvent) == 0) {
             *record_list++ = valueEvent;
             loop_cnt = 0;
+            spin_cnt = 1;
             pop_cnt++;
             if (pop_cnt >= MAX_MSG_COUNT)
                 break;
@@ -1285,7 +1294,7 @@ push_task(void * arg)
     struct msg_t *msg;
     uint64_t start;
     int i, idx;
-    unsigned int cnt = 0;
+    unsigned int fail_cnt = 0;
 
     idx = 0;
     q = NULL;
@@ -1307,7 +1316,7 @@ push_task(void * arg)
 
     for (i = 0; i < MAX_PUSH_MSG_COUNT; ++i) {
         while (push(q, (void *)msg) == -1) {
-            cnt++;
+            fail_cnt++;
         };
         msg++;
     }
@@ -1315,7 +1324,9 @@ push_task(void * arg)
     //push_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&push_cycles, read_rdtsc() - start);
     //push_total += MAX_PUSH_MSG_COUNT;
-    jimi_fetch_and_add32(&push_total, cnt);
+    jimi_fetch_and_add32(&push_total, MAX_PUSH_MSG_COUNT);
+    //push_fail_total += fail_cnt;
+    jimi_fetch_and_add32(&push_fail_total, fail_cnt);
     if (push_total == MAX_MSG_CNT)
         quit = 1;
 
@@ -1332,7 +1343,7 @@ pop_task(void * arg)
     struct msg_t **record_list;
     uint64_t start;
     int idx;
-    unsigned int cnt, fail_cnt;
+    unsigned int pop_cnt, fail_cnt;
 
     idx = 0;
     q = NULL;
@@ -1349,7 +1360,7 @@ pop_task(void * arg)
     if (thread_arg)
         free(thread_arg);
 
-    cnt = 0;
+    pop_cnt = 0;
     fail_cnt = 0;
     record_list = &popmsg_list[idx][0];
     //record_list = &popmsg_list[idx * MAX_POP_MSG_COUNT];
@@ -1359,8 +1370,8 @@ pop_task(void * arg)
         msg = (struct msg_t *)pop(q);
         if (msg != NULL) {
             *record_list++ = (struct msg_t *)msg;
-            cnt++;
-            if (cnt >= MAX_POP_MSG_COUNT)
+            pop_cnt++;
+            if (pop_cnt >= MAX_POP_MSG_COUNT)
                 break;
         }
         else {
@@ -1370,9 +1381,9 @@ pop_task(void * arg)
 
     //pop_cycles += read_rdtsc() - start;
     jimi_fetch_and_add64(&pop_cycles, read_rdtsc() - start);
-    //pop_total += cnt;
-    jimi_fetch_and_add32(&pop_total, cnt);
-    //pop_fail_total += cnt;
+    //pop_total += pop_cnt;
+    jimi_fetch_and_add32(&pop_total, pop_cnt);
+    //pop_fail_total += fail_cnt;
     jimi_fetch_and_add32(&pop_fail_total, fail_cnt);
 
     return NULL;
@@ -1735,7 +1746,7 @@ void RingQueue_Test(int funcType, bool bContinue = true)
 #if defined(DISPLAY_EXTRA_RESULT) && (DISPLAY_EXTRA_RESULT != 0)
   #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__)
     printf("\n");
-    printf("push total: %u + %u\n", MAX_MSG_CNT, push_total);
+    printf("push total: %u + %u\n", MAX_MSG_CNT, push_fail_total);
     printf("push cycles/msg: %u\n", (uint32_t)(push_cycles / MAX_MSG_CNT));
     printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
     if (pop_total == 0)
@@ -1744,7 +1755,7 @@ void RingQueue_Test(int funcType, bool bContinue = true)
         printf("pop  cycles/msg: %u\n", (uint32_t)(pop_cycles / pop_total));
   #else
     printf("\n");
-    printf("push total: %u + %u\n", MAX_MSG_CNT, push_total);
+    printf("push total: %u + %u\n", MAX_MSG_CNT, push_fail_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MAX_MSG_CNT);
     printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
     if (pop_total == 0)
@@ -1849,7 +1860,7 @@ void SingleProducerSingleConsumer_Test(bool bContinue = true)
 #if defined(DISPLAY_EXTRA_RESULT) && (DISPLAY_EXTRA_RESULT != 0)
   #if defined(__clang__) || defined(__CLANG__) || defined(__APPLE__) || defined(__FreeBSD__)
     printf("\n");
-    printf("push total: %u + %u\n", MAX_MSG_CNT, push_total);
+    printf("push total: %u + %u\n", MAX_MSG_CNT, push_fail_total);
     printf("push cycles/msg: %u\n", (uint32_t)(push_cycles / MAX_MSG_CNT));
     printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
     if (pop_total == 0)
@@ -1858,7 +1869,7 @@ void SingleProducerSingleConsumer_Test(bool bContinue = true)
         printf("pop  cycles/msg: %u\n", (uint32_t)(pop_cycles / pop_total));
   #else
     printf("\n");
-    printf("push total: %u + %u\n", MAX_MSG_CNT, push_total);
+    printf("push total: %u + %u\n", MAX_MSG_CNT, push_fail_total);
     printf("push cycles/msg: %"PRIuFAST64"\n", push_cycles / MAX_MSG_CNT);
     printf("pop  total: %u + %u\n", pop_total, pop_fail_total);
     if (pop_total == 0)

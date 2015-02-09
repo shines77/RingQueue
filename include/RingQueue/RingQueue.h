@@ -450,7 +450,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin_pop()
         if (spin_count <= max_spin_cnt) {
             for (pause_cnt = spin_count; pause_cnt > 0; --pause_cnt) {
                 jimi_mm_pause();
-                //jimi_mm_pause();
             }
             spin_count *= 2;
         }
@@ -471,7 +470,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin_pop()
     tail = core.info.tail;
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
         Jimi_ReadWriteBarrier();
-        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return (value_type)NULL;
     }
@@ -481,8 +479,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin_pop()
     item = core.queue[tail & kMask];
 
     Jimi_ReadWriteBarrier();
-
-    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return item;
@@ -526,7 +522,6 @@ int RingQueueBase<T, Capacity, CoreTy>::spin1_push(T * item)
     tail = core.info.tail;
     if ((head - tail) > kMask) {
         Jimi_ReadWriteBarrier();
-        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return -1;
     }
@@ -536,8 +531,6 @@ int RingQueueBase<T, Capacity, CoreTy>::spin1_push(T * item)
     core.queue[head & kMask] = item;
 
     Jimi_ReadWriteBarrier();
-
-    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return 0;
@@ -658,6 +651,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin2_push_(T * item)
     Jimi_ReadWriteBarrier();        // ±‡“Î∆˜∂¡–¥∆¡’œ
 
     spin_mutex.locked = 0;          //  Õ∑≈À¯
+
     return 0;
 }
 
@@ -734,7 +728,6 @@ int RingQueueBase<T, Capacity, CoreTy>::spin2_push(T * item)
     core.queue[head & kMask] = item;
 
     Jimi_ReadWriteBarrier();
-
     spin_mutex.locked = 0;
 
     return 0;
@@ -815,8 +808,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin2_pop()
     item = core.queue[tail & kMask];
 
     Jimi_ReadWriteBarrier();
-
-    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return item;
@@ -901,7 +892,6 @@ int RingQueueBase<T, Capacity, CoreTy>::spin3_push(T * item)
     core.queue[head & kMask] = item;
 
     Jimi_ReadWriteBarrier();
-
     spin_mutex.locked = 0;
 
     return 0;
@@ -978,7 +968,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin3_pop()
     tail = core.info.tail;
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
         Jimi_ReadWriteBarrier();
-        //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
         spin_mutex.locked = 0;
         return (value_type)NULL;
     }
@@ -988,8 +977,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin3_pop()
     item = core.queue[tail & kMask];
 
     Jimi_ReadWriteBarrier();
-
-    //jimi_lock_test_and_set32(&spin_mutex.locked, 0U);
     spin_mutex.locked = 0;
 
     return item;
@@ -1169,8 +1156,6 @@ int RingQueueBase<T, Capacity, CoreTy>::mutex_push(T * item)
 {
     index_type head, tail, next;
 
-    Jimi_ReadWriteBarrier();
-
     pthread_mutex_lock(&queue_mutex);
 
     head = core.info.head;
@@ -1184,8 +1169,6 @@ int RingQueueBase<T, Capacity, CoreTy>::mutex_push(T * item)
 
     core.queue[head & kMask] = item;
 
-    Jimi_ReadWriteBarrier();
-
     pthread_mutex_unlock(&queue_mutex);
 
     return 0;
@@ -1197,8 +1180,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::mutex_pop()
 {
     index_type head, tail, next;
     value_type item;
-
-    Jimi_ReadWriteBarrier();
 
     pthread_mutex_lock(&queue_mutex);
 
@@ -1213,8 +1194,6 @@ T * RingQueueBase<T, Capacity, CoreTy>::mutex_pop()
     core.info.tail = next;
 
     item = core.queue[tail & kMask];
-
-    Jimi_ReadWriteBarrier();
 
     pthread_mutex_unlock(&queue_mutex);
 

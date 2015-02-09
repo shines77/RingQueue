@@ -32,7 +32,13 @@
 /// 分发给每个(pop)线程的消息数量
 #define MAX_POP_MSG_COUNT       (MAX_MSG_COUNT / POP_CNT)
 
-#define DISPLAY_DEBUG_INFO      0
+////////////////////////////////////////////////////////////////////////////////
+
+/// 是否显示 push 失败次数, pop 失败次数 和 rdtsc计数 等额外的测试信息
+#define DISPLAY_EXTRA_RESULT        0
+
+/// 是否显示一些 Debug 信息
+#define DISPLAY_DEBUG_INFO          0
 
 ///
 /// 在 Sequence 类中是否使用 seq_spinlock() 锁 ?
@@ -156,9 +162,6 @@
 #ifndef TEST_FUNC_TYPE
 #define TEST_FUNC_TYPE                  FUNC_RINGQUEUE_MULTI_TEST
 #endif
-
-/// 是否显示 push 失败次数, pop 失败次数 和 rdtsc计数 等额外的测试信息
-#define DISPLAY_EXTRA_RESULT    0
 
 ///
 /// 在spin_mutex里是否使用spin_counter计数, 0为不使用(更快!建议设为该值), 1为使用
