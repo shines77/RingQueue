@@ -63,7 +63,7 @@ public:
 
     void init();
 
-    int push(T & entry);
+    int push(T const & entry);
     int pop(T & entry);
 
 protected:
@@ -123,14 +123,13 @@ SingleRingQueue<T, SequenceType, Capacity>::sizes() const
 
 template <typename T, typename SequenceType, uint32_t Capacity>
 inline
-int SingleRingQueue<T, SequenceType, Capacity>::push(T & entry)
+int SingleRingQueue<T, SequenceType, Capacity>::push(T const & entry)
 {
     sequence_type head, tail, next;
 
     head = this->headSequence.getOrder();
     tail = this->tailSequence.getOrder();
     if ((head - tail) > kMask) {
-        Jimi_WriteBarrier();
         return -1;
     }
 
@@ -143,8 +142,8 @@ int SingleRingQueue<T, SequenceType, Capacity>::push(T & entry)
 
     next = head + 1;
 
-    //Jimi_MemoryBarrier();
-    Jimi_ReadWriteBarrier();
+    Jimi_MemoryBarrier();
+    //Jimi_ReadWriteBarrier();
     this->headSequence.setOrder(next);
 
     return 0;
@@ -159,11 +158,10 @@ int SingleRingQueue<T, SequenceType, Capacity>::pop(T & entry)
     head = this->headSequence.getOrder();
     tail = this->tailSequence.getOrder();
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
-        Jimi_WriteBarrier();
         return -1;
     }
 
-    Jimi_WriteBarrier();
+    Jimi_ReadBarrier();
 #if 0
     entry = this->entries[((index_type)tail) & kMask];
 #else
@@ -172,8 +170,8 @@ int SingleRingQueue<T, SequenceType, Capacity>::pop(T & entry)
 
     next = tail + 1;
 
-    //Jimi_MemoryBarrier();
-    Jimi_ReadWriteBarrier();
+    Jimi_MemoryBarrier();
+    //Jimi_ReadWriteBarrier();
     this->tailSequence.setOrder(next);
 
     return 0;

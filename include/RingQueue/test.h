@@ -12,8 +12,8 @@
 #define QMASK                   (QSIZE - 1)
 
 /// 分别定义push(推送)和pop(弹出)的线程数
-#define PUSH_CNT                1
-#define POP_CNT                 1
+#define PUSH_CNT                2
+#define POP_CNT                 2
 
 /// 分发给各个线程的消息总长度, 是各个线程消息数量的总和
 /// 如果是虚拟机里测试, 请自己修改为后面那个定义 8000
@@ -184,12 +184,12 @@
 extern "C" {
 #endif
 
-struct msg_t
+struct message_t
 {
     uint64_t dummy;
 };
 
-typedef struct msg_t msg_t;
+typedef struct message_t message_t;
 
 struct spin_mutex_t
 {

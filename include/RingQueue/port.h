@@ -107,11 +107,19 @@
 ///
 /// See: http://en.wikipedia.org/wiki/Memory_ordering
 ///
-#define Jimi_ReadWriteBarrier() _ReadWriteBarrier()
-#define Jimi_ReadBarrier()      _ReadBarrier()
-#define Jimi_WriteBarrier()     _WriteBarrier()
+#define Jimi_ReadBarrier()              _ReadBarrier()
+#define Jimi_WriteBarrier()             _WriteBarrier()
+#define Jimi_ReadWriteBarrier()         _ReadWriteBarrier()
 
-#define Jimi_MemoryBarrier()    MemoryBarrier()
+#define Jimi_ReadMemoryBarrier()        MemoryBarrier()
+#define Jimi_WriteMemoryBarrier()       MemoryBarrier()
+#define Jimi_MemoryBarrier()            MemoryBarrier()
+
+#define Jimi_FullMemoryBarrier()        MemoryBarrier()
+
+#define Jimi_CPU_ReadMemoryBarrier()    do { __asm { lfence } } while (0)
+#define Jimi_CPU_WriteMemoryBarrier()   do { __asm { sfence } } while (0)
+#define Jimi_CPU_MemoryBarrier()        do { __asm { mfence } } while (0)
 
 #endif  /* __INTER_COMPILER || __ICC */
 
@@ -144,12 +152,22 @@
 /// See: http://bbs.csdn.net/topics/310025520
 ///
 
-//#define Jimi_ReadWriteBarrier()     asm volatile ("":::"memory");
-#define Jimi_ReadWriteBarrier()     __asm__ __volatile__ ("" : : :"memory");
-#define Jimi_ReadBarrier()          __asm__ __volatile__ ("" : : :"memory");
-#define Jimi_WriteBarrier()         __asm__ __volatile__ ("" : : :"memory");
+//#define Jimi_ReadWriteBarrier()     do { asm volatile ("":::"memory"); } while (0)
+#define Jimi_ReadBarrier()              do { __asm__ __volatile__ ("" : : :"memory"); } while (0)
+#define Jimi_WriteBarrier()             do { __asm__ __volatile__ ("" : : :"memory"); } while (0)
+#define Jimi_ReadWriteBarrier()         do { __asm__ __volatile__ ("" : : :"memory"); } while (0)
 
-#define Jimi_MemoryBarrier()        __sync_synchronize()
+#define Jimi_MemoryBarrier()            do { __sync_synchronize(); } while (0)
+
+#define Jimi_ReadMemoryBarrier()        do { __sync_synchronize(); } while (0)
+#define Jimi_WriteMemoryBarrier()       do { __sync_synchronize(); } while (0)
+#define Jimi_MemoryBarrier()            do { __sync_synchronize(); } while (0)
+
+#define Jimi_FullMemoryBarrier()        do { __sync_synchronize(); } while (0)
+
+#define Jimi_CPU_ReadMemoryBarrier()    do { __asm__ __volatile__ ("lfence" : : :"memory"); } while (0)
+#define Jimi_CPU_WriteMemoryBarrier()   do { __asm__ __volatile__ ("sfence" : : :"memory"); } while (0)
+#define Jimi_CPU_MemoryBarrier()        do { __asm__ __volatile__ ("mfence" : : :"memory"); } while (0)
 
 #endif  /* _MSC_VER */
 

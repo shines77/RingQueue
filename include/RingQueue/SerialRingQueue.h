@@ -60,7 +60,7 @@ public:
 
     void init();
 
-    int push(T & entry);
+    int push(T const & entry);
     int pop(T & entry);
 
 protected:
@@ -119,7 +119,7 @@ SerialRingQueue<T, Capacity>::sizes() const
 }
 
 template <typename T, uint32_t Capacity>
-int SerialRingQueue<T, Capacity>::push(T & entry)
+int SerialRingQueue<T, Capacity>::push(T const & entry)
 {
     sequence_type head, tail, next;
 
@@ -127,7 +127,6 @@ int SerialRingQueue<T, Capacity>::push(T & entry)
     head = this->headSequence;
     tail = this->tailSequence;
     if ((head - tail) > kMask) {
-        Jimi_WriteBarrier();
         return -1;
     }
 
@@ -155,11 +154,10 @@ int SerialRingQueue<T, Capacity>::pop(T & entry)
     head = this->headSequence;
     tail = this->tailSequence;
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
-        Jimi_WriteBarrier();
         return -1;
     }
 
-    Jimi_WriteBarrier();
+    Jimi_ReadBarrier();
 #if 0
     entry = this->entries[((index_type)tail) & kMask)];
 #else
@@ -168,7 +166,7 @@ int SerialRingQueue<T, Capacity>::pop(T & entry)
 
     next = tail + 1;
 
-    Jimi_WriteBarrier();
+    Jimi_ReadWriteBarrier();
     this->tailSequence = next;
 
     return 0;

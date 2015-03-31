@@ -101,7 +101,7 @@ __declspec(dllimport) MMRESULT __stdcall timeEndPeriod(UINT uPeriod);
 
 using namespace jimi;
 
-typedef RingQueue<msg_t, QSIZE> RingQueue_t;
+typedef RingQueue<message_t, QSIZE> RingQueue_t;
 
 typedef CValueEvent<uint64_t>   ValueEvent_t;
 
@@ -120,12 +120,12 @@ typedef struct thread_arg_t
     void *  queue;
 } thread_arg_t;
 
-static volatile struct msg_t *msgs = NULL;
+static volatile struct message_t *msgs = NULL;
 static volatile ValueEvent_t *valEvents = NULL;
 
 //static struct msg_t **popmsg_list = NULL;
 
-static struct msg_t *popmsg_list[POP_CNT][MAX_POP_MSG_COUNT];
+static struct message_t *popmsg_list[POP_CNT][MAX_POP_MSG_COUNT];
 static ValueEvent_t dis_popevent_list[POP_CNT][MAX_POP_MSG_COUNT];
 
 int  test_msg_init(void);
@@ -204,7 +204,7 @@ RingQueue_push_task(void * arg)
     struct queue *q;
     RingQueue_t *queue;
     DisruptorRingQueue_t *disRingQueue;
-    msg_t *msg;
+    message_t *msg;
     ValueEvent_t *valueEvent = NULL;
     uint64_t start;
     int i, idx, funcType;
@@ -275,7 +275,7 @@ RingQueue_push_task(void * arg)
 #endif
 
     fail_cnt = 0;
-    msg = (msg_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
+    msg = (message_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
     valueEvent = (ValueEvent_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
     start = read_rdtsc();
 
@@ -574,8 +574,8 @@ RingQueue_pop_task(void * arg)
     RingQueue_t *queue;
     DisruptorRingQueue_t *disRingQueue;
     
-    msg_t *msg = NULL;
-    msg_t **record_list;
+    message_t *msg = NULL;
+    message_t **record_list;
     ValueEvent_t *valueEvent = NULL;
     ValueEvent_t *dis_record_list;
     uint64_t start;
@@ -657,9 +657,9 @@ RingQueue_pop_task(void * arg)
     if (funcType == FUNC_RINGQUEUE_SPIN_PUSH) {
         // 细粒度的标准spin_mutex自旋锁
         while (true) {
-            msg = (msg_t *)queue->spin_pop();
+            msg = (message_t *)queue->spin_pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -672,9 +672,9 @@ RingQueue_pop_task(void * arg)
     else if (funcType == FUNC_RINGQUEUE_SPIN1_PUSH) {
         // 细粒度的改进型spin_mutex自旋锁
         while (true) {
-            msg = (msg_t *)queue->spin1_pop();
+            msg = (message_t *)queue->spin1_pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -688,9 +688,9 @@ RingQueue_pop_task(void * arg)
         // 细粒度的通用型spin_mutex自旋锁
         loop_cnt = 0;
         while (true) {
-            msg = (msg_t *)queue->spin2_pop();
+            msg = (message_t *)queue->spin2_pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 loop_cnt = 0;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
@@ -728,9 +728,9 @@ RingQueue_pop_task(void * arg)
     else if (funcType == FUNC_RINGQUEUE_MUTEX_PUSH) {
         // 粗粒度的pthread_mutex_t锁(Windows上为临界区, Linux上为pthread_mutex_t)
         while (true) {
-            msg = (msg_t *)queue->mutex_pop();
+            msg = (message_t *)queue->mutex_pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -743,9 +743,9 @@ RingQueue_pop_task(void * arg)
     else if (funcType == FUNC_DOUBAN_Q3H) {
         // 豆瓣上q3.h的原版文件
         while (true) {
-            msg = (struct msg_t *)pop(q);
+            msg = (struct message_t *)pop(q);
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -759,9 +759,9 @@ RingQueue_pop_task(void * arg)
         // 细粒度的通用型spin_mutex自旋锁
         loop_cnt = 0;
         while (true) {
-            msg = (msg_t *)queue->spin3_pop();
+            msg = (message_t *)queue->spin3_pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 loop_cnt = 0;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
@@ -799,9 +799,9 @@ RingQueue_pop_task(void * arg)
     else if (funcType == FUNC_RINGQUEUE_PUSH) {
         // 豆瓣上q3.h的lock-free改良型方案
         while (true) {
-            msg = (msg_t *)queue->pop();
+            msg = (message_t *)queue->pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -814,9 +814,9 @@ RingQueue_pop_task(void * arg)
     else if (funcType == FUNC_RINGQUEUE_SPIN9_PUSH) {
         // 细粒度的仿制spin_mutex自旋锁(会死锁)
         while (true) {
-            msg = (msg_t *)queue->spin9_pop();
+            msg = (message_t *)queue->spin9_pop();
             if (msg != NULL) {
-                *record_list++ = (struct msg_t *)msg;
+                *record_list++ = (struct message_t *)msg;
                 pop_cnt++;
                 if (pop_cnt >= MAX_POP_MSG_COUNT)
                     break;
@@ -972,26 +972,26 @@ RingQueue_pop_task(void * arg)
 #else
     while (true || !quit) {
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN_PUSH)
-        msg = (msg_t *)queue->spin_pop();
+        msg = (message_t *)queue->spin_pop();
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN1_PUSH)
-        msg = (msg_t *)queue->spin1_pop();
+        msg = (message_t *)queue->spin1_pop();
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH)
-        msg = (msg_t *)queue->spin2_pop();
+        msg = (message_t *)queue->spin2_pop();
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_MUTEX_PUSH)
-        msg = (msg_t *)queue->mutex_pop();
+        msg = (message_t *)queue->mutex_pop();
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DOUBAN_Q3H)
-        msg = (msg_t *)pop(q);
+        msg = (message_t *)pop(q);
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN3_PUSH)
-        msg = (msg_t *)queue->spin3_pop();
+        msg = (message_t *)queue->spin3_pop();
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN9_PUSH)
-        msg = (msg_t *)queue->spin9_pop();
+        msg = (message_t *)queue->spin9_pop();
 #elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_PUSH)
-        msg = (msg_t *)queue->pop();
+        msg = (message_t *)queue->pop();
 #else
         msg = NULL;
 #endif
         if (msg != NULL) {
-            *record_list++ = (struct msg_t *)msg;
+            *record_list++ = (struct message_t *)msg;
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
             || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
             loop_cnt = 0;
@@ -1291,7 +1291,7 @@ push_task(void * arg)
 {
     struct thread_arg_t *thread_arg;
     struct queue *q;
-    struct msg_t *msg;
+    struct message_t *msg;
     uint64_t start;
     int i, idx;
     unsigned int fail_cnt = 0;
@@ -1311,7 +1311,7 @@ push_task(void * arg)
     if (thread_arg)
         free(thread_arg);
 
-    msg = (struct msg_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
+    msg = (struct message_t *)&msgs[idx * MAX_PUSH_MSG_COUNT];
     start = read_rdtsc();
 
     for (i = 0; i < MAX_PUSH_MSG_COUNT; ++i) {
@@ -1339,8 +1339,8 @@ pop_task(void * arg)
 {
     struct thread_arg_t *thread_arg;
     struct queue *q;
-    struct msg_t *msg;
-    struct msg_t **record_list;
+    struct message_t *msg;
+    struct message_t **record_list;
     uint64_t start;
     int idx;
     unsigned int pop_cnt, fail_cnt;
@@ -1367,9 +1367,9 @@ pop_task(void * arg)
     start = read_rdtsc();
 
     while (true || !quit) {
-        msg = (struct msg_t *)pop(q);
+        msg = (struct message_t *)pop(q);
         if (msg != NULL) {
-            *record_list++ = (struct msg_t *)msg;
+            *record_list++ = (struct message_t *)msg;
             pop_cnt++;
             if (pop_cnt >= MAX_POP_MSG_COUNT)
                 break;
@@ -1486,7 +1486,7 @@ int pop_list_verify(void)
     int i, j;
     uint32_t index;
     uint32_t *verify_list;
-    struct msg_t *msg;
+    struct message_t *msg;
     int empty, overlay, correct, errors, times;
 
     verify_list = (uint32_t *)calloc(MAX_MSG_CNT, sizeof(uint32_t));
@@ -1826,7 +1826,7 @@ void SingleProducerSingleConsumer_Test(bool bContinue = true)
     int i;
 
     printf("---------------------------------------------------------------\n");
-    printf("(One Producer + One Consumer) RingQueue test:\n");
+    printf("(One Producer + One Consumer) SingleRingQueue test:\n");
     printf("---------------------------------------------------------------\n");
 
     init_globals();
@@ -1915,7 +1915,7 @@ void SerialRingQueue_Test()
     const static int max_step = JIMI_MIN(16, QSIZE);
 
     printf("---------------------------------------------------------------\n");
-    printf("SerialRingQueue test: (Step = %d)\n", max_step);
+    printf("Single Thread SerialRingQueue test: (Step = %d)\n", max_step);
     printf("---------------------------------------------------------------\n");
 
     init_globals();
@@ -2047,7 +2047,7 @@ void
 RingQueue_UnitTest(void)
 {
     RingQueue_t ringQueue(true, true);
-    msg_t queue_msg = { 123ULL };
+    message_t queue_msg = { 123ULL };
 
     init_globals();
 
@@ -2092,7 +2092,7 @@ test_msg_init(void)
     if (msgs != NULL)
         return -1;
 
-    msgs = (struct msg_t *)calloc(MAX_MSG_CNT, sizeof(struct msg_t));
+    msgs = (struct message_t *)calloc(MAX_MSG_CNT, sizeof(struct message_t));
     if (msgs != NULL) {
         for (i = 0; i < MAX_MSG_CNT; ++i)
             msgs[i].dummy = (uint64_t)(i + 1);
@@ -2261,16 +2261,6 @@ void run_some_queue_tests(void)
     uint64_t *msg;
     smallRingQueue.push(&ev);
     msg = smallRingQueue.pop();
-
-    /*
-    DisruptorRingQueue<MessageEvent, QSIZE> disRingQueue;
-    MessageEvent event;
-    disRingQueue.push(event);
-    disRingQueue.pop (event);
-
-    //disRingQueue.dump_detail();
-    //disRingQueue.dump_info();
-    //*/
 
     DisruptorRingQueue<CValueEvent<uint64_t>, int64_t, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
     CValueEvent<uint64_t> event2;
