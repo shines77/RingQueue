@@ -139,7 +139,7 @@ public:
     /* kSleep_0_Interval default value is 4. */
     static const uint32_t SLEEP_0_INTERVAL = kSleep_0_Interval; // After how many yields should we Sleep(0)?
     /* kSleep_1_Interval default value is 32. */
-#if defined(_M_X64) || defined(_WIN64) || defined(_M_AMD64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     // Because Sleep(1) is too slowly in x64, Win64 or AMD64 mode, so we let Sleep(1) interval is double.
     static const uint32_t SLEEP_1_INTERVAL = kSleep_1_Interval * 2;
                                                                 // After how many yields should we Sleep(1)?

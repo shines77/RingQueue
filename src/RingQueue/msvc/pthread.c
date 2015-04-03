@@ -106,7 +106,7 @@ int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
 int PTW32_CDECL pthread_mutex_init(pthread_mutex_t * mutex,
                                    const pthread_mutexattr_t * attr)
 {
-#if defined(_M_X64) || defined(_WIN64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     static const DWORD dwSpinCount = 2;
     BOOL bResult = FALSE;
     if (mutex != NULL)

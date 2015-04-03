@@ -149,7 +149,7 @@ read_rdtsc(void)
         "=d" (tsc.hi_32)
     );
 #else
-  #if defined(_M_X64) || defined(_WIN64)
+  #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     return 0ULL;
   #else
     __asm {
@@ -2177,7 +2177,7 @@ display_test_info(int time_noerror)
            "PUSH_CNT            = %u\n"
            "POP_CNT             = %u\n",
             MAX_MSG_COUNT, QSIZE, PUSH_CNT, POP_CNT, QSIZE);
-#if defined(_M_X64) || defined(_WIN64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     printf("x64 Mode            = Yes\n");
 #else
     printf("x64 Mode            = No\n");
@@ -2201,13 +2201,13 @@ display_test_info(int time_noerror)
 
 #if 0
 #if defined(__linux__)
-#if defined(_M_X64) || defined(_WIN64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     printf("msgs ptr         = %016p\n", (void *)msgs);
 #else
     printf("msgs ptr         = %08p\n", (void *)msgs);
 #endif
 #else  /* !__linux__ */
-#if defined(_M_X64) || defined(_WIN64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     printf("msgs ptr         = 0x%016p\n", (void *)msgs);
 #else
     printf("msgs ptr         = 0x%08p\n", (void *)msgs);

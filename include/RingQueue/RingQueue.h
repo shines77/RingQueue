@@ -856,7 +856,7 @@ int RingQueueBase<T, Capacity, CoreTy>::spin3_push(T * item)
                     }
 #else
                     if ((yield_cnt & 63) == 63) {
-  #if !(defined(_M_X64) || defined(_WIN64))
+  #if !(defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__))
                         jimi_wsleep(1);
   #else
                         jimi_wsleep(1);
@@ -941,7 +941,7 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin3_pop()
                     }
 #else
                     if ((yield_cnt & 63) == 63) {
-  #if !(defined(_M_X64) || defined(_WIN64))
+  #if !(defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__))
                         jimi_wsleep(1);
   #else
                         jimi_wsleep(1);

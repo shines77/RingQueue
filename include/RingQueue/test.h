@@ -62,7 +62,7 @@
 /// 根据实际编译环境决定是否使用 64 bit sequence ?
 #if defined(AUTO_SCAN_64BIT_SEQUENCE) && (AUTO_SCAN_64BIT_SEQUENCE != 0)
   #undef USE_64BIT_SEQUENCE
-  #if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+  #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     #define USE_64BIT_SEQUENCE      1
   #else
     #define USE_64BIT_SEQUENCE      0

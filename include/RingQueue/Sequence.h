@@ -228,7 +228,7 @@ public:
 
 #endif  /* USE_SEQUENCE_SPIN_LOCK */
 
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
 typedef seq_spinlock<uint64_t> seq_spinlock_t;
 #else
 typedef seq_spinlock<uint32_t> seq_spinlock_t;
@@ -418,7 +418,7 @@ inline
 int64_t SequenceBase<int64_t>::getOrder() const
 {
     int64_t val;
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     Jimi_ReadBarrier();
     val = this->value;
 #else
@@ -440,7 +440,7 @@ inline
 uint64_t SequenceBase<uint64_t>::getOrder() const
 {
     uint64_t val;
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     Jimi_ReadBarrier();
     val = this->value;
 #else
@@ -464,7 +464,7 @@ inline
 void SequenceBase<int64_t>::setOrder(int64_t newValue)
 {
     Jimi_WriteBarrier();
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     this->value = newValue;
 #else
   #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
@@ -499,7 +499,7 @@ inline
 void SequenceBase<uint64_t>::setOrder(uint64_t newValue)
 {
     Jimi_WriteBarrier();
-#if defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     this->value = newValue;
 #else
   #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)

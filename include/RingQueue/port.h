@@ -22,7 +22,7 @@
 #define JIMI_MAX(a, b)          ((a) > (b) ? (a) : (b))
 #endif
 
-#if defined(_M_X64) || defined(_WIN64) || defined(_M_AMD64)
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
 #define JIMI_SIZE_T_SIZEOF      8
 #else
 #define JIMI_SIZE_T_SIZEOF      4
