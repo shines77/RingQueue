@@ -94,9 +94,15 @@
 
 #if defined(__INTER_COMPILER) || defined(__ICC)
 
-#define Jimi_ReadWriteBarrier() __memory_barrier()
+#define Jimi_ReadCompilerBarrier()      __memory_barrier()
+#define Jimi_WriteCompilerBarrier()     __memory_barrier()
+#define Jimi_CompilerBarrier()          __memory_barrier()
 
-#define Jimi_MemoryBarrier()    MemoryBarrier()
+#define Jimi_ReadMemoryBarrier()        __memory_barrier()
+#define Jimi_WriteMemoryBarrier()       __memory_barrier()
+#define Jimi_MemoryBarrier()            __memory_barrier()
+
+#define Jimi_FullMemoryBarrier()        __memory_barrier()
 
 #else
 
@@ -107,9 +113,9 @@
 ///
 /// See: http://en.wikipedia.org/wiki/Memory_ordering
 ///
-#define Jimi_ReadBarrier()              _ReadBarrier()
-#define Jimi_WriteBarrier()             _WriteBarrier()
-#define Jimi_ReadWriteBarrier()         _ReadWriteBarrier()
+#define Jimi_ReadCompilerBarrier()      _ReadBarrier()
+#define Jimi_WriteCompilerBarrier()     _WriteBarrier()
+#define Jimi_CompilerBarrier()          _ReadWriteBarrier()
 
 #define Jimi_ReadMemoryBarrier()        MemoryBarrier()
 #define Jimi_WriteMemoryBarrier()       MemoryBarrier()
@@ -117,11 +123,11 @@
 
 #define Jimi_FullMemoryBarrier()        MemoryBarrier()
 
+#endif  /* __INTER_COMPILER || __ICC */
+
 #define Jimi_CPU_ReadMemoryBarrier()    do { __asm { lfence } } while (0)
 #define Jimi_CPU_WriteMemoryBarrier()   do { __asm { sfence } } while (0)
 #define Jimi_CPU_MemoryBarrier()        do { __asm { mfence } } while (0)
-
-#endif  /* __INTER_COMPILER || __ICC */
 
 #else  /* !_MSC_VER */
 
@@ -152,12 +158,10 @@
 /// See: http://bbs.csdn.net/topics/310025520
 ///
 
-//#define Jimi_ReadWriteBarrier()     do { asm volatile ("":::"memory"); } while (0)
-#define Jimi_ReadBarrier()              do { __asm__ __volatile__ ("" : : :"memory"); } while (0)
-#define Jimi_WriteBarrier()             do { __asm__ __volatile__ ("" : : :"memory"); } while (0)
-#define Jimi_ReadWriteBarrier()         do { __asm__ __volatile__ ("" : : :"memory"); } while (0)
-
-#define Jimi_MemoryBarrier()            do { __sync_synchronize(); } while (0)
+//#define Jimi_CompilerBarrier()          do { asm volatile ("":::"memory"); } while (0)
+#define Jimi_ReadCompilerBarrier()      do { __asm__ __volatile__ ("" : : : "memory"); } while (0)
+#define Jimi_WriteCompilerBarrier()     do { __asm__ __volatile__ ("" : : : "memory"); } while (0)
+#define Jimi_CompilerBarrier()          do { __asm__ __volatile__ ("" : : : "memory"); } while (0)
 
 #define Jimi_ReadMemoryBarrier()        do { __sync_synchronize(); } while (0)
 #define Jimi_WriteMemoryBarrier()       do { __sync_synchronize(); } while (0)
@@ -165,9 +169,9 @@
 
 #define Jimi_FullMemoryBarrier()        do { __sync_synchronize(); } while (0)
 
-#define Jimi_CPU_ReadMemoryBarrier()    do { __asm__ __volatile__ ("lfence" : : :"memory"); } while (0)
-#define Jimi_CPU_WriteMemoryBarrier()   do { __asm__ __volatile__ ("sfence" : : :"memory"); } while (0)
-#define Jimi_CPU_MemoryBarrier()        do { __asm__ __volatile__ ("mfence" : : :"memory"); } while (0)
+#define Jimi_CPU_ReadMemoryBarrier()    do { __asm__ __volatile__ ("lfence" : : : "memory"); } while (0)
+#define Jimi_CPU_WriteMemoryBarrier()   do { __asm__ __volatile__ ("sfence" : : : "memory"); } while (0)
+#define Jimi_CPU_MemoryBarrier()        do { __asm__ __volatile__ ("mfence" : : : "memory"); } while (0)
 
 #endif  /* _MSC_VER */
 
@@ -383,7 +387,7 @@ int32_t __internal_val_compare_and_swap32(volatile int32_t *destPtr,
                                           int32_t newValue)
 {
     int32_t origValue = *destPtr;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -396,7 +400,7 @@ uint32_t __internal_val_compare_and_swap32u(volatile uint32_t *destPtr,
                                             uint32_t newValue)
 {
     uint32_t origValue = *destPtr;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -409,7 +413,7 @@ int64_t __internal_val_compare_and_swap64(volatile int64_t *destPtr,
                                           int64_t newValue)
 {
     int64_t origValue = *destPtr;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -422,7 +426,7 @@ uint64_t __internal_val_compare_and_swap64u(volatile uint64_t *destPtr,
                                             uint64_t newValue)
 {
     uint64_t origValue = *destPtr;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
     }
@@ -434,7 +438,7 @@ bool __internal_bool_compare_and_swap32(volatile uint32_t *destPtr,
                                         uint32_t oldValue,
                                         uint32_t newValue)
 {
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
@@ -447,7 +451,7 @@ bool __internal_bool_compare_and_swap64(volatile int64_t *destPtr,
                                         int64_t oldValue,
                                         int64_t newValue)
 {
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
@@ -460,7 +464,7 @@ bool __internal_bool_compare_and_swap64u(volatile uint64_t *destPtr,
                                          uint64_t oldValue,
                                          uint64_t newValue)
 {
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     if (*destPtr == oldValue) {
         *destPtr = newValue;
         return 1;
@@ -474,7 +478,7 @@ int32_t __internal_lock_test_and_set32(volatile int32_t *destPtr,
 {
     int32_t origValue = *destPtr;
     *destPtr = newValue;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     return origValue;
 }
 
@@ -484,7 +488,7 @@ uint32_t __internal_lock_test_and_set32u(volatile uint32_t *destPtr,
 {
     uint32_t origValue = *destPtr;
     *destPtr = newValue;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     return origValue;
 }
 
@@ -494,7 +498,7 @@ int64_t __internal_lock_test_and_set64(volatile int64_t *destPtr,
 {
     int64_t origValue = *destPtr;
     *destPtr = newValue;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     return origValue;
 }
 
@@ -504,7 +508,7 @@ uint64_t __internal_lock_test_and_set64u(volatile uint64_t *destPtr,
 {
     uint64_t origValue = *destPtr;
     *destPtr = newValue;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     return origValue;
 }
 
@@ -514,7 +518,7 @@ uint32_t __internal_fetch_and_add32(volatile uint32_t *destPtr,
 {
     uint32_t origValue = *destPtr;
     *destPtr += addValue;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     return origValue;
 }
 
@@ -524,7 +528,7 @@ uint64_t __internal_fetch_and_add64(volatile uint64_t *destPtr,
 {
     uint64_t origValue = *destPtr;
     *destPtr += addValue;
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     return origValue;
 }
 

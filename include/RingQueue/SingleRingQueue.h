@@ -84,7 +84,7 @@ SingleRingQueue<T, SequenceType, Capacity>::SingleRingQueue()
 template <typename T, typename SequenceType, uint32_t Capacity>
 SingleRingQueue<T, SequenceType, Capacity>::~SingleRingQueue()
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     // If the queue is allocated on system heap, release them.
     if (SingleRingQueue<T, SequenceType, Capacity>::kIsAllocOnHeap) {
@@ -113,7 +113,7 @@ SingleRingQueue<T, SequenceType, Capacity>::sizes() const
 {
     sequence_type head, tail;
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 
     head = this->headSequence.get();
     tail = this->tailSequence.get();
@@ -133,7 +133,7 @@ int SingleRingQueue<T, SequenceType, Capacity>::push(T const & entry)
         return -1;
     }
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 #if 0
     this->entries[((index_type)head) & kMask] = entry;
 #else
@@ -143,7 +143,7 @@ int SingleRingQueue<T, SequenceType, Capacity>::push(T const & entry)
     next = head + 1;
 
     //Jimi_WriteMemoryBarrier();
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     this->headSequence.setOrder(next);
 
     return 0;
@@ -161,7 +161,7 @@ int SingleRingQueue<T, SequenceType, Capacity>::pop(T & entry)
         return -1;
     }
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 #if 0
     entry = this->entries[((index_type)tail) & kMask];
 #else
@@ -171,7 +171,7 @@ int SingleRingQueue<T, SequenceType, Capacity>::pop(T & entry)
     next = tail + 1;
 
     //Jimi_MemoryBarrier();
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     this->tailSequence.setOrder(next);
 
     return 0;

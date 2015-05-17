@@ -103,13 +103,13 @@ public:
 public:
     seq_spinlock()
     {
-        Jimi_ReadBarrier();
+        Jimi_ReadCompilerBarrier();
         spin_wait();
     }
 
     ~seq_spinlock()
     {
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
         core_type::lock = 0;
     }
 
@@ -299,7 +299,7 @@ public:
 
     inline T get() const {
         T val = value;
-        Jimi_ReadBarrier();
+        Jimi_ReadCompilerBarrier();
         return val;
     }
 
@@ -307,9 +307,9 @@ public:
 #if 0
         T oldValue;
         int cnt = 0;
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
         Jimi_MemoryBarrier();
-        Jimi_ReadWriteBarrier();
+        Jimi_CompilerBarrier();
         oldValue = this->value;
         do {
             // Loop until the update is successful.
@@ -325,36 +325,36 @@ public:
             }
         } while (jimi_val_compare_and_swap32(&(this->value), oldValue, newValue) != oldValue);
 #else
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
         this->value = newValue;
 #endif
     }
 
     inline T getOrder() const {
         T val = value;
-        Jimi_ReadBarrier();
+        Jimi_ReadCompilerBarrier();
         return val;
     }
 
     inline void setOrder(T newValue) {
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
         this->value = newValue;
     }
 
     inline T getVolatile() const {
         T val = value;
-        Jimi_ReadBarrier();
+        Jimi_ReadCompilerBarrier();
         return val;
     }
 
     inline void setVolatile(T newValue) {
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
         seq_spinlock_t spinlock;
         this->value = newValue;
     }
 
     inline T compareAndSwap(T oldValue, T newValue) {
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
         seq_spinlock_t spinlock;
         return __internal_val_compare_and_swap32(&(this->value), oldValue, newValue);
@@ -364,7 +364,7 @@ public:
     }
 
     inline bool compareAndSwapBool(T oldValue, T newValue) {
-        Jimi_WriteBarrier();
+        Jimi_WriteCompilerBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
         seq_spinlock_t spinlock;
         return (__internal_val_compare_and_swap32(&(this->value), oldValue, newValue) == oldValue);
@@ -419,16 +419,16 @@ int64_t SequenceBase<int64_t>::getOrder() const
 {
     int64_t val;
 #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     val = this->value;
 #else
   #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     val = this->value;
   #else
     int64_t oldValue = this->value;
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     val = jimi_val_compare_and_swap64(&(this->value), oldValue, oldValue);
   #endif  /* USE_SEQUENCE_SPIN_LOCK */
 #endif  /* _M_X64 */
@@ -441,16 +441,16 @@ uint64_t SequenceBase<uint64_t>::getOrder() const
 {
     uint64_t val;
 #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     val = this->value;
 #else
   #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     val = this->value;
   #else
     uint64_t oldValue = this->value;
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     val = jimi_val_compare_and_swap64u(&(this->value), oldValue, oldValue);
   #endif  /* USE_SEQUENCE_SPIN_LOCK */
 #endif  /* _M_X64 */
@@ -463,7 +463,7 @@ template <>
 inline
 void SequenceBase<int64_t>::setOrder(int64_t newValue)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     this->value = newValue;
 #else
@@ -498,7 +498,7 @@ template <>
 inline
 void SequenceBase<uint64_t>::setOrder(uint64_t newValue)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     this->value = newValue;
 #else
@@ -533,7 +533,7 @@ template <>
 inline
 uint32_t SequenceBase<uint32_t>::compareAndSwap(uint32_t oldValue, uint32_t newValue) 
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
     return (uint32_t)__internal_val_compare_and_swap32u(&(this->value), oldValue, newValue);
@@ -548,7 +548,7 @@ template <>
 inline
 int64_t SequenceBase<int64_t>::compareAndSwap(int64_t oldValue, int64_t newValue)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
     return (int64_t)__internal_val_compare_and_swap64(&(this->value), oldValue, newValue);
@@ -561,7 +561,7 @@ template <>
 inline
 bool SequenceBase<int64_t>::compareAndSwapBool(int64_t oldValue, int64_t newValue)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     seq_spinlock_t spinlock;
     return (jimi_val_compare_and_swap64(&(this->value), oldValue, newValue) == oldValue);
 }
@@ -572,7 +572,7 @@ template <>
 inline
 uint64_t SequenceBase<uint64_t>::compareAndSwap(uint64_t oldValue, uint64_t newValue)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 #if defined(USE_SEQUENCE_SPIN_LOCK) && (USE_SEQUENCE_SPIN_LOCK != 0)
     seq_spinlock_t spinlock;
     return __internal_val_compare_and_swap64u(&(this->value), oldValue, newValue);
@@ -585,7 +585,7 @@ template <>
 inline
 bool SequenceBase<uint64_t>::compareAndSwapBool(uint64_t oldValue, uint64_t newValue)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     seq_spinlock_t spinlock;
     return (jimi_val_compare_and_swap64u(&(this->value), oldValue, newValue) == oldValue);
 }

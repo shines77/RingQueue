@@ -239,7 +239,7 @@ template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Produce
 DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::~DisruptorRingQueueBase()
 {
     // Do nothing!
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     spin_mutex.locked = 0;
 
@@ -280,7 +280,7 @@ void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Cor
         core.gatingSequences[i].set(Sequence::INITIAL_CURSOR_VALUE);
     }
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     // Initilized spin mutex
     spin_mutex.locked = 0;
@@ -334,7 +334,7 @@ DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>:
 {
     sequence_type head, tail;
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 
     head = core.cursor.get();
     tail = core.workSequence.get;
@@ -423,7 +423,7 @@ template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Produce
 inline
 void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, CoreTy>::publish(sequence_type sequence)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     setAvailable(sequence);
 }
@@ -438,7 +438,7 @@ void DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Cor
     if (core_type::kIsAllocOnHeap) {
         assert(core.availableBuffer != NULL);
     }
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     core.availableBuffer[index] = flag;
 }
 
@@ -450,7 +450,7 @@ bool DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Cor
     flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
 
     flag_type  flagValue = core.availableBuffer[index];
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     return (flagValue == flag);
 }
 
@@ -525,11 +525,11 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     core.entries[nextSequence & kIndexMask] = entry;
     //core.entries[nextSequence & kIndexMask].copy(entry);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     publish(nextSequence);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     return 0;
 }
 
@@ -562,7 +562,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 #if 0
                 if ((current == limit) || (current > limit && (limit - current) > kIndexMask)) {
 #if 0
-                    Jimi_ReadBarrier();
+                    Jimi_ReadCompilerBarrier();
                     //processedSequence = true;
                     return -1;
 #else
@@ -579,11 +579,11 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
             // Read the message data
             entry = core.entries[nextSequence & kIndexMask];
 
-            Jimi_ReadBarrier();
+            Jimi_ReadCompilerBarrier();
             //tailSequence.set(nextSequence);
             processedSequence = true;
 
-            Jimi_ReadBarrier();
+            Jimi_ReadCompilerBarrier();
             return 0;
         }
         else {
@@ -687,14 +687,14 @@ void reserve_code()
         }
     } while (true);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     core.entries[head & kIndexMask] = entry;
     //core.entries[head & kIndexMask].copy(entry);
 
     publish(head);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 }
 #endif
 
@@ -705,7 +705,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     sequence_type head, tail, next;
     bool ok = false;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     do {
         head = core.info.head;
@@ -716,7 +716,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
         ok = jimi_bool_compare_and_swap32(&core.info.head, head, next);
     } while (!ok);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     core.entries[head & kIndexMask] = entry;
     //core.entries[head & kIndexMask].copy(entry);
@@ -731,7 +731,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     sequence_type head, tail, next;
     bool ok = false;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     do {
         head = core.info.head;
@@ -744,7 +744,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 
     entry = core.entries[tail & kIndexMask];
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 
     return 0;
 }
@@ -758,7 +758,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -811,7 +811,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     head = core.info.head;
     tail = core.info.tail;
     if ((head - tail) > kIndexMask) {
-        Jimi_ReadWriteBarrier();
+        Jimi_CompilerBarrier();
         spin_mutex.locked = 0;
         return -1;
     }
@@ -820,7 +820,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 
     core.entries[head & kIndexMask] = entry;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     spin_mutex.locked = 0;
 
@@ -836,7 +836,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     uint32_t loop_count, yield_cnt, spin_count;
     static const uint32_t YIELD_THRESHOLD = SPIN_YIELD_THRESHOLD;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -889,7 +889,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
     head = core.info.head;
     tail = core.info.tail;
     if ((tail == head) || (tail > head && (head - tail) > kIndexMask)) {
-        Jimi_ReadWriteBarrier();
+        Jimi_CompilerBarrier();
         spin_mutex.locked = 0;
         return -1;
     }
@@ -898,7 +898,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 
     entry = core.entries[tail & kIndexMask];
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     spin_mutex.locked = 0;
 
@@ -911,7 +911,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 {
     sequence_type head, tail, next;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     pthread_mutex_lock(&queue_mutex);
 
@@ -926,7 +926,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 
     core.entries[head & kIndexMask] = entry;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     pthread_mutex_unlock(&queue_mutex);
 
@@ -939,7 +939,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 {
     sequence_type head, tail, next;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     pthread_mutex_lock(&queue_mutex);
 
@@ -955,7 +955,7 @@ int DisruptorRingQueueBase<T, SequenceType, Capacity, Producers, Consumers, Core
 
     entry = core.entries[tail & kIndexMask];
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     pthread_mutex_unlock(&queue_mutex);
 

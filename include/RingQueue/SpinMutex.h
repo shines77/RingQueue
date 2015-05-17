@@ -180,7 +180,7 @@ void SpinMutex<SpinHelper>::lock()
     uint32_t loop_count, spin_count, yield_cnt;
     int32_t pause_cnt;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -266,7 +266,7 @@ void SpinMutex<SpinHelper>::lock()
 template <typename SpinHelper>
 bool SpinMutex<SpinHelper>::tryLock(int nSpinCount /* = kDefaultSpinCount(4000) */)
 {
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     /* atomic_exchange usually takes less instructions than
        atomic_compare_and_exchange.  On the other hand,
@@ -291,7 +291,7 @@ bool SpinMutex<SpinHelper>::tryLock(int nSpinCount /* = kDefaultSpinCount(4000) 
 template <typename Helper>
 void SpinMutex<Helper>::unlock()
 {
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     core.Status = kUnlocked;
 }
@@ -311,7 +311,7 @@ void SpinMutex<SpinHelper>::yield(SpinMutexYieldInfo &yieldInfo)
     uint32_t loop_count, spin_count, yield_cnt;
     int32_t pause_cnt;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     loop_count = yieldInfo.loop_count;
     spin_count = yieldInfo.spin_count;
@@ -385,7 +385,7 @@ void SpinMutex<SpinHelper>::yield(SpinMutexYieldInfo &yieldInfo)
     // Just let the code look well.
     loop_count++;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 
     // Update loop_count to yieldInfo.
     yieldInfo.loop_count = loop_count;

@@ -81,7 +81,7 @@ SerialRingQueue<T, Capacity>::SerialRingQueue()
 template <typename T, uint32_t Capacity>
 SerialRingQueue<T, Capacity>::~SerialRingQueue()
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     // If the queue is allocated on system heap, release them.
     if (SerialRingQueue<T, Capacity>::kIsAllocOnHeap) {
@@ -110,7 +110,7 @@ SerialRingQueue<T, Capacity>::sizes() const
 {
     sequence_type head, tail;
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 
     head = this->headSequence;
     tail = this->tailSequence;
@@ -123,14 +123,14 @@ int SerialRingQueue<T, Capacity>::push(T const & entry)
 {
     sequence_type head, tail, next;
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     head = this->headSequence;
     tail = this->tailSequence;
     if ((head - tail) > kMask) {
         return -1;
     }
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 #if 0
     this->entries[((index_type)head) & kMask] = entry;
 #else
@@ -139,7 +139,7 @@ int SerialRingQueue<T, Capacity>::push(T const & entry)
 
     next = head + 1;
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     this->headSequence = next;
 
     return 0;
@@ -150,14 +150,14 @@ int SerialRingQueue<T, Capacity>::pop(T & entry)
 {
     sequence_type head, tail, next;
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     head = this->headSequence;
     tail = this->tailSequence;
     if ((tail == head) || (tail > head && (head - tail) > kMask)) {
         return -1;
     }
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 #if 0
     entry = this->entries[((index_type)tail) & kMask)];
 #else
@@ -166,7 +166,7 @@ int SerialRingQueue<T, Capacity>::pop(T & entry)
 
     next = tail + 1;
 
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
     this->tailSequence = next;
 
     return 0;

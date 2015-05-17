@@ -2402,7 +2402,7 @@ int main(int argn, char * argv[])
     //RingQueue_Test(FUNC_DOUBAN_Q3H, false);
 #endif
 
-    SpinMutex_Test();
+    //SpinMutex_Test();
 
     popmsg_list_destory();
     test_msg_destory();

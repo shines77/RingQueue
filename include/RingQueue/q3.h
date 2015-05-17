@@ -84,7 +84,7 @@ push(struct queue *q, void *m)
     q->msgs[head & mask] = m;
 
 #ifdef _MSC_VER
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 #else
     asm volatile ("":::"memory");
 #endif
@@ -120,7 +120,7 @@ pop(struct queue *q)
     ret = q->msgs[head & mask];
 
 #ifdef _MSC_VER
-    Jimi_ReadWriteBarrier();
+    Jimi_CompilerBarrier();
 #else
     asm volatile ("":::"memory");
 #endif

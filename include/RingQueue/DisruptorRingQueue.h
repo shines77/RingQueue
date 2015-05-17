@@ -227,7 +227,7 @@ DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>:
 {
     sequence_type head, tail;
 
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
 
     head = this->cursor.get();
     tail = this->workSequence.get();
@@ -316,7 +316,7 @@ template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Produce
 inline
 void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::publish(sequence_type sequence)
 {
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     setAvailable(sequence);
 }
@@ -331,7 +331,7 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
     if (kIsAllocOnHeap) {
         assert(this->availableBuffer != NULL);
     }
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     this->availableBuffer[index] = flag;
 }
 
@@ -343,7 +343,7 @@ bool DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
     flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
 
     flag_type  flagValue = this->availableBuffer[index];
-    Jimi_ReadBarrier();
+    Jimi_ReadCompilerBarrier();
     return (flagValue == flag);
 }
 
@@ -418,11 +418,11 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
     this->entries[nextSequence & kIndexMask] = entry;
     //this->entries[nextSequence & kIndexMask].copy(entry);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     publish(nextSequence);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
     return 0;
 }
 
@@ -445,7 +445,7 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
 #if 0
                 if ((current == limit) || (current > limit && (limit - current) > kIndexMask)) {
 #if 0
-                    Jimi_ReadBarrier();
+                    Jimi_ReadCompilerBarrier();
                     //processedSequence = true;
                     return -1;
 #else
@@ -462,11 +462,11 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
             // Read the message data
             entry = this->entries[data.nextSequence & kIndexMask];
 
-            Jimi_ReadBarrier();
+            Jimi_ReadCompilerBarrier();
             //data.tailSequence->set(data.nextSequence);
             data.processedSequence = true;
 
-            Jimi_ReadBarrier();
+            Jimi_ReadCompilerBarrier();
             return 0;
         }
         else {
@@ -569,14 +569,14 @@ void reserve_code()
         }
     } while (true);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 
     this->entries[head & kIndexMask] = entry;
     //this->entries[head & kIndexMask].copy(entry);
 
     publish(head);
 
-    Jimi_WriteBarrier();
+    Jimi_WriteCompilerBarrier();
 }
 #endif
 
