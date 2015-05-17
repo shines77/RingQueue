@@ -133,7 +133,7 @@ int SingleRingQueue<T, SequenceType, Capacity>::push(T const & entry)
         return -1;
     }
 
-    Jimi_WriteBarrier();
+    Jimi_ReadWriteBarrier();
 #if 0
     this->entries[((index_type)head) & kMask] = entry;
 #else
@@ -142,8 +142,8 @@ int SingleRingQueue<T, SequenceType, Capacity>::push(T const & entry)
 
     next = head + 1;
 
-    Jimi_MemoryBarrier();
-    //Jimi_ReadWriteBarrier();
+    //Jimi_WriteMemoryBarrier();
+    Jimi_WriteBarrier();
     this->headSequence.setOrder(next);
 
     return 0;
@@ -170,8 +170,8 @@ int SingleRingQueue<T, SequenceType, Capacity>::pop(T & entry)
 
     next = tail + 1;
 
-    Jimi_MemoryBarrier();
-    //Jimi_ReadWriteBarrier();
+    //Jimi_MemoryBarrier();
+    Jimi_ReadWriteBarrier();
     this->tailSequence.setOrder(next);
 
     return 0;
