@@ -117,22 +117,22 @@ RINGQUEUE := RingQueue
 LIBRINGQUEUE := $(LIBPREFIX)RingQueue$(install_suffix)
 
 # Lists of files.
-BINS := $(srcroot)bin/pprof $(objroot)bin/RingQueue.sh
+BINS := $(srcroot)bin/pprof $(binroot)RingQueue.sh
 
-C_HDRS := $(objroot)include/RingQueue/console.h $(objroot)include/RingQueue/dump_mem.h \
-    $(objroot)include/RingQueue/get_char.h $(objroot)include/RingQueue/mq.h \
-    $(objroot)include/RingQueue/port.h \
-    $(objroot)include/RingQueue/q3.h $(objroot)include/RingQueue/RingQueue.h \
-    $(objroot)include/RingQueue/sleep.h $(objroot)include/RingQueue/sys_timer.h \
-    $(objroot)include/RingQueue/test.h $(objroot)include/RingQueue/vs_inttypes.h \
-    $(objroot)include/RingQueue/vs_stdbool.h $(objroot)include/RingQueue/vs_stdint.h \
-    $(objroot)include/RingQueue/msvc/inttypes.h $(objroot)include/RingQueue/msvc/stdbool.h \
-    $(objroot)include/RingQueue/msvc/stdint.h $(objroot)include/RingQueue/msvc/targetver.h \
-    $(objroot)include/RingQueue/msvc/pthread.h $(objroot)include/RingQueue/msvc/sched.h \
-    $(objroot)include/RingQueue/SpinMutex.h $(objroot)include/RingQueue/MessageEvent.h \
-    $(objroot)include/RingQueue/Sequence.h $(objroot)include/RingQueue/DisruptorRingQueue.h \
-    $(objroot)include/RingQueue/DisruptorRingQueueOld.h $(objroot)include/RingQueue/SerialRingQueue.h \
-    $(objroot)include/RingQueue/SingleRingQueue.h
+C_HDRS := $(srcroot)include/RingQueue/console.h $(srcroot)include/RingQueue/dump_mem.h \
+    $(srcroot)include/RingQueue/get_char.h $(srcroot)include/RingQueue/mq.h \
+    $(srcroot)include/RingQueue/port.h \
+    $(srcroot)include/RingQueue/q3.h $(srcroot)include/RingQueue/RingQueue.h \
+    $(srcroot)include/RingQueue/sleep.h $(srcroot)include/RingQueue/sys_timer.h \
+    $(srcroot)include/RingQueue/test.h $(srcroot)include/RingQueue/vs_inttypes.h \
+    $(srcroot)include/RingQueue/vs_stdbool.h $(srcroot)include/RingQueue/vs_stdint.h \
+    $(srcroot)include/RingQueue/msvc/inttypes.h $(srcroot)include/RingQueue/msvc/stdbool.h \
+    $(srcroot)include/RingQueue/msvc/stdint.h $(srcroot)include/RingQueue/msvc/targetver.h \
+    $(srcroot)include/RingQueue/msvc/pthread.h $(srcroot)include/RingQueue/msvc/sched.h \
+    $(srcroot)include/RingQueue/SpinMutex.h $(srcroot)include/RingQueue/MessageEvent.h \
+    $(srcroot)include/RingQueue/Sequence.h $(srcroot)include/RingQueue/DisruptorRingQueue.h \
+    $(srcroot)include/RingQueue/DisruptorRingQueueOld.h $(srcroot)include/RingQueue/SerialRingQueue.h \
+    $(srcroot)include/RingQueue/SingleRingQueue.h
 
 C_SRCS := $(srcroot)src/RingQueue/console.c \
     $(srcroot)src/RingQueue/dump_mem.c $(srcroot)src/RingQueue/get_char.c $(srcroot)src/RingQueue/mq.c \
@@ -208,7 +208,7 @@ endif
 ifndef CC_MM
     # Dependencies.
     HEADER_DIRS = $(srcroot)src/RingQueue \
-        $(objroot)include/RingQueue $(objroot)include/RingQueue/msvc
+        $(srcroot)include/RingQueue $(srcroot)include/RingQueue/msvc
     HEADERS = $(wildcard $(foreach dir,$(HEADER_DIRS),$(dir)/*.h))
     $(C_OBJS) $(C_PIC_OBJS) $(C_JET_OBJS) $(CXX_OBJS) $(CXX_PIC_OBJS) $(CXX_JET_OBJS) : $(HEADERS)
 endif
@@ -231,11 +231,11 @@ ifneq ($(SOREV),$(SO))
 	ln -sf $(<F) $@
 endif
 
-$(objroot)bin/gcc/$(RINGQUEUE)$(EXE) : $(if $(PIC_CXXFLAGS),$(CXX_PIC_OBJS),$(CXX_OBJS)) $(if $(PIC_CCFLAGS),$(C_PIC_OBJS),$(C_OBJS))
+$(binroot)$(RINGQUEUE)$(EXE) : $(if $(PIC_CXXFLAGS),$(CXX_PIC_OBJS),$(CXX_OBJS)) $(if $(PIC_CCFLAGS),$(C_PIC_OBJS),$(C_OBJS))
 	@mkdir -p $(@D)
 	$(CXX) $(LDTARGET) $(filter %.$(O),$^) $(call RPATH,$(objroot)lib) $(LDFLAGS) $(filter-out -lm,$(LIBS)) -lm $(EXTRA_LDFLAGS)
 
-build_exe: $(objroot)bin/gcc/$(RINGQUEUE)$(EXE)
+build_exe: $(binroot)$(RINGQUEUE)$(EXE)
 
 #=============================================================================
 # Target rules for targets named RingQueue
