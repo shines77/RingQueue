@@ -175,12 +175,12 @@ all: build_exe
 # Include generated dependency files.
 #
 ifdef CC_MM
-	-include $(C_OBJS:%.$(O)=%.d)
-	-include $(C_PIC_OBJS:%.$(O)=%.d)
-	-include $(C_JET_OBJS:%.$(O)=%.d)
-	-include $(CXX_OBJS:%.$(O)=%.d)
-	-include $(CXX_PIC_OBJS:%.$(O)=%.d)
-	-include $(CXX_JET_OBJS:%.$(O)=%.d)
+    -include $(C_OBJS:%.$(O)=%.d)
+    -include $(C_PIC_OBJS:%.$(O)=%.d)
+    -include $(C_JET_OBJS:%.$(O)=%.d)
+    -include $(CXX_OBJS:%.$(O)=%.d)
+    -include $(CXX_PIC_OBJS:%.$(O)=%.d)
+    -include $(CXX_JET_OBJS:%.$(O)=%.d)
 endif
 
 $(C_OBJS): $(objroot)src/RingQueue/%.$(O): $(srcroot)src/RingQueue/%.c
