@@ -4,7 +4,7 @@
 
 SHELL := /bin/sh
 
-CC := g++
+CC := gcc
 CXX := g++
 
 # Configuration parameters.
@@ -14,55 +14,74 @@ INCLUDEDIR := $(DESTDIR)/usr/local/include
 LIBDIR := $(DESTDIR)/usr/local/lib
 DATADIR := $(DESTDIR)/usr/local/share
 MANDIR := $(DESTDIR)/usr/local/share/man
-srcroot := 
-objroot := 
+srcroot :=
+objroot :=
 
-# Build parameters. -m32 for x86 (32 bit), -m64 for x64 (64 bit)
-CPPFLAGS := -D_REENTRANT -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
-CFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__
-LDFLAGS := 
-EXTRA_LDFLAGS := 
+LDFLAGS :=
+EXTRA_LDFLAGS :=
 LIBS := -lpthread
-RPATH_EXTRA := 
+RPATH_EXTRA :=
 SO := so
 IMPORTLIB := so
 O := o
 A := a
-EXE := 
+EXE :=
 LIBPREFIX := lib
 REV := 1
-install_suffix := 
+install_suffix :=
 ABI := elf
 XSLTPROC := /usr/bin/xsltproc
 AUTOCONF := false
 _RPATH = -Wl,-rpath,$(1)
 RPATH = $(if $(1),$(call _RPATH,$(1)))
 
-############################################################################
-#  See: http://stackoverflow.com/questions/714100/os-detecting-makefile    #
-############################################################################
+##########################################################################
+#  See: http://stackoverflow.com/questions/714100/os-detecting-makefile  #
+##########################################################################
 
 ifeq ($(OS), Windows_NT)
     LIBS += -lwinmm
+    objroot := obj/gcc/mingw/
+    binroot := bin/gcc/mingw/
 else
     UNAME_S := $(shell uname -s)
+
     ifeq ($(UNAME_S), Linux)
+        LIBS += -lrt
         CCFLAGS += -D LINUX
+        CXXFLAGS += -D LINUX
     endif
     ifeq ($(UNAME_S), Darwin)
         CCFLAGS += -D OSX
+        CXXFLAGS += -D OSX
+        objroot := obj/gcc/darwin/
+        binroot := bin/gcc/darwin/
     endif
+
     UNAME_P := $(shell uname -p)
+
+    # x86_64|amd64|AMD64)
     ifeq ($(UNAME_P), x86_64)
-        CCFLAGS += -D AMD64
+        CCFLAGS += -m64 -D AMD64
+        CXXFLAGS += -m64 -D AMD64
     endif
+    # i[3456789]86|x86|i86pc)
     ifneq ($(filter %86, $(UNAME_P)),)
-        CCFLAGS += -D IA32
+        CCFLAGS += -m32 -D IA32
+        CXXFLAGS += -m32 -D IA32
     endif
+    # arm*)
     ifneq ($(filter arm%, $(UNAME_P)),)
         CCFLAGS += -D ARM
+        CXXFLAGS += -D ARM
+        objroot := obj/gcc/arm/
+        binroot := bin/gcc/arm/
     endif
 endif
+
+# Build parameters. -m32 for x86 (32 bit), -m64 for x64 (64 bit)
+CCFLAGS := -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__ -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
+CXXFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_REENTRANT -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__ -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
 
 header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include/RingQueue/get_char.h \
     include/RingQueue/mq.h include/RingQueue/port.h include/RingQueue/q3.h \
@@ -79,13 +98,14 @@ header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include
 enable_autogen := 0
 enable_code_coverage := 0
 enable_experimental := 1
-enable_zone_allocator := 
+enable_zone_allocator :=
 DSO_LDFLAGS = -shared -Wl,-soname,$(@F)
 SOREV = so.1
-PIC_CFLAGS = -fPIC -DPIC
+PIC_CCFLAGS = -fPIC -DPIC
+PIC_CXXFLAGS = -fPIC -DPIC
 CTARGET = -o $@
 LDTARGET = -o $@
-MKLIB = 
+MKLIB =
 AR = ar
 ARFLAGS = crus
 CC_MM = 1
@@ -97,14 +117,14 @@ LIBRINGQUEUE := $(LIBPREFIX)RingQueue$(install_suffix)
 BINS := $(srcroot)bin/pprof $(objroot)bin/RingQueue.sh
 
 C_HDRS := $(objroot)include/RingQueue/console.h $(objroot)include/RingQueue/dump_mem.h \
-	$(objroot)include/RingQueue/get_char.h $(objroot)include/RingQueue/mq.h \
-	$(objroot)include/RingQueue/port.h \
-	$(objroot)include/RingQueue/q3.h $(objroot)include/RingQueue/RingQueue.h \
-	$(objroot)include/RingQueue/sleep.h $(objroot)include/RingQueue/sys_timer.h \
-	$(objroot)include/RingQueue/test.h $(objroot)include/RingQueue/vs_inttypes.h \
-	$(objroot)include/RingQueue/vs_stdbool.h $(objroot)include/RingQueue/vs_stdint.h \
-	$(objroot)include/RingQueue/msvc/inttypes.h $(objroot)include/RingQueue/msvc/stdbool.h \
-	$(objroot)include/RingQueue/msvc/stdint.h $(objroot)include/RingQueue/msvc/targetver.h \
+    $(objroot)include/RingQueue/get_char.h $(objroot)include/RingQueue/mq.h \
+    $(objroot)include/RingQueue/port.h \
+    $(objroot)include/RingQueue/q3.h $(objroot)include/RingQueue/RingQueue.h \
+    $(objroot)include/RingQueue/sleep.h $(objroot)include/RingQueue/sys_timer.h \
+    $(objroot)include/RingQueue/test.h $(objroot)include/RingQueue/vs_inttypes.h \
+    $(objroot)include/RingQueue/vs_stdbool.h $(objroot)include/RingQueue/vs_stdint.h \
+    $(objroot)include/RingQueue/msvc/inttypes.h $(objroot)include/RingQueue/msvc/stdbool.h \
+    $(objroot)include/RingQueue/msvc/stdint.h $(objroot)include/RingQueue/msvc/targetver.h \
     $(objroot)include/RingQueue/msvc/pthread.h $(objroot)include/RingQueue/msvc/sched.h \
     $(objroot)include/RingQueue/SpinMutex.h $(objroot)include/RingQueue/MessageEvent.h \
     $(objroot)include/RingQueue/Sequence.h $(objroot)include/RingQueue/DisruptorRingQueue.h \
@@ -112,33 +132,37 @@ C_HDRS := $(objroot)include/RingQueue/console.h $(objroot)include/RingQueue/dump
     $(objroot)include/RingQueue/SingleRingQueue.h
 
 C_SRCS := $(srcroot)src/RingQueue/console.c \
-	$(srcroot)src/RingQueue/dump_mem.c $(srcroot)src/RingQueue/get_char.c $(srcroot)src/RingQueue/mq.c \
-	$(srcroot)src/RingQueue/sleep.c $(srcroot)src/RingQueue/sys_timer.c \
+    $(srcroot)src/RingQueue/dump_mem.c $(srcroot)src/RingQueue/get_char.c $(srcroot)src/RingQueue/mq.c \
+    $(srcroot)src/RingQueue/sleep.c $(srcroot)src/RingQueue/sys_timer.c \
     $(srcroot)src/RingQueue/msvc/pthread.c $(srcroot)src/RingQueue/msvc/sched.c
     # $(srcroot)src/RingQueue/main.c
 
-CPP_SRCS := $(srcroot)src/RingQueue/main.cpp
+CXX_SRCS := $(srcroot)src/RingQueue/main.cpp
 
 ifeq ($(IMPORTLIB),$(SO))
-STATIC_LIBS := $(objroot)lib/$(LIBRINGQUEUE).$(A)
+    STATIC_LIBS := $(objroot)lib/$(LIBRINGQUEUE).$(A)
 endif
-ifdef PIC_CFLAGS
-STATIC_LIBS += $(objroot)lib/$(LIBRINGQUEUE)_pic.$(A)
+ifdef PIC_CCFLAGS
+    STATIC_LIBS += $(objroot)lib/$(LIBRINGQUEUE)_pic.$(A)
 else
-STATIC_LIBS += $(objroot)lib/$(LIBRINGQUEUE)_s.$(A)
+    ifdef PIC_CXXFLAGS
+        STATIC_LIBS += $(objroot)lib/$(LIBRINGQUEUE)_pic.$(A)
+    else
+        STATIC_LIBS += $(objroot)lib/$(LIBRINGQUEUE)_s.$(A)
+    endif
 endif
 DSOS := $(objroot)lib/$(LIBRINGQUEUE).$(SOREV)
 ifneq ($(SOREV),$(SO))
-DSOS += $(objroot)lib/$(LIBRINGQUEUE).$(SO)
+    DSOS += $(objroot)lib/$(LIBRINGQUEUE).$(SO)
 endif
 
 C_OBJS := $(C_SRCS:$(srcroot)%.c=$(objroot)%.$(O))
 C_PIC_OBJS := $(C_SRCS:$(srcroot)%.c=$(objroot)%.pic.$(O))
 C_JET_OBJS := $(C_SRCS:$(srcroot)%.c=$(objroot)%.jet.$(O))
 
-CPP_OBJS := $(CPP_SRCS:$(srcroot)%.cpp=$(objroot)%.$(O))
-CPP_PIC_OBJS := $(CPP_SRCS:$(srcroot)%.cpp=$(objroot)%.pic.$(O))
-CPP_JET_OBJS := $(CPP_SRCS:$(srcroot)%.cpp=$(objroot)%.jet.$(O))
+CXX_OBJS := $(CXX_SRCS:$(srcroot)%.cpp=$(objroot)%.$(O))
+CXX_PIC_OBJS := $(CXX_SRCS:$(srcroot)%.cpp=$(objroot)%.pic.$(O))
+CXX_JET_OBJS := $(CXX_SRCS:$(srcroot)%.cpp=$(objroot)%.jet.$(O))
 
 .PHONY: all
 .PHONY: clean
@@ -151,51 +175,51 @@ all: build_exe
 # Include generated dependency files.
 #
 ifdef CC_MM
--include $(C_OBJS:%.$(O)=%.d)
--include $(C_PIC_OBJS:%.$(O)=%.d)
--include $(C_JET_OBJS:%.$(O)=%.d)
--include $(CPP_OBJS:%.$(O)=%.d)
--include $(CPP_PIC_OBJS:%.$(O)=%.d)
--include $(CPP_JET_OBJS:%.$(O)=%.d)
+	-include $(C_OBJS:%.$(O)=%.d)
+	-include $(C_PIC_OBJS:%.$(O)=%.d)
+	-include $(C_JET_OBJS:%.$(O)=%.d)
+	-include $(CXX_OBJS:%.$(O)=%.d)
+	-include $(CXX_PIC_OBJS:%.$(O)=%.d)
+	-include $(CXX_JET_OBJS:%.$(O)=%.d)
 endif
 
 $(C_OBJS): $(objroot)src/RingQueue/%.$(O): $(srcroot)src/RingQueue/%.c
-$(C_OBJS): CPPFLAGS += -I$(srcroot)include -I$(objroot)include/RingQueue
+$(C_OBJS): CCFLAGS += -I$(srcroot)include -I$(objroot)include/RingQueue
 $(C_PIC_OBJS): $(objroot)src/RingQueue/%.pic.$(O): $(srcroot)src/RingQueue/%.c
-$(C_PIC_OBJS): CFLAGS += $(PIC_CFLAGS)
+$(C_PIC_OBJS): CCFLAGS += $(PIC_CCFLAGS)
 $(C_JET_OBJS): $(objroot)src/RingQueue/%.jet.$(O): $(srcroot)src/RingQueue/%.c
-$(C_JET_OBJS): CFLAGS += -DRINGQUEUE_JET
+$(C_JET_OBJS): CCFLAGS += -DRINGQUEUE_JET
 
-$(CPP_OBJS): $(objroot)src/RingQueue/%.$(O): $(srcroot)src/RingQueue/%.cpp
-$(CPP_OBJS): CPPFLAGS += -I$(srcroot)include -I$(objroot)include/RingQueue
-$(CPP_PIC_OBJS): $(objroot)src/RingQueue/%.pic.$(O): $(srcroot)src/RingQueue/%.cpp
-$(CPP_PIC_OBJS): CFLAGS += $(PIC_CFLAGS)
-$(CPP_JET_OBJS): $(objroot)src/RingQueue/%.jet.$(O): $(srcroot)src/RingQueue/%.cpp
-$(CPP_JET_OBJS): CFLAGS += -DRINGQUEUE_JET
+$(CXX_OBJS): $(objroot)src/RingQueue/%.$(O): $(srcroot)src/RingQueue/%.cpp
+$(CXX_OBJS): CXXFLAGS += -I$(srcroot)include -I$(objroot)include/RingQueue
+$(CXX_PIC_OBJS): $(objroot)src/RingQueue/%.pic.$(O): $(srcroot)src/RingQueue/%.cpp
+$(CXX_PIC_OBJS): CXXFLAGS += $(PIC_CXXFLAGS)
+$(CXX_JET_OBJS): $(objroot)src/RingQueue/%.jet.$(O): $(srcroot)src/RingQueue/%.cpp
+$(CXX_JET_OBJS): CCFLAGS += -DRINGQUEUE_JET
 
 ifneq ($(IMPORTLIB),$(SO))
-$(C_OBJS): CPPFLAGS += -DDLLEXPORT
-$(CPP_OBJS): CPPFLAGS += -DDLLEXPORT
+    $(C_OBJS): CCFLAGS += -DDLLEXPORT
+    $(CXX_OBJS): CXXFLAGS += -DDLLEXPORT
 endif
 
 ifndef CC_MM
-# Dependencies.
-HEADER_DIRS = $(srcroot)src/RingQueue \
-	$(objroot)include/RingQueue $(objroot)include/RingQueue/msvc
-HEADERS = $(wildcard $(foreach dir,$(HEADER_DIRS),$(dir)/*.h))
-$(C_OBJS) $(C_PIC_OBJS) $(C_JET_OBJS) $(CPP_OBJS) $(CPP_PIC_OBJS) $(CPP_JET_OBJS) : $(HEADERS)
+    # Dependencies.
+    HEADER_DIRS = $(srcroot)src/RingQueue \
+        $(objroot)include/RingQueue $(objroot)include/RingQueue/msvc
+    HEADERS = $(wildcard $(foreach dir,$(HEADER_DIRS),$(dir)/*.h))
+    $(C_OBJS) $(C_PIC_OBJS) $(C_JET_OBJS) $(CXX_OBJS) $(CXX_PIC_OBJS) $(CXX_JET_OBJS) : $(HEADERS)
 endif
 
 $(C_OBJS) $(C_PIC_OBJS) $(C_JET_OBJS) : %.$(O):
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -c $(CPPFLAGS) $(CTARGET) $<
+	$(CC) $(CCFLAGS) -c $(CTARGET) $<
 
-$(CPP_OBJS) $(CPP_PIC_OBJS) $(CPP_JET_OBJS) : %.$(O):
+$(CXX_OBJS) $(CXX_PIC_OBJS) $(CXX_JET_OBJS) : %.$(O):
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -c $(CPPFLAGS) $(CTARGET) $<
+	$(CXX) $(CXXFLAGS) -c $(CTARGET) $<
 
 ifdef CC_MM
-	@$(CC) -MM $(CPPFLAGS) -MT $@ -o $(@:%.$(O)=%.d) $<
+	@$(CXX) -MM $(CXXFLAGS) -MT $@ -o $(@:%.$(O)=%.d) $<
 endif
 
 ifneq ($(SOREV),$(SO))
@@ -204,9 +228,9 @@ ifneq ($(SOREV),$(SO))
 	ln -sf $(<F) $@
 endif
 
-$(objroot)bin/gcc/$(RINGQUEUE)$(EXE) : $(if $(PIC_CFLAGS),$(CPP_PIC_OBJS),$(CPP_OBJS)) $(if $(PIC_CFLAGS),$(C_PIC_OBJS),$(C_OBJS)) 
+$(objroot)bin/gcc/$(RINGQUEUE)$(EXE) : $(if $(PIC_CXXFLAGS),$(CXX_PIC_OBJS),$(CXX_OBJS)) $(if $(PIC_CCFLAGS),$(C_PIC_OBJS),$(C_OBJS))
 	@mkdir -p $(@D)
-	$(CC) $(LDTARGET) $(filter %.$(O),$^) $(call RPATH,$(objroot)lib) $(LDFLAGS) $(filter-out -lm,$(LIBS)) -lm $(EXTRA_LDFLAGS)
+	$(CXX) $(LDTARGET) $(filter %.$(O),$^) $(call RPATH,$(objroot)lib) $(LDFLAGS) $(filter-out -lm,$(LIBS)) -lm $(EXTRA_LDFLAGS)
 
 build_exe: $(objroot)bin/gcc/$(RINGQUEUE)$(EXE)
 
@@ -218,7 +242,7 @@ help:
 	@echo "The following are some of the valid targets for this Makefile:"
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
-    # @echo "... help"
+	@echo "... help"
 .PHONY : help
 
 # The main clean target
@@ -236,18 +260,18 @@ clean:
 	rm -f $(C_JET_OBJS:%.$(O)=%.gcda)
 	rm -f $(C_JET_OBJS:%.$(O)=%.gcno)
 
-	rm -f $(CPP_OBJS)
-	rm -f $(CPP_PIC_OBJS)
-	rm -f $(CPP_JET_OBJS)
-	rm -f $(CPP_OBJS:%.$(O)=%.d)
-	rm -f $(CPP_OBJS:%.$(O)=%.gcda)
-	rm -f $(CPP_OBJS:%.$(O)=%.gcno)
-	rm -f $(CPP_PIC_OBJS:%.$(O)=%.d)
-	rm -f $(CPP_PIC_OBJS:%.$(O)=%.gcda)
-	rm -f $(CPP_PIC_OBJS:%.$(O)=%.gcno)
-	rm -f $(CPP_JET_OBJS:%.$(O)=%.d)
-	rm -f $(CPP_JET_OBJS:%.$(O)=%.gcda)
-	rm -f $(CPP_JET_OBJS:%.$(O)=%.gcno)
+	rm -f $(CXX_OBJS)
+	rm -f $(CXX_PIC_OBJS)
+	rm -f $(CXX_JET_OBJS)
+	rm -f $(CXX_OBJS:%.$(O)=%.d)
+	rm -f $(CXX_OBJS:%.$(O)=%.gcda)
+	rm -f $(CXX_OBJS:%.$(O)=%.gcno)
+	rm -f $(CXX_PIC_OBJS:%.$(O)=%.d)
+	rm -f $(CXX_PIC_OBJS:%.$(O)=%.gcda)
+	rm -f $(CXX_PIC_OBJS:%.$(O)=%.gcno)
+	rm -f $(CXX_JET_OBJS:%.$(O)=%.d)
+	rm -f $(CXX_JET_OBJS:%.$(O)=%.gcda)
+	rm -f $(CXX_JET_OBJS:%.$(O)=%.gcno)
 
 	rm -f $(DSOS) $(STATIC_LIBS)
 	rm -f $(objroot)*.gcov.*
