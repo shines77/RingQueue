@@ -2297,9 +2297,9 @@ void run_some_queue_tests(void)
 int main(int argn, char * argv[])
 {
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
-    bool bConti = true;
+    bool bContinue = true;
 #else
-    bool bConti = false;
+    bool bContinue = false;
 #endif
 
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
@@ -2374,10 +2374,10 @@ int main(int argn, char * argv[])
     RingQueue_Test(FUNC_RINGQUEUE_SPIN2_PUSH, true);
 
     // C++ 版的 Disruptor (多生产者 + 多消费者)实现方案.
-    RingQueue_Test(FUNC_DISRUPTOR_RINGQUEUE, bConti);
+    RingQueue_Test(FUNC_DISRUPTOR_RINGQUEUE, bContinue);
 
     // 调用RingQueue.spin3_push().
-    //RingQueue_Test(FUNC_RINGQUEUE_SPIN3_PUSH, bConti);
+    //RingQueue_Test(FUNC_RINGQUEUE_SPIN3_PUSH, bContinue);
 
   #else
     // 连续测试3次
@@ -2389,7 +2389,7 @@ int main(int argn, char * argv[])
         if (n == kMaxPassNum)
             bConti = false;
 #endif
-        RingQueue_Test(TEST_FUNC_TYPE, bConti);
+        RingQueue_Test(TEST_FUNC_TYPE, bContinue);
     }
   #endif
 #endif
