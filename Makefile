@@ -15,7 +15,8 @@ LIBDIR := $(DESTDIR)/usr/local/lib
 DATADIR := $(DESTDIR)/usr/local/share
 MANDIR := $(DESTDIR)/usr/local/share/man
 srcroot :=
-objroot :=
+objroot := obj/gcc/linux/
+binroot := bin/gcc/linux/
 
 LDFLAGS :=
 EXTRA_LDFLAGS :=
@@ -50,6 +51,8 @@ else
         LIBS += -lrt
         CCFLAGS += -D LINUX
         CXXFLAGS += -D LINUX
+        objroot := obj/gcc/linux/
+        binroot := bin/gcc/linux/
     endif
     ifeq ($(UNAME_S), Darwin)
         CCFLAGS += -D OSX
