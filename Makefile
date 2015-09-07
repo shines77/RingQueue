@@ -250,34 +250,37 @@ help:
 
 # The main clean target
 clean:
-	rm -f $(C_OBJS)
-	rm -f $(C_PIC_OBJS)
-	rm -f $(C_JET_OBJS)
-	rm -f $(C_OBJS:%.$(O)=%.d)
-	rm -f $(C_OBJS:%.$(O)=%.gcda)
-	rm -f $(C_OBJS:%.$(O)=%.gcno)
-	rm -f $(C_PIC_OBJS:%.$(O)=%.d)
-	rm -f $(C_PIC_OBJS:%.$(O)=%.gcda)
-	rm -f $(C_PIC_OBJS:%.$(O)=%.gcno)
-	rm -f $(C_JET_OBJS:%.$(O)=%.d)
-	rm -f $(C_JET_OBJS:%.$(O)=%.gcda)
-	rm -f $(C_JET_OBJS:%.$(O)=%.gcno)
+	-rm -f $(C_OBJS)
+	-rm -f $(C_PIC_OBJS)
+	-rm -f $(C_JET_OBJS)
+	-rm -f $(C_OBJS:%.$(O)=%.d)
+	-rm -f $(C_OBJS:%.$(O)=%.gcda)
+	-rm -f $(C_OBJS:%.$(O)=%.gcno)
+	-rm -f $(C_PIC_OBJS:%.$(O)=%.d)
+	-rm -f $(C_PIC_OBJS:%.$(O)=%.gcda)
+	-rm -f $(C_PIC_OBJS:%.$(O)=%.gcno)
+	-rm -f $(C_JET_OBJS:%.$(O)=%.d)
+	-rm -f $(C_JET_OBJS:%.$(O)=%.gcda)
+	-rm -f $(C_JET_OBJS:%.$(O)=%.gcno)
 
-	rm -f $(CXX_OBJS)
-	rm -f $(CXX_PIC_OBJS)
-	rm -f $(CXX_JET_OBJS)
-	rm -f $(CXX_OBJS:%.$(O)=%.d)
-	rm -f $(CXX_OBJS:%.$(O)=%.gcda)
-	rm -f $(CXX_OBJS:%.$(O)=%.gcno)
-	rm -f $(CXX_PIC_OBJS:%.$(O)=%.d)
-	rm -f $(CXX_PIC_OBJS:%.$(O)=%.gcda)
-	rm -f $(CXX_PIC_OBJS:%.$(O)=%.gcno)
-	rm -f $(CXX_JET_OBJS:%.$(O)=%.d)
-	rm -f $(CXX_JET_OBJS:%.$(O)=%.gcda)
-	rm -f $(CXX_JET_OBJS:%.$(O)=%.gcno)
+	-rm -f $(CXX_OBJS)
+	-rm -f $(CXX_PIC_OBJS)
+	-rm -f $(CXX_JET_OBJS)
+	-rm -f $(CXX_OBJS:%.$(O)=%.d)
+	-rm -f $(CXX_OBJS:%.$(O)=%.gcda)
+	-rm -f $(CXX_OBJS:%.$(O)=%.gcno)
+	-rm -f $(CXX_PIC_OBJS:%.$(O)=%.d)
+	-rm -f $(CXX_PIC_OBJS:%.$(O)=%.gcda)
+	-rm -f $(CXX_PIC_OBJS:%.$(O)=%.gcno)
+	-rm -f $(CXX_JET_OBJS:%.$(O)=%.d)
+	-rm -f $(CXX_JET_OBJS:%.$(O)=%.gcda)
+	-rm -f $(CXX_JET_OBJS:%.$(O)=%.gcno)
 
-	rm -f $(DSOS) $(STATIC_LIBS)
-	rm -f $(objroot)*.gcov.*
+	-rm -f $(DSOS) $(STATIC_LIBS)
+	-rm -f $(objroot)*.gcov.*
+
+	@echo cleanup done;
 
 .PHONY : clean
+
 #=============================================================================
