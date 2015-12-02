@@ -171,7 +171,7 @@ protected:
 };
 
 template <typename T, uint32_t Capacity, typename CoreTy>
-RingQueueBase<T, Capacity, CoreTy>::RingQueueBase(bool bInitHead  /* = false */)
+RingQueueBase<T, Capacity, CoreTy>::RingQueueBase(bool bInitHead /* = false */)
 {
     //printf("RingQueueBase::RingQueueBase();\n\n");
 
@@ -1338,6 +1338,6 @@ void RingQueue<T, Capacity>::dump_detail()
            this->core.info.head, this->core.info.tail);
 }
 
-}  /* namespace jimi */
+} // namespace jimi */
 
 #endif  /* _JIMI_UTIL_RINGQUEUE_H_ */

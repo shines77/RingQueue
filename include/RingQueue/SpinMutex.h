@@ -41,8 +41,6 @@ namespace jimi {
 // struct SpinMutexCore
 ///////////////////////////////////////////////////////////////////
 
-typedef struct SpinMutexCore SpinMutexCore;
-
 struct SpinMutexCore
 {
     volatile char paddding1[JIMI_CACHE_LINE_SIZE];
@@ -50,13 +48,15 @@ struct SpinMutexCore
     volatile char paddding2[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
 };
 
-typedef struct SpinMutexYieldInfo SpinMutexYieldInfo;
+typedef struct SpinMutexCore SpinMutexCore;
 
 struct SpinMutexYieldInfo
 {
     uint32_t loop_count;
     uint32_t spin_count;
 };
+
+typedef struct SpinMutexYieldInfo SpinMutexYieldInfo;
 
 ///////////////////////////////////////////////////////////////////
 // struct SpinMutexHelper<>
