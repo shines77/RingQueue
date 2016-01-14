@@ -8,6 +8,12 @@
 #define jimic_assert    assert
 #endif // jimic_assert
 
+#if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
+#define UNINITIALIAZE_DATA  0xCCCCCCCCCCCCCCCCULL
+#else
+#define UNINITIALIAZE_DATA  0xCCCCCCCCUL
+#endif
+
 /**
  * macro for address aligned to n bytes
  */
@@ -65,7 +71,7 @@ void dump_memory(void *p, size_t size, bool alignedTo /* = false */,
     printf("--------------------------------------------------------------\n");
     printf("\n");
 
-    if (p == NULL || p == (void *)0xCCCCCCCC) {
+    if (p == NULL || p == (void *)UNINITIALIAZE_DATA) {
         printf("  Can not read the data from the address.\n");
         printf("\n");
         return;

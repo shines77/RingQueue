@@ -2176,7 +2176,7 @@ display_test_info(int time_noerror)
            "BUFFER_SIZE         = %u\n"
            "PUSH_CNT            = %u\n"
            "POP_CNT             = %u\n",
-            MAX_MSG_COUNT, QSIZE, PUSH_CNT, POP_CNT, QSIZE);
+            MAX_MSG_COUNT, QSIZE, PUSH_CNT, POP_CNT);
 #if defined(_WIN64) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IA64) || defined(__amd64__) || defined(__x86_64__)
     printf("x64 Mode            = Yes\n");
 #else
