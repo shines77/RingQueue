@@ -1,6 +1,6 @@
 
-#ifndef _JIMI_DISRUPTOR_RINGQUEUE_H_
-#define _JIMI_DISRUPTOR_RINGQUEUE_H_
+#ifndef _JIMI_DISRUPTOR_RINGQUEUEEX_H_
+#define _JIMI_DISRUPTOR_RINGQUEUEEX_H_
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 #pragma once
@@ -38,12 +38,12 @@
 namespace jimi {
 
 ///////////////////////////////////////////////////////////////////
-// class DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
+// class DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
 ///////////////////////////////////////////////////////////////////
 
 template <typename T, typename SequenceType = int64_t, uint32_t Capacity = 1024U,
           uint32_t Producers = 0, uint32_t Consumers = 0, uint32_t NumThreads = 0>
-class DisruptorRingQueue
+class DisruptorRingQueueEx
 {
 public:
     typedef T                           item_type;
@@ -65,11 +65,19 @@ public:
     typedef const item_type &           const_reference;
 
 public:
+    static const size_type  kCacheLineSize  = JIMI_ROUND_TO_POW2(JIMI_CACHELINE_SIZE);
+
     static const size_type  kCapacity       = (size_type)JIMI_MAX(JIMI_ROUND_TO_POW2(Capacity), 2);
     static const index_type kIndexMask      = (index_type)(kCapacity - 1);
     static const uint32_t   kIndexShift     = JIMI_POPCONUT32(kIndexMask);
 
-    static const size_type  kBlockSize      = JIMI_ALIGNED_TO(sizeof(T), JIMI_CACHELINE_SIZE);
+    static const index_type kIndexLineSize  = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2(kCacheLineSize / sizeof(flag_type)), 1);
+    static const index_type kIndexBoxSize   = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2((kCapacity + kIndexLineSize - 1) / kIndexLineSize), 1);
+
+    static const size_type  kEntryBlockSize     = JIMI_ALIGNED_TO(sizeof(T), kCacheLineSize);
+    static const size_type  kEntryAlignment     = kCacheLineSize;
+    static const size_t     kEntryAlignMask     = (~((size_t)kEntryAlignment - 1));
+    static const size_type  kEntryAlignPadding  = kEntryAlignment - 1;
 
     static const size_type  kProducers      = Producers;
     static const size_type  kConsumers      = Consumers;
@@ -84,12 +92,18 @@ public:
         sequence_type   cachedAvailableSequence;
         bool            processedSequence;
     };
-
     typedef struct PopThreadStackData PopThreadStackData;
 
+    struct EntryBlock_t
+    {
+        item_type   data;
+        char        padding[kEntryBlockSize - sizeof(item_type)];
+    };
+    typedef struct EntryBlock_t block_type;
+
 public:
-    DisruptorRingQueue(bool bFillQueue = true);
-    ~DisruptorRingQueue();
+    DisruptorRingQueueEx(bool bFillQueue = true);
+    ~DisruptorRingQueueEx();
 
 public:
     static sequence_type getMinimumSequence(const Sequence *sequences, const Sequence &workSequence,
@@ -117,7 +131,7 @@ public:
     sequence_type getHighestPublishedSequence(sequence_type lowerBound,
                                               sequence_type availableSequence);
 
-    int push(const T & entry);
+    int push(T const & entry);
     int pop (T & entry, PopThreadStackData & data);
 
     sequence_type waitFor(sequence_type sequence);
@@ -128,36 +142,43 @@ protected:
     Sequence        gatingSequenceCache;
     Sequence        gatingSequenceCaches[kProducersAlloc];
 
-    item_type *     entries;
+    block_type *    entries;
     flag_type *     availableBuffer;
+    item_type *     entriesAlloc;
+    flag_type *     availableBufferAlloc;
 };
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::DisruptorRingQueue(bool bFillQueue /* = true */)
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::DisruptorRingQueueEx(bool bFillQueue /* = true */)
+    : entries(NULL), availableBuffer(NULL), entriesAlloc(NULL), availableBufferAlloc(NULL),
+      cursor(Sequence::INITIAL_CURSOR_VALUE), workSequence(Sequence::INITIAL_CURSOR_VALUE),
+      gatingSequenceCache(Sequence::INITIAL_CURSOR_VALUE)
 {
     init(bFillQueue);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::~DisruptorRingQueue()
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::~DisruptorRingQueueEx()
 {
     // If the queue is allocated on system heap, release them.
     if (kIsAllocOnHeap) {
-        if (this->availableBuffer) {
-            delete [] this->availableBuffer;
+        if (this->availableBufferAlloc) {
+            delete [] this->availableBufferAlloc;
             this->availableBuffer = NULL;
+            this->availableBufferAlloc = NULL;
         }
 
-        if (this->entries != NULL) {
-            delete [] this->entries;
+        if (this->entriesAlloc != NULL) {
+            delete [] this->entriesAlloc;
             this->entries = NULL;
+            this->entriesAlloc = NULL;
         }
     }
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::init(bool bFillQueue /* = true */)
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::init(bool bFillQueue /* = true */)
 {
     this->cursor.set(Sequence::INITIAL_CURSOR_VALUE);
     this->workSequence.set(Sequence::INITIAL_CURSOR_VALUE);
@@ -183,42 +204,50 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::init_queue(bool bFillQueue /* = true */)
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::init_queue(bool bFillQueue /* = true */)
 {
-    item_type *newData = new T[kCapacity];
-    if (newData != NULL) {
+    assert(kEntryBlockSize >= sizeof(item_type));
+    item_type * newEntriesAlloc = (item_type *)::malloc(kEntryBlockSize * kCapacity + kEntryAlignPadding);
+    if (newEntriesAlloc != NULL) {
+        block_type * newEntries = reinterpret_cast<block_type *>(reinterpret_cast<uintptr_t>(
+            reinterpret_cast<char *>(newEntriesAlloc) + kEntryAlignPadding) & (uintptr_t)kEntryAlignMask);
         if (bFillQueue) {
-            memset((void *)newData, 0, sizeof(item_type) * kCapacity);
+            ::memset((void *)newEntries, 0, kEntryBlockSize * kCapacity);
         }
-        Jimi_MemoryBarrier();
-        this->entries = newData;
+        //Jimi_MemoryBarrier();
+        Jimi_WriteCompilerBarrier();
+        this->entries = newEntries;
+        this->entriesAlloc = newEntriesAlloc;
     }
 
-    flag_type *newBufferData = new flag_type[kCapacity];
-    if (newBufferData != NULL) {
+    flag_type * newBufferAlloc = (flag_type *)::malloc(kIndexBoxSize * kIndexLineSize * sizeof(flag_type) + kEntryAlignPadding);
+    if (newBufferAlloc != NULL) {
+         flag_type * newBufferData = reinterpret_cast<flag_type *>(reinterpret_cast<uintptr_t>(
+                reinterpret_cast<char *>(newBufferAlloc) + kEntryAlignPadding) & (uintptr_t)kEntryAlignMask);
         if (bFillQueue) {
-            //memset((void *)newBufferData, 0, sizeof(flag_type) * kCapacity);
-            for (int i = 0; i < kCapacity; ++i) {
+            for (unsigned i = 0; i < (kIndexBoxSize * kIndexLineSize); ++i) {
                 newBufferData[i] = (flag_type)(-1);
             }
         }
-        Jimi_MemoryBarrier();
+        //Jimi_MemoryBarrier();
+        Jimi_WriteCompilerBarrier();
         this->availableBuffer = newBufferData;
+        this->availableBufferAlloc = newBufferAlloc;
     }
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::dump()
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::dump()
 {
     //ReleaseUtils::dump(&core, sizeof(core));
     dump_memory(this, sizeof(*this), false, 16, 0, 0);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::dump_detail()
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::dump_detail()
 {
     printf("---------------------------------------------------------\n");
-    printf("DisruptorRingQueue: (head = %llu, tail = %llu)\n",
+    printf("DisruptorRingQueueEx: (head = %llu, tail = %llu)\n",
            this->cursor.get(), this->workSequence.get());
     printf("---------------------------------------------------------\n");
 
@@ -227,8 +256,8 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-typename DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::size_type
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sizes() const
+typename DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::size_type
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sizes() const
 {
     sequence_type head, tail;
 
@@ -242,7 +271,7 @@ DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>:
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::start()
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::start()
 {
     sequence_type cursor = this->cursor.get();
     this->workSequence.set(cursor);
@@ -261,7 +290,7 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::shutdown(int32_t timeOut /* = -1 */)
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::shutdown(int32_t timeOut /* = -1 */)
 {
     // TODO: do shutdown procedure
 }
@@ -269,8 +298,8 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
 /* static */
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-typename DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sequence_type
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::
+typename DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sequence_type
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::
     getMinimumSequence(const Sequence *sequences, const Sequence &workSequence, sequence_type mininum)
 {
     assert(sequences != NULL);
@@ -319,7 +348,7 @@ DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>:
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::publish(sequence_type sequence)
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::publish(sequence_type sequence)
 {
     Jimi_WriteCompilerBarrier();
 
@@ -328,7 +357,7 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::setAvailable(sequence_type sequence)
+void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::setAvailable(sequence_type sequence)
 {
     index_type index = (index_type)((index_type)sequence &  kIndexMask);
     flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
@@ -336,26 +365,28 @@ void DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThre
     if (kIsAllocOnHeap) {
         assert(this->availableBuffer != NULL);
     }
+    index_type newIndex = (index & (kIndexBoxSize - 1)) * kIndexLineSize + (index / kIndexBoxSize);
     Jimi_WriteCompilerBarrier();
-    this->availableBuffer[index] = flag;
+    this->availableBuffer[newIndex] = flag;
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-bool DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::isAvailable(sequence_type sequence)
+bool DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::isAvailable(sequence_type sequence)
 {
     index_type index = (index_type)((index_type)sequence &  kIndexMask);
     flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
 
-    flag_type  flagValue = this->availableBuffer[index];
+    index_type newIndex = (index & (kIndexBoxSize - 1)) * kIndexLineSize + (index / kIndexBoxSize);
+    flag_type  flagValue = this->availableBuffer[newIndex];
     Jimi_ReadCompilerBarrier();
     return (flagValue == flag);
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-typename DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sequence_type
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::
+typename DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sequence_type
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::
         getHighestPublishedSequence(sequence_type lowerBound, sequence_type availableSequence)
 {
     for (sequence_type sequence = lowerBound; sequence <= availableSequence; ++sequence) {
@@ -368,8 +399,8 @@ DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>:
 }
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
-typename DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::Sequence *
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::getGatingSequences(int index)
+typename DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::Sequence *
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::getGatingSequences(int index)
 {
     if (index >= 0 && index < kCapacity) {
         return &this->gatingSequences[index];
@@ -379,7 +410,7 @@ DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>:
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::push(const T & entry)
+int DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::push(T const & entry)
 {
     sequence_type current, nextSequence;
     do {
@@ -392,7 +423,7 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current) {
         //if ((current - cachedGatingSequence) >= kIndexMask) {
-            sequence_type gatingSequence = DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
+            sequence_type gatingSequence = DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
                                             ::getMinimumSequence(this->gatingSequences, this->workSequence, current);
             //current = this->cursor.get();
             if (wrapPoint > gatingSequence) {
@@ -420,7 +451,7 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
         }
     } while (true);
 
-    this->entries[nextSequence & kIndexMask] = entry;
+    this->entries[nextSequence & kIndexMask].data = entry;
     //this->entries[nextSequence & kIndexMask].copy(entry);
 
     Jimi_WriteCompilerBarrier();
@@ -433,7 +464,7 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::pop(T & entry, PopThreadStackData & data)
+int DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::pop(T & entry, PopThreadStackData & data)
 {
     assert(data.tailSequence != NULL);
 
@@ -465,7 +496,7 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
         //if ((cachedAvailableSequence - current) <= kIndexMask * 2) {
         //if ((cachedAvailableSequence - nextSequence) <= (kIndexMask + 1)) {
             // Read the message data
-            entry = this->entries[data.nextSequence & kIndexMask];
+            entry = this->entries[data.nextSequence & kIndexMask].data;
 
             Jimi_ReadCompilerBarrier();
             //data.tailSequence->set(data.nextSequence);
@@ -486,8 +517,8 @@ int DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThrea
 
 template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Producers, uint32_t Consumers, uint32_t NumThreads>
 inline
-typename DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sequence_type
-DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::waitFor(sequence_type sequence)
+typename DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::sequence_type
+DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::waitFor(sequence_type sequence)
 {
     sequence_type availableSequence;
 
@@ -554,7 +585,7 @@ void reserve_code()
         }
 
         if (maybeIsFull || tail < wrapPoint || tail > head) {
-            sequence_type gatingSequence = DisruptorRingQueue<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
+            sequence_type gatingSequence = DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
                                             ::getMinimumSequence(this->gatingSequences, this->workSequence, head);
             if (maybeIsFull || wrapPoint > gatingSequence) {
                 // Push() failed, maybe queue is full.
@@ -587,4 +618,4 @@ void reserve_code()
 
 }  /* namespace jimi */
 
-#endif  /* _JIMI_DISRUPTOR_RINGQUEUE_H_ */
+#endif  /* _JIMI_DISRUPTOR_RINGQUEUEEX_H_ */

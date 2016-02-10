@@ -10,8 +10,8 @@
 #include "vs_stdbool.h"
 #include <emmintrin.h>
 
-#ifndef JIMI_CACHE_LINE_SIZE
-#define JIMI_CACHE_LINE_SIZE    64
+#ifndef JIMI_CACHELINE_SIZE
+#define JIMI_CACHELINE_SIZE     64
 #endif
 
 #ifndef JIMI_MIN
@@ -89,7 +89,7 @@
 #define ALIGN_PREFIX(N)         __declspec(align(N))
 #define ALIGN_SUFFIX(N)
 
-#define CACHE_ALIGN_PREFIX      __declspec(align(JIMI_CACHE_LINE_SIZE))
+#define CACHE_ALIGN_PREFIX      __declspec(align(JIMI_CACHELINE_SIZE))
 #define CACHE_ALIGN_SUFFIX
 
 #if defined(__INTER_COMPILER) || defined(__ICC)

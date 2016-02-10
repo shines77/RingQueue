@@ -148,6 +148,8 @@
 /// disruptor 3.3 (C++版)
 #define FUNC_DISRUPTOR_RINGQUEUE        10
 
+#define FUNC_DISRUPTOR_RINGQUEUE_EX     11
+
 ///
 /// RingQueue测试函数类型定义: (如果该宏TEST_FUNC_TYPE未定义, 则等同于定义为0)
 ///

@@ -44,6 +44,7 @@
 #include "MessageEvent.h"
 #include "DisruptorRingQueue.h"
 #include "DisruptorRingQueueOld.h"
+#include "DisruptorRingQueueEx.h"
 
 #include "SpinMutex.h"
 
@@ -107,8 +108,10 @@ typedef CValueEvent<uint64_t>   ValueEvent_t;
 
 #if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
 typedef DisruptorRingQueue<ValueEvent_t, int64_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueue_t;
+typedef DisruptorRingQueueEx<ValueEvent_t, int64_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueueEx_t;
 #else
 typedef DisruptorRingQueue<ValueEvent_t, int32_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueue_t;
+typedef DisruptorRingQueueEx<ValueEvent_t, int32_t, QSIZE, PUSH_CNT, POP_CNT> DisruptorRingQueueEx_t;
 #endif
 
 typedef SingleRingQueue<ValueEvent_t, uint32_t, QSIZE> SingleRingQueue_t;
@@ -204,6 +207,7 @@ RingQueue_push_task(void * arg)
     struct queue *q;
     RingQueue_t *queue;
     DisruptorRingQueue_t *disRingQueue;
+    DisruptorRingQueueEx_t *disRingQueueEx;
     message_t *msg;
     ValueEvent_t *valueEvent = NULL;
     uint64_t start;
@@ -211,7 +215,7 @@ RingQueue_push_task(void * arg)
 
 #if (!defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)) \
     || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
-        || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE))
+    || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX))
     int32_t pause_cnt;
     uint32_t loop_cnt, yeild_cnt, spin_cnt = 1;
 #endif
@@ -223,6 +227,7 @@ RingQueue_push_task(void * arg)
     q = NULL;
     queue = NULL;
     disRingQueue = NULL;
+    disRingQueueEx = NULL;
 
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
@@ -236,6 +241,11 @@ RingQueue_push_task(void * arg)
         else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
             disRingQueue = (DisruptorRingQueue_t *)thread_arg->queue;
             if (disRingQueue == NULL)
+                return NULL;
+        }
+        else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX) {
+            disRingQueueEx = (DisruptorRingQueueEx_t *)thread_arg->queue;
+            if (disRingQueueEx == NULL)
                 return NULL;
         }
         else {
@@ -405,12 +415,47 @@ RingQueue_push_task(void * arg)
         }
     }
     else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
-        // disruptor 3.3 (C++版), FUNC_DISRUPTOR_RINGQUEUE
+        // disruptor 3.3 (C++版)
         static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 20;
         for (i = 0; i < MAX_PUSH_MSG_COUNT; ++i) {
             loop_cnt = 0;
             spin_cnt = 1;
             while (disRingQueue->push(*valueEvent) == -1) {
+#if 1
+                if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                    spin_cnt = spin_cnt + 1;
+                }
+                loop_cnt++;
+#endif
+                fail_cnt++;
+            };
+            valueEvent++;
+        }
+    }
+    else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX) {
+        // disruptor 3.3 (C++版), 改进版
+        static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 20;
+        for (i = 0; i < MAX_PUSH_MSG_COUNT; ++i) {
+            loop_cnt = 0;
+            spin_cnt = 1;
+            while (disRingQueueEx->push(*valueEvent) == -1) {
 #if 1
                 if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
                     yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
@@ -537,6 +582,41 @@ RingQueue_push_task(void * arg)
             printf("Push(): Thread id = %2d, count = %8d, fail_cnt = %8d\n", idx, i, fail_cnt);
         }
 #endif
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX)
+        static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 20;
+        loop_cnt = 0;
+        spin_cnt = 1;
+        while (disRingQueueEx->push(*valueEvent) == -1) {
+#if 1
+            if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
+                yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
+                if ((yeild_cnt & 63) == 63) {
+                    jimi_wsleep(1);
+                }
+                else if ((yeild_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
+                }
+            }
+            else {
+                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                }
+                spin_cnt = spin_cnt + 1;
+            }
+            loop_cnt++;
+#endif
+            fail_cnt++;
+        }
+        valueEvent++;
+        push_cnt++;
+        if (i == MAX_PUSH_MSG_COUNT - 1)
+            fail_cnt++;
 #else
         // Unknown test function type.
 #endif
@@ -573,6 +653,7 @@ RingQueue_pop_task(void * arg)
     struct queue *q;
     RingQueue_t *queue;
     DisruptorRingQueue_t *disRingQueue;
+    DisruptorRingQueueEx_t *disRingQueueEx;
     
     message_t *msg = NULL;
     message_t **record_list;
@@ -583,7 +664,7 @@ RingQueue_pop_task(void * arg)
 
 #if (!defined(TEST_FUNC_TYPE) || (TEST_FUNC_TYPE == 0)) \
     || (defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
-        || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE))
+    || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX))
     int32_t pause_cnt;
     uint32_t loop_cnt, yeild_cnt, spin_cnt = 1;
 #endif
@@ -595,6 +676,7 @@ RingQueue_pop_task(void * arg)
     q = NULL;
     queue = NULL;
     disRingQueue = NULL;
+    disRingQueueEx = NULL;
 
     thread_arg = (thread_arg_t *)arg;
     if (thread_arg) {
@@ -608,6 +690,11 @@ RingQueue_pop_task(void * arg)
         else if (funcType == FUNC_DISRUPTOR_RINGQUEUE) {
             disRingQueue = (DisruptorRingQueue_t *)thread_arg->queue;
             if (disRingQueue == NULL)
+                return NULL;
+        }
+        else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX) {
+            disRingQueueEx = (DisruptorRingQueueEx_t *)thread_arg->queue;
+            if (disRingQueueEx == NULL)
                 return NULL;
         }
         else {
@@ -893,6 +980,73 @@ RingQueue_pop_task(void * arg)
             pTailSequence->setMaxValue();
         }
     }
+    else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX) {
+        // C++ 版 Disruptor 3.30, 改进版
+        loop_cnt = 0;
+        spin_cnt = 1;
+
+        ValueEvent_t _ValueEvent;
+        valueEvent = &_ValueEvent;
+        DisruptorRingQueueEx_t::PopThreadStackData stackData;
+        DisruptorRingQueueEx_t::Sequence tailSequence;
+        DisruptorRingQueueEx_t::Sequence *pTailSequence = disRingQueueEx->getGatingSequences(idx);
+        if (pTailSequence == NULL)
+            pTailSequence = &tailSequence;
+        tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
+        stackData.tailSequence = pTailSequence;
+        stackData.nextSequence = stackData.tailSequence->get();
+        stackData.cachedAvailableSequence = Sequence::INITIAL_CURSOR_VALUE;
+        stackData.processedSequence = true;
+
+        static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 5;
+
+        while (true) {
+            if (disRingQueueEx->pop(*valueEvent, stackData) == 0) {
+                *dis_record_list++ = *valueEvent;
+                loop_cnt = 0;
+                spin_cnt = 1;
+                pop_cnt++;
+                if (pop_cnt >= MAX_POP_MSG_COUNT)
+                    break;
+
+#if defined(DISPLAY_DEBUG_INFO) && (DISPLAY_DEBUG_INFO != 0)
+                if ((pop_cnt & 0x03FF) == 0x03FF) {
+                    printf("Pop():  Thread id = %2d, count = %8d, fail_cnt = %8d\n", idx, pop_cnt, fail_cnt);
+                }
+#endif
+            }
+            else {
+                fail_cnt++;
+#if 1
+                if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
+                    yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
+                    if ((yeild_cnt & 63) == 63) {
+                        jimi_wsleep(1);
+                    }
+                    else if ((yeild_cnt & 3) == 3) {
+                        jimi_wsleep(0);
+                    }
+                    else {
+                        if (!jimi_yield()) {
+                            jimi_wsleep(0);
+                        }
+                    }
+                }
+                else {
+                    for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                        jimi_mm_pause();
+                    }
+                    spin_cnt = spin_cnt + 1;
+                }
+                loop_cnt++;
+#endif
+            }
+        }
+
+        if (pTailSequence) {
+            pTailSequence->setMaxValue();
+        }
+    }
     else {
         // TODO: pop() - Unknown test function type
     }
@@ -900,7 +1054,7 @@ RingQueue_pop_task(void * arg)
 #else  /* !TEST_FUNC_TYPE */
 
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
-        || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+    || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX)
     loop_cnt = 0;
     spin_cnt = 1;
 #endif
@@ -923,6 +1077,70 @@ RingQueue_pop_task(void * arg)
 
     while (true) {
         if (disRingQueue->pop(*valueEvent, stackData) == 0) {
+            *dis_record_list++ = *valueEvent;
+            loop_cnt = 0;
+            spin_cnt = 1;
+            pop_cnt++;
+            if (pop_cnt >= MAX_POP_MSG_COUNT)
+                break;
+
+#if defined(DISPLAY_DEBUG_INFO) && (DISPLAY_DEBUG_INFO != 0)
+            if ((pop_cnt & 0x03FF) == 0x03FF) {
+                printf("Pop():  Thread id = %2d, pop_cnt = %8d, fail_cnt = %8d\n", idx, pop_cnt, fail_cnt);
+            }
+#endif
+        }
+        else {
+            fail_cnt++;
+  #if 1
+            if (loop_cnt >= DISRUPTOR_YIELD_THRESHOLD) {
+                yeild_cnt = loop_cnt - DISRUPTOR_YIELD_THRESHOLD;
+                if ((yeild_cnt & 63) == 63) {
+                    jimi_wsleep(1);
+                }
+                else if ((yeild_cnt & 3) == 3) {
+                    jimi_wsleep(0);
+                }
+                else {
+                    if (!jimi_yield()) {
+                        jimi_wsleep(0);
+                        //jimi_mm_pause();
+                    }
+                }
+            }
+            else {
+                for (pause_cnt = spin_cnt; pause_cnt > 0; --pause_cnt) {
+                    jimi_mm_pause();
+                }
+                spin_cnt = spin_cnt + 1;
+            }
+            loop_cnt++;
+  #endif
+        }
+    }
+
+    if (pTailSequence) {
+        //pTailSequence->set(INT64_MAX);
+        pTailSequence->setMaxValue();
+    }
+#elif defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX)
+    ValueEvent_t _ValueEvent;
+    valueEvent = &_ValueEvent;
+    DisruptorRingQueueEx_t::PopThreadStackData stackData;
+    DisruptorRingQueueEx_t::Sequence tailSequence;
+    DisruptorRingQueueEx_t::Sequence *pTailSequence = disRingQueueEx->getGatingSequences(idx);
+    if (pTailSequence == NULL)
+        pTailSequence = &tailSequence;
+    tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
+    stackData.tailSequence = pTailSequence;
+    stackData.nextSequence = stackData.tailSequence->get();
+    stackData.cachedAvailableSequence = Sequence::INITIAL_CURSOR_VALUE;
+    stackData.processedSequence = true;
+
+    static const uint32_t DISRUPTOR_YIELD_THRESHOLD = 5;
+
+    while (true) {
+        if (disRingQueueEx->pop(*valueEvent, stackData) == 0) {
             *dis_record_list++ = *valueEvent;
             loop_cnt = 0;
             spin_cnt = 1;
@@ -993,7 +1211,7 @@ RingQueue_pop_task(void * arg)
         if (msg != NULL) {
             *record_list++ = (struct message_t *)msg;
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
-            || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+            || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX)
             loop_cnt = 0;
 #endif
             pop_cnt++;
@@ -1003,7 +1221,7 @@ RingQueue_pop_task(void * arg)
         else {
             fail_cnt++;
 #if defined(TEST_FUNC_TYPE) && (TEST_FUNC_TYPE == FUNC_RINGQUEUE_SPIN2_PUSH \
-            || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE)
+            || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE || TEST_FUNC_TYPE == FUNC_DISRUPTOR_RINGQUEUE_EX)
   #if 1
             if (loop_cnt >= YIELD_THRESHOLD) {
                 yeild_cnt = loop_cnt - YIELD_THRESHOLD;
@@ -1615,6 +1833,7 @@ void RingQueue_Test(int funcType, bool bContinue = true)
     struct queue *q;
     RingQueue_t ringQueue(true, true);
     DisruptorRingQueue_t disRingQueue;
+    DisruptorRingQueueEx_t disRingQueueEx;
     
     pthread_t kids[POP_CNT + PUSH_CNT] = { 0 };
     thread_arg_t *thread_arg;
@@ -1668,6 +1887,10 @@ void RingQueue_Test(int funcType, bool bContinue = true)
         // disruptor 3.3 (C++版)
         printf("DisruptorRingQueue test: (FuncId = %d)\n", funcType);
     }
+    else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX) {
+        // disruptor 3.3 (C++版) 改进版
+        printf("DisruptorRingQueueEx test: (FuncId = %d)\n", funcType);
+    }
     else {
         printf("a unknown test function: (FuncId = %d)\n", funcType);
     }
@@ -1715,6 +1938,8 @@ void RingQueue_Test(int funcType, bool bContinue = true)
             thread_arg->queue = (void *)q;
         else if (funcType == FUNC_DISRUPTOR_RINGQUEUE)
             thread_arg->queue = (void *)&disRingQueue;
+        else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX)
+            thread_arg->queue = (void *)&disRingQueueEx;
         else
             thread_arg->queue = (void *)&ringQueue;
         RingQueue_start_thread(i, RingQueue_push_task, (void *)thread_arg, &kids[i]);
@@ -1727,6 +1952,8 @@ void RingQueue_Test(int funcType, bool bContinue = true)
             thread_arg->queue = (void *)q;
         else if (funcType == FUNC_DISRUPTOR_RINGQUEUE)
             thread_arg->queue = (void *)&disRingQueue;
+        else if (funcType == FUNC_DISRUPTOR_RINGQUEUE_EX)
+            thread_arg->queue = (void *)&disRingQueueEx;
         else
             thread_arg->queue = (void *)&ringQueue;
         RingQueue_start_thread(i + PUSH_CNT, RingQueue_pop_task, (void *)thread_arg,
@@ -1776,7 +2003,7 @@ void RingQueue_Test(int funcType, bool bContinue = true)
 
     //jimi_console_readkeyln(false, true, false);
 
-    if (funcType == FUNC_DISRUPTOR_RINGQUEUE)
+    if (funcType == FUNC_DISRUPTOR_RINGQUEUE || funcType == FUNC_DISRUPTOR_RINGQUEUE_EX)
         disruptor_pop_list_verify();
     else
         pop_list_verify();
@@ -2283,6 +2510,48 @@ void run_some_queue_tests(void)
     event2.update(ev2);
     disRingQueue2.push(event2);
     disRingQueue2.push(event6);
+    disRingQueue2.push(event6);
+
+    disRingQueue2.pop (ev3, stackData);
+    disRingQueue2.pop (ev4, stackData);
+    disRingQueue2.pop (ev5, stackData);
+
+    disRingQueue2.dump_detail();
+    disRingQueue2.dump();
+
+    jimi_console_readkeyln(true, true, false);
+}
+
+void run_some_queue_ex_tests(void)
+{
+    SmallRingQueue<uint64_t, 1024> smallRingQueue;
+    uint64_t ev = 1;
+    uint64_t *msg;
+    smallRingQueue.push(&ev);
+    msg = smallRingQueue.pop();
+
+    DisruptorRingQueueEx<CValueEvent<uint64_t>, int64_t, QSIZE, PUSH_CNT, POP_CNT> disRingQueue2;
+    CValueEvent<uint64_t> event2;
+    volatile CValueEvent<uint64_t> ev2(0x12345678ULL);
+    CValueEvent<uint64_t> ev3(ev2);
+    CValueEvent<uint64_t> ev4(ev3);
+    CValueEvent<uint64_t> ev5;
+    CValueEvent<uint64_t> event6(0x66666666U);
+    ev5 = ev2;
+    ev5 = ev3;
+
+    DisruptorRingQueueEx<CValueEvent<uint64_t>, int64_t, QSIZE, PUSH_CNT, POP_CNT>::PopThreadStackData stackData;
+    Sequence tailSequence;
+    tailSequence.set(Sequence::INITIAL_CURSOR_VALUE);
+    stackData.tailSequence = &tailSequence;
+    stackData.nextSequence = stackData.tailSequence->get();
+    stackData.cachedAvailableSequence = Sequence::INITIAL_CURSOR_VALUE;
+    stackData.processedSequence = true;
+
+    event2.update(ev2);
+    disRingQueue2.push(event2);
+    disRingQueue2.push(event6);
+    disRingQueue2.push(event6);
 
     disRingQueue2.pop (ev3, stackData);
     disRingQueue2.pop (ev4, stackData);
@@ -2336,6 +2605,7 @@ int main(int argn, char * argv[])
 #ifdef _DEBUG
     //run_some_queue_tests();
 #endif
+    run_some_queue_ex_tests();
 
     test_msg_init();
     popmsg_list_init();
@@ -2374,7 +2644,10 @@ int main(int argn, char * argv[])
     RingQueue_Test(FUNC_RINGQUEUE_SPIN2_PUSH, true);
 
     // C++ 版的 Disruptor (多生产者 + 多消费者)实现方案.
-    RingQueue_Test(FUNC_DISRUPTOR_RINGQUEUE, bContinue);
+    RingQueue_Test(FUNC_DISRUPTOR_RINGQUEUE, true);
+
+    // C++ 版的 Disruptor (多生产者 + 多消费者)实现方案.
+    RingQueue_Test(FUNC_DISRUPTOR_RINGQUEUE_EX, bContinue);
 
     // 调用RingQueue.spin3_push().
     //RingQueue_Test(FUNC_RINGQUEUE_SPIN3_PUSH, bContinue);

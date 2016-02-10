@@ -97,7 +97,7 @@ int PTW32_CDECL pthread_join(pthread_t thread, void **value_ptr)
     else
         dwMillisecs = (DWORD)(*value_ptr);
     dwResponse = WaitForSingleObject(thread, dwMillisecs);
-    return ((dwResponse == WAIT_OBJECT_0) ? 0 : (int)-1);;
+    return ((dwResponse == WAIT_OBJECT_0) ? 0 : (int)-1);
 }
 
 /*
@@ -346,7 +346,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 #endif
 
     if (echo) {
-        printf("dwProcessMask = %u, dwSystemMask = %u\n", dwProcessAffinity, dwSystemAffinity);
+        printf("dwProcessMask = %Iu, dwSystemMask = %Iu\n", dwProcessAffinity, dwSystemAffinity);
     }
 
     // Adjust dwAffinityMask
@@ -368,7 +368,7 @@ int PTW32_CDECL pthread_setaffinity_np(pthread_t thread_in, size_t cpuset_size,
 #endif
     dwAffinityMaskOld = SetThreadAffinityMask(hTargetThread, dwAffinityMask);
     if (echo) {
-        printf("dwMask = %u, dwOldMask = %u\n", dwAffinityMask, dwAffinityMaskOld);
+        printf("dwMask = %Iu, dwOldMask = %Iu\n", dwAffinityMask, dwAffinityMaskOld);
     }
 
     if (echo) {

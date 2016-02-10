@@ -32,13 +32,13 @@ typedef uint32_t sequence_t;
 struct CACHE_ALIGN_PREFIX seqence_c32
 {
     volatile uint32_t   value;
-    char                padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t) * 1];
+    char                padding1[JIMI_CACHELINE_SIZE - sizeof(uint32_t) * 1];
 } CACHE_ALIGN_SUFFIX;
 
 struct CACHE_ALIGN_PREFIX seqence_c64
 {
     volatile uint64_t   value;
-    char                padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t) * 1];
+    char                padding1[JIMI_CACHELINE_SIZE - sizeof(uint32_t) * 1];
 } CACHE_ALIGN_SUFFIX;
 
 #if defined(USE_64BIT_SEQUENCE) && (USE_64BIT_SEQUENCE != 0)
@@ -72,9 +72,9 @@ class CACHE_ALIGN_PREFIX seq_spinlock_core
 {
 public:
     static volatile CACHE_ALIGN_PREFIX T lock;
-    static char padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
-                      ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
-                      : (JIMI_CACHE_LINE_SIZE)];
+    static char padding[(JIMI_CACHELINE_SIZE >= sizeof(T))
+                      ? (JIMI_CACHELINE_SIZE - sizeof(T))
+                      : (JIMI_CACHELINE_SIZE)];
 } CACHE_ALIGN_SUFFIX;
 
 // This is a single lock that is used for all synchronized accesses if
@@ -87,9 +87,9 @@ template <typename T>
 volatile CACHE_ALIGN_PREFIX T seq_spinlock_core<T>::lock = static_cast<T>(0);
 
 template <typename T>
-char seq_spinlock_core<T>::padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
-                                 ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
-                                 : (JIMI_CACHE_LINE_SIZE)] = { 0 };
+char seq_spinlock_core<T>::padding[(JIMI_CACHELINE_SIZE >= sizeof(T))
+                                 ? (JIMI_CACHELINE_SIZE - sizeof(T))
+                                 : (JIMI_CACHELINE_SIZE)] = { 0 };
 
 // Use a spinlock for multi-word accesses
 template <typename T>
@@ -253,9 +253,9 @@ public:
 
 protected:
     volatile T  value;
-    char        padding[(JIMI_CACHE_LINE_SIZE >= sizeof(T))
-                      ? (JIMI_CACHE_LINE_SIZE - sizeof(T))
-                      : (JIMI_CACHE_LINE_SIZE)];
+    char        padding[(JIMI_CACHELINE_SIZE >= sizeof(T))
+                      ? (JIMI_CACHELINE_SIZE - sizeof(T))
+                      : (JIMI_CACHELINE_SIZE)];
 
 public:
     SequenceBase() : value(INITIAL_CURSOR_VALUE) {

@@ -39,10 +39,10 @@ struct RingQueueHead
 struct RingQueueHead
 {
     volatile uint32_t head;
-    char padding1[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
+    char padding1[JIMI_CACHELINE_SIZE - sizeof(uint32_t)];
 
     volatile uint32_t tail;
-    char padding2[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
+    char padding2[JIMI_CACHELINE_SIZE - sizeof(uint32_t)];
 };
 #endif
 

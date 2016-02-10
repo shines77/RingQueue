@@ -184,6 +184,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\include\RingQueue\console.h" />
     <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueue.h" />
+    <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueueEx.h" />
     <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueueOld.h" />
     <ClInclude Include="..\..\..\include\RingQueue\dump_mem.h" />
     <ClInclude Include="..\..\..\include\RingQueue\get_char.h" />

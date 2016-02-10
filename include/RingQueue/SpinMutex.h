@@ -30,7 +30,7 @@
 #include "dump_mem.h"
 
 #ifndef JIMI_CACHE_LINE_SIZE
-#define JIMI_CACHE_LINE_SIZE    64
+#define JIMI_CACHELINE_SIZE    64
 #endif
 
 #define SPINMUTEX_DEFAULT_SPIN_COUNT    4000
@@ -43,9 +43,9 @@ namespace jimi {
 
 struct SpinMutexCore
 {
-    volatile char paddding1[JIMI_CACHE_LINE_SIZE];
+    volatile char paddding1[JIMI_CACHELINE_SIZE];
     volatile uint32_t Status;
-    volatile char paddding2[JIMI_CACHE_LINE_SIZE - sizeof(uint32_t)];
+    volatile char paddding2[JIMI_CACHELINE_SIZE - sizeof(uint32_t)];
 };
 
 typedef struct SpinMutexCore SpinMutexCore;
