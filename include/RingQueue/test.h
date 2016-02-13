@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
-#define QSIZE                   (1 << 10)
+#define QSIZE                   (1 << 16)
 /// 下面一行请不要修改, 切记!!! qmask = qsize - 1
 #define QMASK                   (QSIZE - 1)
 
@@ -20,7 +20,7 @@
 #if defined(_DEBUG)
 #define MAX_MSG_COUNT           80000
 #else
-#define MAX_MSG_COUNT           (8000000 * 1)
+#define MAX_MSG_COUNT           (8000000 * 8)
 #endif
 
 /// 等同于MAX_MSG_COUNT

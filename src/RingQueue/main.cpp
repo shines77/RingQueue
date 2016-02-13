@@ -2605,7 +2605,7 @@ int main(int argn, char * argv[])
 #ifdef _DEBUG
     //run_some_queue_tests();
 #endif
-    run_some_queue_ex_tests();
+    //run_some_queue_ex_tests();
 
     test_msg_init();
     popmsg_list_init();

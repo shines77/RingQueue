@@ -214,8 +214,8 @@ void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumTh
         if (bFillQueue) {
             ::memset((void *)newEntries, 0, kEntryBlockSize * kCapacity);
         }
-        //Jimi_MemoryBarrier();
-        Jimi_WriteCompilerBarrier();
+        Jimi_MemoryBarrier();
+        //Jimi_WriteCompilerBarrier();
         this->entries = newEntries;
         this->entriesAlloc = newEntriesAlloc;
     }
@@ -229,8 +229,8 @@ void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumTh
                 newBufferData[i] = (flag_type)(-1);
             }
         }
-        //Jimi_MemoryBarrier();
-        Jimi_WriteCompilerBarrier();
+        Jimi_MemoryBarrier();
+        //Jimi_WriteCompilerBarrier();
         this->availableBuffer = newBufferData;
         this->availableBufferAlloc = newBufferAlloc;
     }
