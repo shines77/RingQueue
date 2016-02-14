@@ -35,6 +35,9 @@
 #define JIMI_ALIGNED_TO(n, alignment)   \
     (((n) + ((alignment) - 1)) & ~(size_t)((alignment) - 1))
 
+// 打开 Entries 高级存储方式
+#define ENTRIES_ADVANCED_SAVE_MODE      1
+
 namespace jimi {
 
 ///////////////////////////////////////////////////////////////////
@@ -72,10 +75,16 @@ public:
     static const uint32_t   kIndexShift     = JIMI_POPCONUT32(kIndexMask);
 
     static const index_type kIndexLineSize  = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2(kCacheLineSize / sizeof(flag_type)), 1);
-    static const index_type kIndexBoxSize   = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2((kCapacity + kIndexLineSize - 1) / kIndexLineSize), 1);
+    static const index_type kIndexBoxes     = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2((kCapacity + kIndexLineSize - 1) / kIndexLineSize), 8);
 
-    static const size_type  kEntryBlockSize     = JIMI_ALIGNED_TO(sizeof(T), kCacheLineSize);
-    static const size_type  kEntryAlignment     = kCacheLineSize;
+#if defined(ENTRIES_ADVANCED_SAVE_MODE) && (ENTRIES_ADVANCED_SAVE_MODE != 0)
+    static const size_type  kEntryCellSize  = JIMI_ROUND_TO_POW2(JIMI_ALIGNED_TO(sizeof(item_type), 4));
+    static const index_type kEntryLineSize  = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2(kCacheLineSize / kEntryCellSize), 1);
+    static const index_type kEntryBoxes     = (index_type)JIMI_MAX(JIMI_ROUND_TO_POW2((kCapacity + kEntryLineSize - 1) / kEntryLineSize), 8);
+#else
+    static const size_type  kEntryCellSize  = JIMI_ALIGNED_TO(sizeof(item_type), kCacheLineSize);
+#endif // ENTRIES_ADVANCED_SAVE_MODE != 0
+    static const size_type  kEntryAlignment = kCacheLineSize;
     static const size_t     kEntryAlignMask     = (~((size_t)kEntryAlignment - 1));
     static const size_type  kEntryAlignPadding  = kEntryAlignment - 1;
 
@@ -94,12 +103,19 @@ public:
     };
     typedef struct PopThreadStackData PopThreadStackData;
 
-    struct EntryBlock_t
+    template <bool isAligned>
+    struct EntryCell_t
     {
-        item_type   data;
-        char        padding[kEntryBlockSize - sizeof(item_type)];
+        item_type   entry;
     };
-    typedef struct EntryBlock_t block_type;
+
+    template <>
+    struct EntryCell_t<false>
+    {
+        item_type   entry;
+        char        padding[kEntryCellSize - sizeof(item_type)];
+    };
+    typedef struct EntryCell_t<(bool)(kEntryCellSize == sizeof(item_type))> cell_type;
 
 public:
     DisruptorRingQueueEx(bool bFillQueue = true);
@@ -142,7 +158,7 @@ protected:
     Sequence        gatingSequenceCache;
     Sequence        gatingSequenceCaches[kProducersAlloc];
 
-    block_type *    entries;
+    cell_type *     entries;
     flag_type *     availableBuffer;
     item_type *     entriesAlloc;
     flag_type *     availableBufferAlloc;
@@ -206,26 +222,42 @@ template <typename T, typename SequenceType, uint32_t Capacity, uint32_t Produce
 inline
 void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>::init_queue(bool bFillQueue /* = true */)
 {
-    assert(kEntryBlockSize >= sizeof(item_type));
-    item_type * newEntriesAlloc = (item_type *)::malloc(kEntryBlockSize * kCapacity + kEntryAlignPadding);
+    assert(kEntryCellSize >= sizeof(item_type));
+    assert((kEntryBoxes * kEntryLineSize) >= kCapacity);
+#if defined(ENTRIES_ADVANCED_SAVE_MODE) && (ENTRIES_ADVANCED_SAVE_MODE != 0)
+    item_type * newEntriesAlloc = (item_type *)::malloc(kEntryBoxes * kEntryLineSize * kEntryCellSize + kEntryAlignPadding);
     if (newEntriesAlloc != NULL) {
-        block_type * newEntries = reinterpret_cast<block_type *>(reinterpret_cast<uintptr_t>(
+        cell_type * newEntries = reinterpret_cast<cell_type *>(reinterpret_cast<uintptr_t>(
             reinterpret_cast<char *>(newEntriesAlloc) + kEntryAlignPadding) & (uintptr_t)kEntryAlignMask);
         if (bFillQueue) {
-            ::memset((void *)newEntries, 0, kEntryBlockSize * kCapacity);
+            ::memset((void *)newEntries, 0, kEntryBoxes * kEntryLineSize * kEntryCellSize);
         }
         Jimi_MemoryBarrier();
         //Jimi_WriteCompilerBarrier();
         this->entries = newEntries;
         this->entriesAlloc = newEntriesAlloc;
     }
+#else
+    item_type * newEntriesAlloc = (item_type *)::malloc(kEntryCellSize * kCapacity + kEntryAlignPadding);
+    if (newEntriesAlloc != NULL) {
+        cell_type * newEntries = reinterpret_cast<cell_type *>(reinterpret_cast<uintptr_t>(
+            reinterpret_cast<char *>(newEntriesAlloc) + kEntryAlignPadding) & (uintptr_t)kEntryAlignMask);
+        if (bFillQueue) {
+            ::memset((void *)newEntries, 0, kEntryCellSize * kCapacity);
+        }
+        Jimi_MemoryBarrier();
+        //Jimi_WriteCompilerBarrier();
+        this->entries = newEntries;
+        this->entriesAlloc = newEntriesAlloc;
+    }
+#endif // ENTRIES_ADVANCED_SAVE_MODE != 0
 
-    flag_type * newBufferAlloc = (flag_type *)::malloc(kIndexBoxSize * kIndexLineSize * sizeof(flag_type) + kEntryAlignPadding);
+    flag_type * newBufferAlloc = (flag_type *)::malloc(kIndexBoxes * kIndexLineSize * sizeof(flag_type) + kEntryAlignPadding);
     if (newBufferAlloc != NULL) {
          flag_type * newBufferData = reinterpret_cast<flag_type *>(reinterpret_cast<uintptr_t>(
                 reinterpret_cast<char *>(newBufferAlloc) + kEntryAlignPadding) & (uintptr_t)kEntryAlignMask);
         if (bFillQueue) {
-            for (unsigned i = 0; i < (kIndexBoxSize * kIndexLineSize); ++i) {
+            for (unsigned i = 0; i < (kIndexBoxes * kIndexLineSize); ++i) {
                 newBufferData[i] = (flag_type)(-1);
             }
         }
@@ -365,7 +397,7 @@ void DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumTh
     if (kIsAllocOnHeap) {
         assert(this->availableBuffer != NULL);
     }
-    index_type newIndex = (index & (kIndexBoxSize - 1)) * kIndexLineSize + (index / kIndexBoxSize);
+    index_type newIndex = (index & (kIndexBoxes - 1)) * kIndexLineSize + (index / kIndexBoxes);
     Jimi_WriteCompilerBarrier();
     this->availableBuffer[newIndex] = flag;
 }
@@ -377,7 +409,7 @@ bool DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumTh
     index_type index = (index_type)((index_type)sequence &  kIndexMask);
     flag_type  flag  = (flag_type) (            sequence >> kIndexShift);
 
-    index_type newIndex = (index & (kIndexBoxSize - 1)) * kIndexLineSize + (index / kIndexBoxSize);
+    index_type newIndex = (index & (kIndexBoxes - 1)) * kIndexLineSize + (index / kIndexBoxes);
     flag_type  flagValue = this->availableBuffer[newIndex];
     Jimi_ReadCompilerBarrier();
     return (flagValue == flag);
@@ -451,8 +483,14 @@ int DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThr
         }
     } while (true);
 
-    this->entries[nextSequence & kIndexMask].data = entry;
+#if defined(ENTRIES_ADVANCED_SAVE_MODE) && (ENTRIES_ADVANCED_SAVE_MODE != 0)
+    index_type nextIndex = nextSequence & kIndexMask;
+    index_type newIndex = (nextIndex & (kEntryBoxes - 1)) * kEntryLineSize + (nextIndex / kEntryBoxes);
+    this->entries[newIndex].entry = entry;
+#else
+    this->entries[nextSequence & kIndexMask].entry = entry;
     //this->entries[nextSequence & kIndexMask].copy(entry);
+#endif
 
     Jimi_WriteCompilerBarrier();
 
@@ -495,8 +533,15 @@ int DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThr
         if (data.cachedAvailableSequence >= data.nextSequence) {
         //if ((cachedAvailableSequence - current) <= kIndexMask * 2) {
         //if ((cachedAvailableSequence - nextSequence) <= (kIndexMask + 1)) {
+#if defined(ENTRIES_ADVANCED_SAVE_MODE) && (ENTRIES_ADVANCED_SAVE_MODE != 0)
+            index_type nextIndex = data.nextSequence & kIndexMask;
+            index_type newIndex = (nextIndex & (kEntryBoxes - 1)) * kEntryLineSize + (nextIndex / kEntryBoxes);
             // Read the message data
-            entry = this->entries[data.nextSequence & kIndexMask].data;
+            entry = this->entries[newIndex].entry;
+#else
+            // Read the message data
+            entry = this->entries[data.nextSequence & kIndexMask].entry;
+#endif // ENTRIES_ADVANCED_SAVE_MODE != 0
 
             Jimi_ReadCompilerBarrier();
             //data.tailSequence->set(data.nextSequence);
@@ -563,58 +608,6 @@ DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads
 
     return getHighestPublishedSequence(sequence, availableSequence);
 }
-
-#if 0
-void reserve_code()
-{
-    sequence_type head, tail, next;
-    sequence_type wrapPoint;
-    bool maybeIsFull = false;
-    do {
-        head = this->cursor.get();
-        tail = this->gatingSequenceCache.get();
-
-        next = head + 1;
-        //wrapPoint = next - kCapacity;
-        wrapPoint = head - kIndexMask;
-
-        if ((head - tail) > kIndexMask) {
-            // Push() failed, maybe queue is full.
-            maybeIsFull = true;
-            //return -1;
-        }
-
-        if (maybeIsFull || tail < wrapPoint || tail > head) {
-            sequence_type gatingSequence = DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
-                                            ::getMinimumSequence(this->gatingSequences, this->workSequence, head);
-            if (maybeIsFull || wrapPoint > gatingSequence) {
-                // Push() failed, maybe queue is full.
-                return -1;
-            }
-
-            this->gatingSequenceCache.setOrder(gatingSequence);
-        }
-
-        if (this->cursor.compareAndSwap(head, next) != head) {
-            // Need yiled() or sleep() a while.
-            jimi_wsleep(1);
-        }
-        else {
-            // Claim a sequence succeeds.
-            break;
-        }
-    } while (true);
-
-    Jimi_WriteCompilerBarrier();
-
-    this->entries[head & kIndexMask] = entry;
-    //this->entries[head & kIndexMask].copy(entry);
-
-    publish(head);
-
-    Jimi_WriteCompilerBarrier();
-}
-#endif
 
 }  /* namespace jimi */
 

@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /// RingQueue的容量(QSIZE, 队列长度, 必须是2的幂次方)和Mask值
-#define QSIZE                   (1 << 16)
+#define QSIZE                   (1 << 14)
 /// 下面一行请不要修改, 切记!!! qmask = qsize - 1
 #define QMASK                   (QSIZE - 1)
 
@@ -20,7 +20,7 @@
 #if defined(_DEBUG)
 #define MAX_MSG_COUNT           80000
 #else
-#define MAX_MSG_COUNT           (8000000 * 8)
+#define MAX_MSG_COUNT           (8000000 * 4)
 #endif
 
 /// 等同于MAX_MSG_COUNT
@@ -54,7 +54,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /// 是否根据编译环境自动决定是否使用 64bit 的 sequence (序号), 默认为 0 (不自动)
-#define AUTO_SCAN_64BIT_SEQUENCE    0
+#define AUTO_SCAN_64BIT_SEQUENCE    1
 
 /// 是否使用 64bit 的 sequence (序号), 默认值为 1 (使用)
 #define USE_64BIT_SEQUENCE          1
