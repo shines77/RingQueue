@@ -74,7 +74,7 @@ public:
     static volatile CACHE_ALIGN_PREFIX T lock;
     static char padding[(JIMI_CACHELINE_SIZE >= sizeof(T))
                       ? (JIMI_CACHELINE_SIZE - sizeof(T))
-                      : (JIMI_CACHELINE_SIZE)];
+                      : ((sizeof(T) - JIMI_CACHELINE_SIZE) & (JIMI_CACHELINE_SIZE - 1))];
 } CACHE_ALIGN_SUFFIX;
 
 // This is a single lock that is used for all synchronized accesses if
@@ -89,7 +89,7 @@ volatile CACHE_ALIGN_PREFIX T seq_spinlock_core<T>::lock = static_cast<T>(0);
 template <typename T>
 char seq_spinlock_core<T>::padding[(JIMI_CACHELINE_SIZE >= sizeof(T))
                                  ? (JIMI_CACHELINE_SIZE - sizeof(T))
-                                 : (JIMI_CACHELINE_SIZE)] = { 0 };
+                                 : (((sizeof(T) - JIMI_CACHELINE_SIZE) & (JIMI_CACHELINE_SIZE - 1)))] = { 0 };
 
 // Use a spinlock for multi-word accesses
 template <typename T>
@@ -255,7 +255,7 @@ protected:
     volatile T  value;
     char        padding[(JIMI_CACHELINE_SIZE >= sizeof(T))
                       ? (JIMI_CACHELINE_SIZE - sizeof(T))
-                      : (JIMI_CACHELINE_SIZE)];
+                      : ((sizeof(T) - JIMI_CACHELINE_SIZE) & (JIMI_CACHELINE_SIZE - 1))];
 
 public:
     SequenceBase() : value(INITIAL_CURSOR_VALUE) {
