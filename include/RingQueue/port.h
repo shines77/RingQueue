@@ -92,6 +92,9 @@
 #define CACHE_ALIGN_PREFIX      __declspec(align(JIMI_CACHELINE_SIZE))
 #define CACHE_ALIGN_SUFFIX
 
+#define PACKED_ALIGN_PREFIX(N)  __declspec(align(N))
+#define PACKED_ALIGN_SUFFIX(N)
+
 #if defined(__INTER_COMPILER) || defined(__ICC)
 
 #define Jimi_ReadCompilerBarrier()      __memory_barrier()
