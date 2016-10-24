@@ -20,7 +20,7 @@
 #if defined(_DEBUG)
 #define MAX_MSG_COUNT           80000
 #else
-#define MAX_MSG_COUNT           (8000000 * 4)
+#define MAX_MSG_COUNT           (8000000 * 1)
 #endif
 
 /// µÈÍ¬ÓÚMAX_MSG_COUNT

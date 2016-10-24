@@ -40,6 +40,19 @@
 
 namespace jimi {
 
+template <typename ItemType, size_t EntryCellSize, bool isAligned>
+struct gEntryCell_t
+{
+    ItemType  entry;
+};
+
+template <typename ItemType, size_t EntryCellSize>
+struct gEntryCell_t<ItemType, EntryCellSize, false>
+{
+    ItemType entry;
+    char     padding[EntryCellSize - sizeof(ItemType)];
+};
+
 ///////////////////////////////////////////////////////////////////
 // class DisruptorRingQueueEx<T, SequenceType, Capacity, Producers, Consumers, NumThreads>
 ///////////////////////////////////////////////////////////////////
@@ -109,13 +122,16 @@ public:
         item_type   entry;
     };
 
+#if 0
     template <>
     struct EntryCell_t<false>
     {
         item_type   entry;
         char        padding[kEntryCellSize - sizeof(item_type)];
     };
-    typedef struct EntryCell_t<(bool)(kEntryCellSize == sizeof(item_type))> cell_type;
+#endif
+    //typedef struct EntryCell_t<(bool)(kEntryCellSize == sizeof(item_type))> cell_type;
+    typedef struct gEntryCell_t<item_type, kEntryCellSize, (bool)(kEntryCellSize == sizeof(item_type))> cell_type;
 
 public:
     DisruptorRingQueueEx(bool bFillQueue = true);
