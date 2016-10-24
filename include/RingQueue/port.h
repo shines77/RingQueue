@@ -149,7 +149,7 @@
 #define ALIGN_PREFIX(N)         __attribute__((__aligned__((N))))
 #define ALIGN_SUFFIX(N)
 
-#define CACHE_ALIGN_PREFIX      __attribute__((__aligned__((JIMI_CACHE_LINE_SIZE))))
+#define CACHE_ALIGN_PREFIX      __attribute__((__aligned__((JIMI_CACHELINE_SIZE))))
 #define CACHE_ALIGN_SUFFIX
 
 #define PACKED_ALIGN_PREFIX(N)
