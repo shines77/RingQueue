@@ -729,8 +729,8 @@ int RingQueueBase<T, Capacity, CoreTy>::spin2_push(T * item)
 
     //Jimi_CompilerBarrier();
     //spin_mutex.locked = 0;
-    while (::InterlockedExchange(&spin_mutex.locked, 0U) != 1U) {
-        printf("spin2_push: ::InterlockedExchange(&spin_mutex.locked, 0U) != 1U \n");
+    while (jimi_lock_test_and_set32(&spin_mutex.locked, 0U) != 1U) {
+        printf("spin2_push: jimi_lock_test_and_set32(&spin_mutex.locked, 0U) != 1U \n");
     }
 
     return 0;
@@ -812,8 +812,8 @@ T * RingQueueBase<T, Capacity, CoreTy>::spin2_pop()
 
     //Jimi_CompilerBarrier();
     //spin_mutex.locked = 0;
-    while (::InterlockedExchange(&spin_mutex.locked, 0U) != 1U) {
-        printf("spin2_pop: ::InterlockedExchange(&spin_mutex.locked, 0U) != 1U \n");
+    while (jimi_lock_test_and_set32(&spin_mutex.locked, 0U) != 1U) {
+        printf("spin2_pop: jimi_lock_test_and_set32(&spin_mutex.locked, 0U) != 1U \n");
     }
 
     return item;
