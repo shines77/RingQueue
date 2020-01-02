@@ -3470,7 +3470,11 @@ void test_mktime_tm()
     // verify
     unsigned long timestamp1, timestamp2;
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
+#if defined(_MSC_VER) || ((defined(__INTER_COMPILER) || defined(__ICC)) && !(defined(GNUC) || defined(__linux__)))
         timestamp1 = _mktime32(&when[i]) + 8 * 3600;
+#else
+        timestamp1 = mktime(&when[i]) + 8 * 3600;
+#endif
         timestamp2 = unix_mktime(&when[i]);
 #ifndef NDEBUG
         if (timestamp1 != timestamp2) {
