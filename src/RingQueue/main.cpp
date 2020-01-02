@@ -3071,8 +3071,15 @@ void test_mktime()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = mktime(test_time[i].year, test_time[i].month, test_time[i].day,
-                               test_time[i].hour, test_time[i].minute, test_time[i].second);
+            struct tm when;
+            when.tm_year = test_time[i].year - 1900;
+            when.tm_mon = test_time[i].month - 1;
+            when.tm_mday = test_time[i].day;
+            when.tm_hour = test_time[i].hour;
+            when.tm_min = test_time[i].minute;
+            when.tm_sec = test_time[i].second;
+            when.tm_isdst = 0;
+            timestamp = (unsigned long)mktime(&when) + 8 * 3600;
             checksum += timestamp;
         }
     }
