@@ -3327,6 +3327,8 @@ void test_mktime_tm()
     // mktime(tm)
     printf("test: mktime(tm)\n\n");
 
+    setenv("TZ", "Asia/Shanghai", 0);
+
     startTime = jmc_get_timestamp();
 
     checksum = 0;
