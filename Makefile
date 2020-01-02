@@ -83,8 +83,8 @@ else
 endif
 
 # Build parameters. -m32 for x86 (32 bit), -m64 for x64 (64 bit)
-CCFLAGS := -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__ -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
-CXXFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -D_REENTRANT -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__ -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
+CCFLAGS := -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -DNDEBUG -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__ -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
+CXXFLAGS := -std=c++0x -Wall -w -pipe -g3 -fpermissive -fvisibility=hidden -O3 -funroll-loops -msse -msse2 -msse3 -DNDEBUG -D_REENTRANT -D_GNU_SOURC -D__MMX__ -D__SSE__ -D__SSE2__ -D__SSE3__ -I$(srcroot)include -I$(objroot)include -I$(srcroot)include/RingQueue -I$(objroot)include/RingQueue
 
 header_files := include/RingQueue/console.h include/RingQueue/dump_mem.h include/RingQueue/get_char.h \
     include/RingQueue/mq.h include/RingQueue/port.h include/RingQueue/q3.h \
