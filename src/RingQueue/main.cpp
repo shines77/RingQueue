@@ -3291,6 +3291,11 @@ void test_mktime()
     //jimi_console_readkeyln(false, true, false);
 }
 
+//
+// 英国夏令时: 3月的最后一个周日 01:00 ~ 10月的最后一个周日 01:00
+// 中国夏令时: 四月中旬第一个星期日的凌晨 2 时开始 ~ 九月中旬第一个星期日的凌晨 2 时结束. 
+//
+
 void test_mktime_tm()
 {
     struct tm when[kMaxTestTime];
@@ -3307,7 +3312,7 @@ void test_mktime_tm()
         when[i].tm_hour = random(0, 23);
         when[i].tm_min = random(0, 59);
         when[i].tm_sec = random(0, 59);
-        when[i].tm_isdst = 1;
+        when[i].tm_isdst = 0;
     }
 
     printf("---------------------------------------------------------------\n\n");
