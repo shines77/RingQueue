@@ -3476,7 +3476,7 @@ void test_mktime_tm()
 #ifndef NDEBUG2
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
-                   when[i].tm_year, when[i].tm_mon, when[i].tm_mday,
+                   when[i].tm_year + 1900, when[i].tm_mon + 1, when[i].tm_mday,
                    when[i].tm_hour, when[i].tm_min, when[i].tm_sec);
             printf("[%u] -- timestamp1: %u, timestamp2: %u, diff: %u\n", i, timestamp1, timestamp2,
                     (timestamp1 >= timestamp2) ? (timestamp1 - timestamp2) : (timestamp2 - timestamp1));
