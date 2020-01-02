@@ -3329,7 +3329,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = (unsigned long)mktime(&when[i]);
+            timestamp = (unsigned long)mktime(&when[i]) + 8 * 3600;
             checksum += timestamp;
         }
     }
@@ -3470,10 +3470,10 @@ void test_mktime_tm()
 #if defined(_MSC_VER) || ((defined(__INTER_COMPILER) || defined(__ICC)) && !(defined(GNUC) || defined(__linux__)))
         timestamp1 = _mktime32(&when[i]) + 8 * 3600;
 #else
-        timestamp1 = mktime(&when[i]);
+        timestamp1 = mktime(&when[i]) + 8 * 3600;
 #endif
         timestamp2 = unix_mktime(&when[i]);
-#ifndef NDEBUG
+#ifndef NDEBUG2
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    when[i].tm_year, when[i].tm_mon, when[i].tm_mday,
