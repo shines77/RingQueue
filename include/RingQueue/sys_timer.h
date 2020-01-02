@@ -35,6 +35,8 @@
 #include <sys/time.h>
 #endif  /* (choice of OS) */
 
+#include "port.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -88,6 +90,8 @@ jmc_timestamp_t jmc_get_timestamp(void)
     JIMIC_ASSERT_EX(status == 0, "gettimeofday failed");
     result = (jmc_timestamp_t)((int64_t)(1000000UL) * (int64_t)(tv.tv_sec) + (int64_t)(tv.tv_usec));
 #endif  /*(choice of OS) */
+
+    Jimi_CompilerBarrier();
 
     return result;
 }
@@ -176,6 +180,7 @@ jmc_timefloat_t jmc_get_secondf(void)
     result = (jmc_timefloat_t)time_usecs * 1E-6;
 #endif  /*(choice of OS) */
 
+    Jimi_CompilerBarrier();
     return result;
 }
 
@@ -197,6 +202,7 @@ jmc_timefloat_t jmc_get_millisecf(void)
     result = (jmc_timefloat_t)time_usecs * 1E-3;
 #endif  /*(choice of OS) */
 
+    Jimi_CompilerBarrier();
     return result;
 }
 
@@ -237,6 +243,7 @@ jmc_timefloat_t jmc_get_interval_millisecf(jmc_timestamp_t time_interval)
     result = (jmc_timefloat_t)time_interval * 1E-3;
 #endif  /*(choice of OS) */
 
+    Jimi_CompilerBarrier();
     return result;
 }
 
@@ -257,6 +264,7 @@ jmc_timefloat_t jmc_get_interval_secondf(jmc_timestamp_t time_interval)
     result = (jmc_timefloat_t)time_interval * 1E-6;
 #endif  /*(choice of OS) */
 
+    Jimi_CompilerBarrier();
     return result;
 }
 

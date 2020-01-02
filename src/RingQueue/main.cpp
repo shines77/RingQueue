@@ -14,6 +14,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#include <time.h>       // For gcc's mktime() and vc++'s _mktime32()
 #include "vs_stdint.h"
 
 #ifndef _MSC_VER
@@ -2563,6 +2565,722 @@ void run_some_queue_ex_tests(void)
     jimi_console_readkeyln(true, true, false);
 }
 
+static const unsigned short s_year_days[] {
+    /* 1970 */ 0,
+    /* 1971 */ 365,
+    /* 1972 */ 730,
+    /* 1973 */ 1096,
+    /* 1974 */ 1461,
+    /* 1975 */ 1826,
+    /* 1976 */ 2191,
+    /* 1977 */ 2557,
+    /* 1978 */ 2922,
+    /* 1979 */ 3287,
+    /* 1980 */ 3652,
+    /* 1981 */ 4018,
+    /* 1982 */ 4383,
+    /* 1983 */ 4748,
+    /* 1984 */ 5113,
+    /* 1985 */ 5479,
+    /* 1986 */ 5844,
+    /* 1987 */ 6209,
+    /* 1988 */ 6574,
+    /* 1989 */ 6940,
+    /* 1990 */ 7305,
+    /* 1991 */ 7670,
+    /* 1992 */ 8035,
+    /* 1993 */ 8401,
+    /* 1994 */ 8766,
+    /* 1995 */ 9131,
+    /* 1996 */ 9496,
+    /* 1997 */ 9862,
+    /* 1998 */ 10227,
+    /* 1999 */ 10592,
+    /* 2000 */ 10957,
+    /* 2001 */ 11323,
+    /* 2002 */ 11688,
+    /* 2003 */ 12053,
+    /* 2004 */ 12418,
+    /* 2005 */ 12784,
+    /* 2006 */ 13149,
+    /* 2007 */ 13514,
+    /* 2008 */ 13879,
+    /* 2009 */ 14245,
+    /* 2010 */ 14610,
+    /* 2011 */ 14975,
+    /* 2012 */ 15340,
+    /* 2013 */ 15706,
+    /* 2014 */ 16071,
+    /* 2015 */ 16436,
+    /* 2016 */ 16801,
+    /* 2017 */ 17167,
+    /* 2018 */ 17532,
+    /* 2019 */ 17897,
+    /* 2020 */ 18262,
+    /* 2021 */ 18628,
+    /* 2022 */ 18993,
+    /* 2023 */ 19358,
+    /* 2024 */ 19723,
+    /* 2025 */ 20089,
+    /* 2026 */ 20454,
+    /* 2027 */ 20819,
+    /* 2028 */ 21184,
+    /* 2029 */ 21550,
+    /* 2030 */ 21915,
+    /* 2031 */ 22280,
+    /* 2032 */ 22645,
+    /* 2033 */ 23011,
+    /* 2034 */ 23376,
+    /* 2035 */ 23741,
+    /* 2036 */ 24106,
+    /* 2037 */ 24472,
+    /* 2038 */ 24837,
+    /* 2039 */ 25202,
+    /* 2040 */ 25567,
+    /* 2041 */ 25933,
+    /* 2042 */ 26298,
+    /* 2043 */ 26663,
+    /* 2044 */ 27028,
+    /* 2045 */ 27394,
+    /* 2046 */ 27759,
+    /* 2047 */ 28124,
+    /* 2048 */ 28489,
+    /* 2049 */ 28855,
+    /* 2050 */ 29220,
+    /* 2051 */ 29585,
+    /* 2052 */ 29950,
+    /* 2053 */ 30316,
+    /* 2054 */ 30681,
+    /* 2055 */ 31046,
+    /* 2056 */ 31411,
+    /* 2057 */ 31777,
+    /* 2058 */ 32142,
+    /* 2059 */ 32507,
+    /* 2060 */ 32872,
+    /* 2061 */ 33238,
+    /* 2062 */ 33603,
+    /* 2063 */ 33968,
+    /* 2064 */ 34333,
+    /* 2065 */ 34699,
+    /* 2066 */ 35064,
+    /* 2067 */ 35429,
+    /* 2068 */ 35794,
+    /* 2069 */ 36160,
+    /* 2070 */ 36525,
+    /* 2071 */ 36890,
+    /* 2072 */ 37255,
+    /* 2073 */ 37621,
+    /* 2074 */ 37986,
+    /* 2075 */ 38351,
+    /* 2076 */ 38716,
+    /* 2077 */ 39082,
+    /* 2078 */ 39447,
+    /* 2079 */ 39812,
+    /* 2080 */ 40177,
+    /* 2081 */ 40543,
+    /* 2082 */ 40908,
+    /* 2083 */ 41273,
+    /* 2084 */ 41638,
+    /* 2085 */ 42004,
+    /* 2086 */ 42369,
+    /* 2087 */ 42734,
+    /* 2088 */ 43099,
+    /* 2089 */ 43465,
+    /* 2090 */ 43830,
+    /* 2091 */ 44195,
+    /* 2092 */ 44560,
+    /* 2093 */ 44926,
+    /* 2094 */ 45291,
+    /* 2095 */ 45656,
+    /* 2096 */ 46021,
+    /* 2097 */ 46387,
+};
+
+static const unsigned char s_month_day[] {
+    0,
+    31, 28, 31, 30, 31, 30,    /* month 1-6  */
+    31, 31, 30, 31, 30, 31,    /* month 7-12 */
+};
+
+static const unsigned short s_month_days[16] {
+    0,
+    0,   31,  59,  90,  120, 151,   /* month 1-6  */
+    181, 212, 243, 273, 304, 334,   /* month 7-12 */
+    365, 0, 0
+};
+
+static const unsigned short s_month_days2[4][16] {
+    // Is leap
+    {
+        0,
+        0,   31,  60,  91,  121, 152,   /* month 1-6  */
+        182, 213, 244, 274, 305, 335,   /* month 7-12 */
+        366, 0, 0
+    },
+    // Is not leap
+    {
+        0,
+        0,   31,  59,  90,  120, 151,   /* month 1-6  */
+        181, 212, 243, 273, 304, 334,   /* month 7-12 */
+        365, 0, 0
+    },
+    // Is not leap
+    {
+        0,
+        0,   31,  59,  90,  120, 151,   /* month 1-6  */
+        181, 212, 243, 273, 304, 334,   /* month 7-12 */
+        365, 0, 0
+    },
+    // Is not leap
+    {
+        0,
+        0,   31,  59,  90,  120, 151,   /* month 1-6  */
+        181, 212, 243, 273, 304, 334,   /* month 7-12 */
+        365, 0, 0
+    },
+};
+
+static const short s_month_days_ex[4][16] {
+    // Is leap
+    {
+        0,
+        -1,  30,  59,  90,  120, 151,   /* month 1-6  */
+        181, 212, 243, 273, 304, 334,   /* month 7-12 */
+        365, 0, 0
+    },
+    // Is not leap
+    {
+        0,
+        -1,  30,  58,  89,  119, 150,   /* month 1-6  */
+        180, 211, 242, 272, 303, 333,   /* month 7-12 */
+        364, 0, 0
+    },
+    // Is not leap
+    {
+        0,
+        -1,  30,  58,  89,  119, 150,   /* month 1-6  */
+        180, 211, 242, 272, 303, 333,   /* month 7-12 */
+        364, 0, 0
+    },
+    // Is not leap
+    {
+        0,
+        -1,  30,  58,  89,  119, 150,   /* month 1-6  */
+        180, 211, 242, 272, 303, 333,   /* month 7-12 */
+        364, 0, 0
+    },
+};
+
+struct year_info_t {
+    unsigned int days;
+    short month_days[14];
+};
+
+static const year_info_t s_year_info[] = {
+    /* 1970 */ {     0, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1971 */ {   365, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1972 */ {   730, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1973 */ {  1096, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1974 */ {  1461, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1975 */ {  1826, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1976 */ {  2191, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1977 */ {  2557, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1978 */ {  2922, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1979 */ {  3287, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1980 */ {  3652, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1981 */ {  4018, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1982 */ {  4383, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1983 */ {  4748, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1984 */ {  5113, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1985 */ {  5479, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1986 */ {  5844, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1987 */ {  6209, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1988 */ {  6574, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1989 */ {  6940, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1990 */ {  7305, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1991 */ {  7670, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1992 */ {  8035, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1993 */ {  8401, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1994 */ {  8766, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1995 */ {  9131, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1996 */ {  9496, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 1997 */ {  9862, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1998 */ { 10227, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 1999 */ { 10592, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2000 */ { 10957, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2001 */ { 11323, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2002 */ { 11688, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2003 */ { 12053, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2004 */ { 12418, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2005 */ { 12784, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2006 */ { 13149, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2007 */ { 13514, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2008 */ { 13879, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2009 */ { 14245, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2010 */ { 14610, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2011 */ { 14975, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2012 */ { 15340, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2013 */ { 15706, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2014 */ { 16071, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2015 */ { 16436, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2016 */ { 16801, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2017 */ { 17167, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2018 */ { 17532, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2019 */ { 17897, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2020 */ { 18262, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2021 */ { 18628, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2022 */ { 18993, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2023 */ { 19358, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2024 */ { 19723, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2025 */ { 20089, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2026 */ { 20454, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2027 */ { 20819, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2028 */ { 21184, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2029 */ { 21550, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2030 */ { 21915, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2031 */ { 22280, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2032 */ { 22645, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2033 */ { 23011, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2034 */ { 23376, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2035 */ { 23741, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2036 */ { 24106, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2037 */ { 24472, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2038 */ { 24837, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2039 */ { 25202, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2040 */ { 25567, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2041 */ { 25933, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2042 */ { 26298, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2043 */ { 26663, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2044 */ { 27028, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2045 */ { 27394, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2046 */ { 27759, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2047 */ { 28124, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2048 */ { 28489, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2049 */ { 28855, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2050 */ { 29220, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2051 */ { 29585, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2052 */ { 29950, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2053 */ { 30316, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2054 */ { 30681, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2055 */ { 31046, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2056 */ { 31411, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2057 */ { 31777, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2058 */ { 32142, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2059 */ { 32507, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2060 */ { 32872, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2061 */ { 33238, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2062 */ { 33603, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2063 */ { 33968, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2064 */ { 34333, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2065 */ { 34699, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2066 */ { 35064, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2067 */ { 35429, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2068 */ { 35794, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2069 */ { 36160, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2070 */ { 36525, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2071 */ { 36890, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2072 */ { 37255, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2073 */ { 37621, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2074 */ { 37986, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2075 */ { 38351, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2076 */ { 38716, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2077 */ { 39082, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2078 */ { 39447, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2079 */ { 39812, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2080 */ { 40177, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2081 */ { 40543, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2082 */ { 40908, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2083 */ { 41273, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2084 */ { 41638, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2085 */ { 42004, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2086 */ { 42369, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2087 */ { 42734, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2088 */ { 43099, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2089 */ { 43465, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2090 */ { 43830, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2091 */ { 44195, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2092 */ { 44560, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2093 */ { 44926, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2094 */ { 45291, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2095 */ { 45656, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+    /* 2096 */ { 46021, { 0, -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0 } },
+    /* 2097 */ { 46387, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0 } },
+};
+
+//
+// Linux's mktime()
+//
+// See: https://blog.csdn.net/axx1611/article/details/1792827
+//
+
+static inline
+unsigned long unix_mktime(unsigned int year, unsigned int month,
+                          unsigned int day, unsigned int hour,
+                          unsigned int minute, unsigned int second)
+{
+    if (0 >= (int)(month -= 2)) {   /* 1..12 -> 11,12,1..10 */
+        month += 12;                /* Puts Feb last since it has leap day */
+        year -= 1;
+    }
+
+    return (((
+        (unsigned long)(year / 4 - year / 100 + year / 400 + 367 * month / 12 + day) +
+                        year * 365 - 719499
+        ) * 24 + hour       /* now have hours */
+        ) * 60 + minute     /* now have minutes */
+        ) * 60 + second;    /* finally seconds */
+}
+
+static inline
+unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
+                             unsigned int day, unsigned int hour,
+                             unsigned int minute, unsigned int second)
+{
+    int yoffset = year - 1970;
+    unsigned int year_days = s_year_days[yoffset];
+
+#if 0
+    unsigned int is_leap;
+    if (month >= 3)
+        is_leap = ((year & 0x03) == 0) ? 0 : 1;
+    else
+        is_leap = 1;
+#else
+    unsigned int is_leap = (month >= 3) ? (((year & 0x03) == 0) ? 0 : 1) : 1;
+#endif
+
+    return (((
+        (unsigned long)(year_days + s_month_days[month] + day - is_leap)
+        * 24 + hour)        /* now have hours */
+        * 60 + minute)      /* now have minutes */
+        * 60 + second);     /* finally seconds */
+}
+
+static inline
+unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
+                             unsigned int day, unsigned int hour,
+                             unsigned int minute, unsigned int second)
+{
+    int yoffset = year - 1970;
+    unsigned int year_days = s_year_days[yoffset];
+
+    unsigned int is_leap = ((year & 0x03) == 0) ? 0 : 1;
+
+    return (((
+        (unsigned long)(year_days + s_month_days2[is_leap][month] + day - is_leap)
+        * 24 + hour)        /* now have hours */
+        * 60 + minute)      /* now have minutes */
+        * 60 + second);     /* finally seconds */
+}
+
+static inline
+unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
+                             unsigned int day, unsigned int hour,
+                             unsigned int minute, unsigned int second)
+{
+    int yoffset = year - 1970;
+    unsigned int year_days = s_year_days[yoffset];
+
+    return (((
+        (unsigned long)(year_days + s_month_days_ex[year & 0x03][month] + day)
+        * 24 + hour)        /* now have hours */
+        * 60 + minute)      /* now have minutes */
+        * 60 + second);     /* finally seconds */
+}
+
+static inline
+unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
+                             unsigned int day, unsigned int hour,
+                             unsigned int minute, unsigned int second)
+{
+    int yoffset = year - 1970;
+    year_info_t * year_info = (year_info_t *)&s_year_info[yoffset];
+    unsigned int year_days = year_info->days;
+
+    return (((
+        (unsigned long)(year_days + year_info->month_days[month] + day)
+        * 24 + hour)        /* now have hours */
+        * 60 + minute)      /* now have minutes */
+        * 60 + second);     /* finally seconds */
+}
+
+struct datetime_t {
+    unsigned short year; 
+    unsigned char month;
+    unsigned char day;
+    unsigned char day_of_week;
+    unsigned char hour;
+    unsigned char minute;
+    unsigned char second;
+};
+
+unsigned int random(unsigned int maximum)
+{
+    unsigned int rnd;
+#if RAND_MAX == 0x7FFF
+    rnd = (rand() << 30) | (rand() << 15) | rand();
+#else
+    rnd = rand();
+#endif
+    return (rnd % (maximum + 1));
+}
+
+unsigned int random(unsigned int minimum, unsigned int maximum)
+{
+    unsigned int rnd;
+#if RAND_MAX == 0x7FFF
+    rnd = (rand() << 30) | (rand() << 15) | rand();
+#else
+    rnd = rand();
+#endif
+    if (minimum <= maximum)
+        return (rnd % (maximum - minimum + 1)) + minimum;
+    else
+        return (rnd % (minimum - maximum + 1)) + maximum;
+}
+
+static const unsigned int kMaxRepeatTime = 100;
+static const unsigned int kMaxTestTime = 10000;
+
+void test_mktime()
+{
+    datetime_t test_time[kMaxTestTime];
+    for (unsigned int i = 0; i < kMaxTestTime; i++) {
+        test_time[i].year = 1970 + random(80);
+        int month = random(1, 12);
+        test_time[i].month = month;
+        test_time[i].day = random(1, s_month_day[month]);
+        test_time[i].day_of_week = 0;
+        test_time[i].hour = random(0, 23);
+        test_time[i].minute = random(0, 59);
+        test_time[i].second = random(1, 59);
+    }
+
+    jmc_timestamp_t startTime, stopTime;
+    jmc_timefloat_t elapsedTime = 0.0;
+    unsigned long timestamp, checksum;
+
+#if defined(__GUNC__) || defined(__linux__) \
+   || defined(__clang__) || defined(__APPLE__) || defined(__FreeBSD__) \
+   || defined(__CYGWIN__) || defined(__MINGW32__)
+    // mktime()
+    printf("test: mktime()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = mktime(test_time[i].year, test_time[i].month, test_time[i].day,
+                               test_time[i].hour, test_time[i].minute, test_time[i].second);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+#endif
+
+#if defined(_MSC_VER) || ((defined(__INTER_COMPILER) || defined(__ICC)) && !(defined(GNUC) || defined(__linux__)))
+    // mktime()
+    printf("test: _mktime32()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            struct tm when;
+            when.tm_year = test_time[i].year - 1900;
+            when.tm_mon = test_time[i].month - 1;
+            when.tm_mday = test_time[i].day;
+            when.tm_hour = test_time[i].hour;
+            when.tm_min = test_time[i].minute;
+            when.tm_sec = test_time[i].second;
+            when.tm_isdst = 0;
+            timestamp = (unsigned long)_mktime32(&when) + 8 * 3600;
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+#endif
+
+    // unix_mktime()
+    printf("test: unix_mktime()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = unix_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
+                                    test_time[i].hour, test_time[i].minute, test_time[i].second);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+    // fast_mktime_v1()
+    printf("test: fast_mktime_v1()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = fast_mktime_v1(test_time[i].year, test_time[i].month, test_time[i].day,
+                                       test_time[i].hour, test_time[i].minute, test_time[i].second);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+    // fast_mktime_v2()
+    printf("test: fast_mktime_v2()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = fast_mktime_v2(test_time[i].year, test_time[i].month, test_time[i].day,
+                                       test_time[i].hour, test_time[i].minute, test_time[i].second);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+    // fast_mktime_v3()
+    printf("test: fast_mktime_v3()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = fast_mktime_v3(test_time[i].year, test_time[i].month, test_time[i].day,
+                                       test_time[i].hour, test_time[i].minute, test_time[i].second);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+    // fast_mktime_v4()
+    printf("test: fast_mktime_v4()\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = fast_mktime_v4(test_time[i].year, test_time[i].month, test_time[i].day,
+                                       test_time[i].hour, test_time[i].minute, test_time[i].second);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+    // verify
+    unsigned long timestamp1, timestamp2;
+    for (unsigned int i = 0; i < kMaxTestTime; i++) {
+        timestamp1 = unix_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
+                                 test_time[i].hour, test_time[i].minute, test_time[i].second);
+        timestamp2 = fast_mktime_v4(test_time[i].year, test_time[i].month, test_time[i].day,
+                                    test_time[i].hour, test_time[i].minute, test_time[i].second);
+#ifndef NDEBUG
+        if (timestamp1 != timestamp2) {
+            printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
+                   test_time[i].year, test_time[i].month, test_time[i].day,
+                   test_time[i].hour, test_time[i].minute, test_time[i].second);
+        }
+#endif
+    }
+
+    //jimi_console_readkeyln(false, true, false);
+}
+
+void print_year_info()
+{
+    static const unsigned int kStartYear = 1970;
+    static const unsigned int kYearStep = 128;
+    unsigned int year;
+    unsigned int years, days, is_leap;
+    printf("static const unsigned short s_year_days[] {\r\n");
+    for (year = kStartYear; year < (kStartYear + kYearStep); year++) {
+        years = year - 1;
+        days = ((years / 4 - years / 100 + years / 400)
+                + 367 * (1 - 2 + 12) / 12 + 1)
+                + years * 365 - 719499;
+        is_leap = ((year % 4) == 0) ? 1 : 0;
+        printf("    /* %u */ %u,\r\n", year, days);
+    }
+    printf("};\r\n");
+    printf("\r\n");
+
+    printf("static const year_info_t s_year_info[] {\r\n");
+    for (year = kStartYear; year < (kStartYear + kYearStep); year++) {
+        years = year - 1;
+        days = ((years / 4 - years / 100 + years / 400)
+                + 367 * (1 - 2 + 12) / 12 + 1)
+                + years * 365 - 719499;
+        is_leap = ((year % 4) == 0) ? 1 : 0;
+        printf("    /* %u */ { %5u, { 0, ", year, days);
+        for (unsigned int month = 1; month <= 13; month++) {
+            if (month >= 13)
+                printf("0 ");
+            else if (month > 12)
+                printf("0, ");
+            else if (month >= 3 && is_leap != 0)
+                printf("%d, ", (int)(s_month_days[month]));
+            else
+                printf("%d, ", (int)(s_month_days[month] - 1));
+        }
+        printf("} },\r\n");
+    }
+    printf("};\r\n");
+    printf("\r\n");
+}
+
 int main(int argn, char * argv[])
 {
 #if defined(USE_DOUBAN_QUEUE) && (USE_DOUBAN_QUEUE != 0)
@@ -2570,6 +3288,8 @@ int main(int argn, char * argv[])
 #else
     bool bContinue = false;
 #endif
+
+    ::srand((unsigned int)::time(NULL));
 
 #if (defined(USE_TIME_PERIOD) && (USE_TIME_PERIOD != 0)) \
     && (defined(_WIN32) || defined(__MINGW32__) || defined(__CYGWIN__))
@@ -2617,9 +3337,13 @@ int main(int argn, char * argv[])
     display_test_info(0);
 #endif
 
+    //print_year_info();
+    test_mktime();
+
     // 单线程顺序执行的版本, 每次push(), pop()的消息数量(即步长)由max_step决定, 最大步长为QSIZE
     SerialRingQueue_Test();
 
+#if 0
     // Test (Single Producer + Single Consumer) RingQueue
     SingleProducerSingleConsumer_Test();
 
@@ -2676,6 +3400,7 @@ int main(int argn, char * argv[])
 #endif
 
     //SpinMutex_Test();
+#endif
 
     popmsg_list_destory();
     test_msg_destory();
@@ -2687,6 +3412,6 @@ int main(int argn, char * argv[])
     }
 #endif
 
-    //jimi_console_readkeyln(false, true, false);
+    jimi_console_readkeyln(false, true, false);
     return 0;
 }
