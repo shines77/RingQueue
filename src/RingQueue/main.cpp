@@ -3293,7 +3293,7 @@ void test_mktime()
 
 //
 // 英国夏令时: 3月的最后一个周日 01:00 ~ 10月的最后一个周日 01:00
-// 中国夏令时: 四月中旬第一个星期日的凌晨 2 时开始 ~ 九月中旬第一个星期日的凌晨 2 时结束. 
+// 中国夏令时: 1986年至1991年, 四月中旬第一个星期日的凌晨 2 时开始 ~ 九月中旬第一个星期日的凌晨 2 时结束. 
 //
 
 void test_mktime_tm()
@@ -3478,7 +3478,7 @@ void test_mktime_tm()
         timestamp1 = mktime(&when[i]) + 8 * 3600;
 #endif
         timestamp2 = unix_mktime(&when[i]);
-#ifndef NDEBUG2
+#ifndef NDEBUG
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    when[i].tm_year + 1900, when[i].tm_mon + 1, when[i].tm_mday,
