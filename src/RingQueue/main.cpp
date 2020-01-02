@@ -3300,6 +3300,8 @@ void test_mktime_tm()
 {
     struct tm when[kMaxTestTime];
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
+        // Zero initialize
+        memset((void *)&when[i], 0, sizeof(struct tm));
         // Limit is 23:59:59 January 18, 2038
         int year = 1970 + random(67);
         when[i].tm_year = year - 1900;
