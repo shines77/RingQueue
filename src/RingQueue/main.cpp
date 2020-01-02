@@ -3478,6 +3478,8 @@ void test_mktime_tm()
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    when[i].tm_year, when[i].tm_mon, when[i].tm_mday,
                    when[i].tm_hour, when[i].tm_min, when[i].tm_sec);
+            printf("        -- timestamp1: %u, timestamp2: %u, diff: %u\n", timestamp1, timestamp2,
+                    (timestamp1 >= timestamp2) ? (timestamp1 - timestamp2) : (timestamp2 - timestamp1));
         }
 #endif
     }
