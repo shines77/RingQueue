@@ -144,14 +144,17 @@
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #define JIMI_NOINLINE                   __declspec(noinline)
 #define JIMI_NOINLINE_SUFFIX
+#define JIMI_NOINLINE_DEC(decl)         __declspec(noinline) decl
 #define JIMI_NOINLINE_DECLARE(decl)     __declspec(noinline) decl
 #elif (defined(__GNUC__) || defined(__MINGW32__)) && __has_attribute(noinline)
-#define JIMI_NOINLINE                   
+#define JIMI_NOINLINE
 #define JIMI_NOINLINE_SUFFIX            __attribute__ ((noinline))
+#define JIMI_NOINLINE_DEC(decl)         decl
 #define JIMI_NOINLINE_DECLARE(decl)     decl __attribute__ ((noinline))
 #else
 #define JIMI_NOINLINE
 #define JIMI_NOINLINE_SUFFIX
+#define JIMI_NOINLINE_DEC(decl)         decl
 #define JIMI_NOINLINE_DECLARE(decl)     decl
 #endif
 

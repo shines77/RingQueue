@@ -2924,8 +2924,8 @@ static const year_info_t s_year_info[] = {
 // See: https://blog.csdn.net/ok2222991/article/details/21019977
 //
 
-JIMI_NOINLINE
-unsigned long linux_mktime(unsigned int year, unsigned int month,
+JIMI_NOINLINE_DEC(unsigned long)
+linux_mktime(unsigned int year, unsigned int month,
                            unsigned int day, unsigned int hour,
                            unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
 {
@@ -2942,8 +2942,8 @@ unsigned long linux_mktime(unsigned int year, unsigned int month,
         ) * 60 + second;    /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long linux_mktime(struct tm * time) JIMI_NOINLINE_SUFFIX
+JIMI_NOINLINE_DEC(unsigned long)
+linux_mktime(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     unsigned int year = time->tm_year + 1900;
     unsigned int month = time->tm_mon + 1;
@@ -2960,8 +2960,8 @@ unsigned long linux_mktime(struct tm * time) JIMI_NOINLINE_SUFFIX
         ) * 60 + time->tm_sec;      /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v1(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
 {
@@ -2985,8 +2985,8 @@ unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3008,8 +3008,8 @@ unsigned long fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v2(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
 {
@@ -3024,8 +3024,8 @@ unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3038,8 +3038,8 @@ unsigned long fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v3(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
 {
@@ -3054,8 +3054,8 @@ unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3068,8 +3068,8 @@ unsigned long fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v4(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
 {
@@ -3084,8 +3084,8 @@ unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE
-unsigned long fast_mktime_v4(struct tm * time) JIMI_NOINLINE_SUFFIX
+JIMI_NOINLINE_DEC(unsigned long)
+fast_mktime_v4(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
