@@ -2960,10 +2960,10 @@ __linux_mktime(struct tm * time)
         ) * 60 + time->tm_sec;      /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
+unsigned long __attribute__ ((noinline))
 fast_mktime_v1(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
+                             unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -2985,8 +2985,8 @@ fast_mktime_v1(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
-__fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
+unsigned long __attribute__ ((noinline))
+__fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3008,10 +3008,10 @@ __fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
+unsigned long __attribute__ ((noinline))
 fast_mktime_v2(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
+                             unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3024,8 +3024,8 @@ fast_mktime_v2(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
-__fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
+unsigned long __attribute__ ((noinline))
+__fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3038,10 +3038,10 @@ __fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
+unsigned long __attribute__ ((noinline))
 fast_mktime_v3(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
+                             unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3054,8 +3054,8 @@ fast_mktime_v3(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
-__fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
+unsigned long __attribute__ ((noinline))
+__fast_mktime_v3(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3068,10 +3068,10 @@ __fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
+unsigned long __attribute__ ((noinline))
 fast_mktime_v4(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second) JIMI_NOINLINE_SUFFIX
+                             unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
@@ -3084,8 +3084,8 @@ fast_mktime_v4(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-JIMI_NOINLINE_DEC(unsigned long)
-__fast_mktime_v4(struct tm * time) JIMI_NOINLINE_SUFFIX
+unsigned long __attribute__ ((noinline))
+__fast_mktime_v4(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
