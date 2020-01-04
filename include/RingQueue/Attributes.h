@@ -23,7 +23,7 @@
  */
 #if defined(_MSC_VER)
 #  define JIMI_ALWAYS_INLINE_EVEN_DEBUG     __forceinline
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined(__clang__)
 #  define JIMI_ALWAYS_INLINE_EVEN_DEBUG     __attribute__((always_inline)) inline
 #else
 #  define JIMI_ALWAYS_INLINE_EVEN_DEBUG     inline
