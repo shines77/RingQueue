@@ -13,14 +13,6 @@
 #include <windows.h>
 #endif
 
-#ifndef likely
-#define likely(x)   __builtin_expect((x), 1)
-#endif
-
-#ifndef unlikely
-#define unlikely(x) __builtin_expect((x), 0)
-#endif
-
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #pragma warning(push)
 #pragma warning(disable: 4200)

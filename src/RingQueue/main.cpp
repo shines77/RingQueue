@@ -2567,52 +2567,39 @@ void run_some_queue_ex_tests(void)
     jimi_console_readkeyln(true, true, false);
 }
 
-static const unsigned char s_month_days[] {
-    0,
-    31, 28, 31, 30, 31, 30,    /* month 1-6  */
-    31, 31, 30, 31, 30, 31,    /* month 7-12 */
-};
-
-static const unsigned short s_month_ydays[16] {
-    0,
-    0,   31,  59,  90,  120, 151,   /* month 1-6  */
-    181, 212, 243, 273, 304, 334,   /* month 7-12 */
-    365, 0, 0
-};
-
-static const unsigned short s_month_ydays2[2][16] {
+static const unsigned char s_month_days[2][16] {
     // Normal year
     {
         0,
-        0,   31,  59,  90,  120, 151,   /* month 1-6  */
-        181, 212, 243, 273, 304, 334,   /* month 7-12 */
-        365, 0, 0
+        31, 28, 31, 30, 31, 30,    /* month 1-6  */
+        31, 31, 30, 31, 30, 31,    /* month 7-12 */
+        0, 0, 0
     },
     // Leap year
     {
         0,
-        0,   31,  60,  91,  121, 152,   /* month 1-6  */
-        182, 213, 244, 274, 305, 335,   /* month 7-12 */
-        366, 0, 0
+        31, 29, 31, 30, 31, 30,    /* month 1-6  */
+        31, 31, 30, 31, 30, 31,    /* month 7-12 */
+        0, 0, 0
     }
 };
 
-static const unsigned short s_month_ydays_v2[2][16] {
+static const unsigned char s_month_days_0[2][16] {
     // Normal year
     {
-        0,   31,  59,  90,  120, 151,   /* month 1-6  */
-        181, 212, 243, 273, 304, 334,   /* month 7-12 */
-        365, 0, 0, 0
+        31, 28, 31, 30, 31, 30,    /* month 1-6  */
+        31, 31, 30, 31, 30, 31,    /* month 7-12 */
+        0, 0, 0, 0
     },
     // Leap year
     {
-        0,   31,  60,  91,  121, 152,   /* month 1-6  */
-        182, 213, 244, 274, 305, 335,   /* month 7-12 */
-        366, 0, 0, 0
+        31, 29, 31, 30, 31, 30,    /* month 1-6  */
+        31, 31, 30, 31, 30, 31,    /* month 7-12 */
+        0, 0, 0, 0
     }
 };
 
-static const short s_month_ydays_ex[2][16] {
+static const short s_month_ydays[2][16] {
     // Normal year
     {
         0,
@@ -2629,8 +2616,7 @@ static const short s_month_ydays_ex[2][16] {
     }
 };
 
-static const short s_month_ydays_v3[2][16] {
-
+static const short s_month_ydays_0[2][16] {
     // Normal year
     {
         -1,  30,  58,  89,  119, 150,   /* month 1-6  */
@@ -2918,17 +2904,163 @@ static const year_info_t s_year_info[] = {
     /* 2097 */ { 46387, 0, { 0, -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, } },
 };
 
+static const year_info_t s_year_info_0[] = {
+    /* 1970 */ {     0, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1971 */ {   365, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1972 */ {   730, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1973 */ {  1096, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1974 */ {  1461, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1975 */ {  1826, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1976 */ {  2191, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1977 */ {  2557, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1978 */ {  2922, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1979 */ {  3287, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1980 */ {  3652, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1981 */ {  4018, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1982 */ {  4383, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1983 */ {  4748, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1984 */ {  5113, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1985 */ {  5479, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1986 */ {  5844, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1987 */ {  6209, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1988 */ {  6574, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1989 */ {  6940, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1990 */ {  7305, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1991 */ {  7670, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1992 */ {  8035, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1993 */ {  8401, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1994 */ {  8766, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1995 */ {  9131, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1996 */ {  9496, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 1997 */ {  9862, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1998 */ { 10227, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 1999 */ { 10592, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2000 */ { 10957, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2001 */ { 11323, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2002 */ { 11688, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2003 */ { 12053, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2004 */ { 12418, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2005 */ { 12784, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2006 */ { 13149, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2007 */ { 13514, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2008 */ { 13879, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2009 */ { 14245, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2010 */ { 14610, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2011 */ { 14975, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2012 */ { 15340, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2013 */ { 15706, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2014 */ { 16071, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2015 */ { 16436, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2016 */ { 16801, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2017 */ { 17167, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2018 */ { 17532, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2019 */ { 17897, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2020 */ { 18262, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2021 */ { 18628, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2022 */ { 18993, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2023 */ { 19358, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2024 */ { 19723, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2025 */ { 20089, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2026 */ { 20454, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2027 */ { 20819, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2028 */ { 21184, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2029 */ { 21550, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2030 */ { 21915, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2031 */ { 22280, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2032 */ { 22645, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2033 */ { 23011, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2034 */ { 23376, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2035 */ { 23741, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2036 */ { 24106, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2037 */ { 24472, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2038 */ { 24837, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2039 */ { 25202, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2040 */ { 25567, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2041 */ { 25933, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2042 */ { 26298, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2043 */ { 26663, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2044 */ { 27028, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2045 */ { 27394, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2046 */ { 27759, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2047 */ { 28124, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2048 */ { 28489, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2049 */ { 28855, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2050 */ { 29220, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2051 */ { 29585, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2052 */ { 29950, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2053 */ { 30316, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2054 */ { 30681, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2055 */ { 31046, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2056 */ { 31411, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2057 */ { 31777, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2058 */ { 32142, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2059 */ { 32507, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2060 */ { 32872, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2061 */ { 33238, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2062 */ { 33603, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2063 */ { 33968, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2064 */ { 34333, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2065 */ { 34699, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2066 */ { 35064, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2067 */ { 35429, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2068 */ { 35794, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2069 */ { 36160, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2070 */ { 36525, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2071 */ { 36890, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2072 */ { 37255, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2073 */ { 37621, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2074 */ { 37986, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2075 */ { 38351, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2076 */ { 38716, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2077 */ { 39082, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2078 */ { 39447, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2079 */ { 39812, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2080 */ { 40177, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2081 */ { 40543, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2082 */ { 40908, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2083 */ { 41273, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2084 */ { 41638, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2085 */ { 42004, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2086 */ { 42369, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2087 */ { 42734, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2088 */ { 43099, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2089 */ { 43465, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2090 */ { 43830, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2091 */ { 44195, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2092 */ { 44560, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2093 */ { 44926, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2094 */ { 45291, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2095 */ { 45656, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+    /* 2096 */ { 46021, 1, { -1, 30, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 0, } },
+    /* 2097 */ { 46387, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
+};
+
+static inline
+int get_day_of_week(int year, int month, int day)
+{
+    int yindex = year - 1970;
+    unsigned int year_days = s_year_days[yindex].total_days;
+    unsigned int is_leap = s_year_days[yindex].is_leap;
+
+    // 1970-01-01 is Thusday (wday = 4)
+    return (int)((year_days + s_month_ydays[is_leap][month] + day + 4) % 7);
+}
+
 //
 // Linux's mktime()
 //
 // See: https://blog.csdn.net/axx1611/article/details/1792827
 // See: https://blog.csdn.net/ok2222991/article/details/21019977
 //
+// mktime() function performance
+//
+// See: https://blog.csdn.net/u014630623/article/details/88992582
+//
 
 JIMI_NOINLINE unsigned long
 linux_mktime(unsigned int year, unsigned int month,
-                           unsigned int day, unsigned int hour,
-                           unsigned int minute, unsigned int second)
+             unsigned int day, unsigned int hour,
+             unsigned int minute, unsigned int second)
 {
     if (0 >= (int)(month -= 2)) {   /* 1..12 -> 11,12,1..10 */
         month += 12;                /* Puts Feb last since it has leap day */
@@ -2963,8 +3095,8 @@ linux_mktime(struct tm * time)
 
 JIMI_NOINLINE unsigned long
 fast_mktime_v1(unsigned int year, unsigned int month,
-                             unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second)
+               unsigned int day, unsigned int hour,
+               unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -2976,11 +3108,11 @@ fast_mktime_v1(unsigned int year, unsigned int month,
     else
         is_leap = 1;
 #else
-    unsigned int is_leap = (month >= 3) ? (1 - s_year_days[yindex].is_leap) : 1;
+    unsigned int is_leap = s_year_days[yindex].is_leap;
 #endif
 
     return (((
-        (unsigned long)(year_days + s_month_ydays[month] + day - is_leap)
+        (unsigned long)(year_days + s_month_ydays[is_leap][month] + day)
         * 24 + hour)        /* now have hours */
         * 60 + minute)      /* now have minutes */
         * 60 + second);     /* finally seconds */
@@ -2999,11 +3131,11 @@ fast_mktime_v1(struct tm * time)
     else
         is_leap = 1;
 #else
-    unsigned int is_leap = (time->tm_mon >= 2) ? (1 - s_year_days[yindex].is_leap) : 1;
+    unsigned int is_leap = s_year_days[yindex].is_leap;
 #endif
 
     return (((
-        (unsigned long)(year_days + s_month_ydays[time->tm_mon + 1] + time->tm_mday - is_leap)
+        (unsigned long)(year_days + s_month_ydays_0[is_leap][time->tm_mon] + time->tm_mday)
         * 24 + time->tm_hour)   /* now have hours */
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
@@ -3011,15 +3143,15 @@ fast_mktime_v1(struct tm * time)
 
 JIMI_NOINLINE unsigned long
 fast_mktime_v2(unsigned int year, unsigned int month,
-                             unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second)
+               unsigned int day, unsigned int hour,
+               unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
     return (((
-        (unsigned long)(year_days + s_month_ydays2[is_leap][month] + day - 1)
+        (unsigned long)(year_days + s_month_ydays[is_leap][month] + day)
         * 24 + hour)        /* now have hours */
         * 60 + minute)      /* now have minutes */
         * 60 + second);     /* finally seconds */
@@ -3033,7 +3165,7 @@ fast_mktime_v2(struct tm * time)
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
     return (((
-        (unsigned long)(year_days + s_month_ydays_v2[is_leap][time->tm_mon] + time->tm_mday - 1)
+        (unsigned long)(year_days + s_month_ydays_0[is_leap][time->tm_mon] + time->tm_mday)
         * 24 + time->tm_hour)   /* now have hours */
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
@@ -3041,15 +3173,15 @@ fast_mktime_v2(struct tm * time)
 
 JIMI_NOINLINE unsigned long
 fast_mktime_v3(unsigned int year, unsigned int month,
-                             unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second)
+               unsigned int day, unsigned int hour,
+               unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
     return (((
-        (unsigned long)(year_days + s_month_ydays_ex[is_leap][month] + day)
+        (unsigned long)(year_days + s_month_ydays[is_leap][month] + day)
         * 24 + hour)        /* now have hours */
         * 60 + minute)      /* now have minutes */
         * 60 + second);     /* finally seconds */
@@ -3063,7 +3195,7 @@ fast_mktime_v3(struct tm * time)
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
     return (((
-        (unsigned long)(year_days + s_month_ydays_v3[is_leap][time->tm_mon] + time->tm_mday)
+        (unsigned long)(year_days + s_month_ydays_0[is_leap][time->tm_mon] + time->tm_mday)
         * 24 + time->tm_hour)   /* now have hours */
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
@@ -3071,8 +3203,8 @@ fast_mktime_v3(struct tm * time)
 
 JIMI_NOINLINE unsigned long
 fast_mktime_v4(unsigned int year, unsigned int month,
-                             unsigned int day, unsigned int hour,
-                             unsigned int minute, unsigned int second)
+               unsigned int day, unsigned int hour,
+               unsigned int minute, unsigned int second)
 {
     int yindex = year - 1970;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
@@ -3094,6 +3226,192 @@ fast_mktime_v4(struct tm * time)
 
     return (((
         (unsigned long)(year_days + year_info->month_ydays[time->tm_mon + 1] + time->tm_mday)
+        * 24 + time->tm_hour)   /* now have hours */
+        * 60 + time->tm_min)    /* now have minutes */
+        * 60 + time->tm_sec);   /* finally seconds */
+}
+
+JIMI_NOINLINE unsigned long
+fast_mktime_v5(struct tm * time)
+{
+    static const int START_YEAR = 1970;
+    static const int BASE_YEAR = 1900;
+    static const int __SECONDS = 60;
+    static const int __MINUTES = 60;
+    static const int __HOURS = 24;
+    static const int __MDAYS = 30;
+    static const int __MONTHS = 12;
+    static const int __YEARS = 365;
+
+    // Adjust the second, minute, hour and month_day at first.
+
+    int second = time->tm_sec;
+    int minute = time->tm_min;
+    if (unlikely(second < 0 || second >= __SECONDS)) {
+        int sec_remainder = second % __SECONDS;
+        minute += (second / __SECONDS) - (sec_remainder < 0);
+        second = (sec_remainder < 0) ? (sec_remainder + __SECONDS) : sec_remainder;
+        time->tm_sec = second;
+    }
+
+    int hour = time->tm_hour;
+    if (unlikely(minute < 0 || minute >= __MINUTES)) {
+        int min_remainder = minute % __MINUTES;
+        hour += (minute / __MINUTES) - (min_remainder < 0);
+        minute = (min_remainder < 0) ? (min_remainder + __MINUTES) : min_remainder;
+        time->tm_min = minute;
+    }
+
+    int mday = time->tm_mday;
+    if (unlikely(hour < 0 || hour >= __HOURS)) {
+        int hour_remainder = hour % __HOURS;
+        mday += (hour / __HOURS) - (hour_remainder < 0);
+        hour = (hour_remainder < 0) ? (hour_remainder + __HOURS) : hour_remainder;
+        time->tm_hour = hour;
+    }
+
+    // Adjust the month and year.
+
+    int year = time->tm_mon;
+    int month = time->tm_mon;
+    if (unlikely(month < 0 || month >= __MONTHS)) {
+        int mon_remainder = month % __MONTHS;
+        year += (month / __MONTHS) - (mon_remainder < 0);
+        month = (mon_remainder < 0) ? (mon_remainder + __MONTHS) : mon_remainder;
+    }
+
+    // Get the days of year and adjust the month and year.
+    int is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+    int yday = s_month_ydays[is_leap][month + 1] + mday;
+    if (likely(month >= 3)) {
+        // The month is after February.
+        do {
+            if (unlikely(yday >= (__YEARS + is_leap))) {
+                year++;
+                if (likely(is_leap == 0)) {
+                    // It's a normal years.
+                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                    mday -= __YEARS + is_leap;
+                    yday -= __YEARS + is_leap;
+                }
+                else {
+                    // It's a leap years, and the next year's February must be 28 days,
+                    // and must be a normal years.
+                    is_leap = 0;
+                    mday -= __YEARS;
+                    yday -= __YEARS;
+                }
+                // Next year is leap year?
+            }
+            else if (unlikely(yday < 0)) {
+                year--;
+                if (likely(is_leap == 0)) {
+                    // It's a normal years.
+                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                    mday += __YEARS;
+                    yday += __YEARS;
+                }
+                else {
+                    // It's a leap years, the previous year must have 366 days (through February 29),
+                    // and must be a normal years.
+                    is_leap = 0;
+                    mday += (__YEARS + 1);
+                    yday += (__YEARS + 1);
+                }
+            }
+            else {
+                break;
+            }
+        } while (1);
+    }
+    else {
+        // The month is February or before February.
+        do {
+            if (unlikely(yday >= (__YEARS + is_leap))) {
+                year++;
+                if (likely(is_leap == 0)) {
+                    // It's a normal years.
+                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                    mday -= __YEARS;
+                    yday -= __YEARS;
+                }
+                else {
+                    // It's a leap years, and the next year's February must be 28 days,
+                    // and must be a normal years.
+                    is_leap = 0;
+                    mday -= (__YEARS + 1);
+                    yday -= (__YEARS + 1);
+                }
+                // Next year is leap year?
+            }
+            else if (unlikely(yday < 0)) {
+                year--;
+                if (likely(is_leap == 0)) {
+                    // It's a normal years.
+                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                    mday += __YEARS + is_leap;
+                    yday += __YEARS + is_leap;
+                }
+                else {
+                    // It's a leap years, the previous year must have 365 days (have no February 29),
+                    // and must be a normal years.
+                    is_leap = 0;
+                    mday += __YEARS;
+                    yday += __YEARS;
+                }
+            }
+            else {
+                break;
+            }
+        } while (1);
+    }
+
+    year_info_t * year_info;
+
+START_MAKE:
+    // Since 1970 year
+    int yindex = year - (START_YEAR - BASE_YEAR);
+    if (unlikely(yindex < 0)) return int(-1);
+
+    year_info = (year_info_t *)&s_year_info[yindex];
+    is_leap = year_info->is_leap;
+    unsigned int year_total_days = year_info->total_days;
+
+    do {
+        int mon_days = s_month_days[is_leap][month + 1];
+        if (unlikely(mday <= 0 || mday > mon_days)) {
+            mday -= mon_days;
+            month++;
+            if (unlikely(month < 0 || month >= __MONTHS)) {
+                month = 0;
+                year++;
+                goto START_MAKE;
+            }
+        }
+        else {
+            break;
+        }
+    } while (1);
+
+    if (mday != time->tm_mday)
+        time->tm_mday = mday;
+    if (month != time->tm_mon)
+        time->tm_mon = month;
+    if (year != time->tm_year)
+        time->tm_year = year;
+
+    // Get the days of this year.
+    yday = year_info->month_ydays[month + 1] + mday;
+    time->tm_yday = (int)yday;
+
+    // 1970-01-01 is Thusday (wday = 4)
+    int wday = (int)((year_total_days + yday + 4) % 7);
+    time->tm_wday = wday;
+
+    int is_dst = 1;
+
+    return (((
+        (unsigned long)(year_total_days + yday)
         * 24 + time->tm_hour)   /* now have hours */
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
@@ -3134,15 +3452,6 @@ unsigned int random(unsigned int minimum, unsigned int maximum)
         return (rnd % (minimum - maximum + 1)) + maximum;
 }
 
-int get_day_of_week(int year, int month, int day)
-{
-    int yindex = year - 1970;
-    unsigned int year_days = s_year_days[yindex].total_days;
-    unsigned int is_leap = s_year_days[yindex].is_leap;
-
-    return ((year_days + s_month_ydays_ex[is_leap][month] + day + 4) % 7);
-}
-
 static const unsigned int kMaxRepeatTime = 100;
 static const unsigned int kMaxTestTime = 10000;
 
@@ -3154,7 +3463,7 @@ void test_mktime()
         test_time[i].year = year;
         int month = random(1, 12);
         test_time[i].month = month;
-        int day = random(1, s_month_days[month]);
+        int day = random(1, s_month_days[0][month]);
         test_time[i].day = day;
         test_time[i].day_of_week = get_day_of_week(year, month, day);
         test_time[i].hour = random(0, 23);
@@ -3295,6 +3604,8 @@ void test_mktime()
 }
 
 //
+// 1970 年 1 月 1 日午夜到 2038 年 1 月 19 日 03 时 14 分 07 秒之间的日期
+//
 // 英国夏令时: 3月的最后一个周日 01:00 ~ 10月的最后一个周日 01:00
 // 中国夏令时: 1986年至1991年, 四月中旬第一个星期日的凌晨 2 时开始 ~ 九月中旬第一个星期日的凌晨 2 时结束. 
 //
@@ -3310,10 +3621,10 @@ void test_mktime_tm()
         when[i].tm_year = year - 1900;
         int month = random(1, 12);
         when[i].tm_mon = month - 1;
-        int day = random(1, s_month_days[month]);
+        int day = random(1, s_month_days[0][month]);
         when[i].tm_mday = day;
         when[i].tm_wday = get_day_of_week(year, month, day);
-        when[i].tm_yday = s_month_ydays[month] + day - 1;
+        when[i].tm_yday = s_month_ydays[0][month] + day - 1;
         when[i].tm_hour = random(0, 23);
         when[i].tm_min = random(0, 59);
         when[i].tm_sec = random(0, 59);
@@ -3474,6 +3785,26 @@ void test_mktime_tm()
     printf("checksum: %u\n", checksum);
     printf("\n");
 
+    // fast_mktime_v5(tm)
+    printf("test: fast_mktime_v4(tm)\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = fast_mktime_v5(&when[i]);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
     // verify
     unsigned long timestamp1, timestamp2;
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
@@ -3530,12 +3861,31 @@ void print_year_info()
                 printf("0 ");
             else if (month > 12)
                 printf("0, ");
-            else if (month >= 3 && is_leap != 0)
-                printf("%d, ", (int)(s_month_ydays[month]));
             else
-                printf("%d, ", (int)(s_month_ydays[month] - 1));
+                printf("%d, ", (int)(s_month_ydays[is_leap][month]));
         }
         printf("} },\r\n");
+    }
+    printf("};\r\n");
+    printf("\r\n");
+
+    printf("static const year_info_t s_year_info_0[] {\r\n");
+    for (year = kStartYear; year < (kStartYear + kYearStep); year++) {
+        years = year - 1;
+        days = ((years / 4 - years / 100 + years / 400)
+                + 367 * (1 + 12 - 2) / 12 + 1)
+                + years * 365 - 719499;
+        is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0)) ? 1 : 0;
+        printf("    /* %u */ { %5u, %u, { ", year, days, is_leap);
+        for (unsigned int month = 1; month <= 12; month++) {
+            if (month >= 13)
+                printf("0 ");
+            else if (month > 12)
+                printf("0, ");
+            else
+                printf("%d, ", (int)(s_month_ydays[is_leap][month]));
+        }
+        printf("0 } },\r\n");
     }
     printf("};\r\n");
     printf("\r\n");

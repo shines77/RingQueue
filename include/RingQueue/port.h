@@ -28,6 +28,22 @@
 #define JIMI_SIZE_T_SIZEOF      4
 #endif
 
+#ifndef likely
+#if defined(__GNUC__) || defined(__clang__)
+#define likely(x)       __builtin_expect((x), 1)
+#else
+#define likely(x)       x
+#endif
+#endif
+
+#ifndef unlikely
+#if defined(__GNUC__) || defined(__clang__)
+#define unlikely(x)     __builtin_expect((x), 0)
+#else
+#define unlikely(x)     x
+#endif
+#endif
+
 /**
  * macro for round to power of 2
  */
