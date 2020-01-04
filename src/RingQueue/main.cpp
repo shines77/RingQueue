@@ -2942,7 +2942,6 @@ unsigned long linux_mktime(unsigned int year, unsigned int month,
         ) * 60 + second;    /* finally seconds */
 }
 
-static
 JIMI_NOINLINE_DECLARE(unsigned long)
 linux_mktime(struct tm * time)
 {
@@ -2986,7 +2985,6 @@ unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static
 JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v1(struct tm * time)
 {
@@ -3026,7 +3024,6 @@ unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static
 JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v2(struct tm * time)
 {
@@ -3057,7 +3054,6 @@ unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static
 JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v3(struct tm * time)
 {
@@ -3088,7 +3084,6 @@ unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static
 JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v4(struct tm * time)
 {

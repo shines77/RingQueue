@@ -142,7 +142,7 @@
 #define JIMI_NOINLINE_DECLARE(decl)     __declspec(noinline) decl
 #elif defined(__GNUC__) || defined(__MINGW32__)
 #define JIMI_NOINLINE                   __attribute__ ((noinline))
-#define JIMI_NOINLINE_DECLARE(decl)     decl __attribute__ ((noinline))
+#define JIMI_NOINLINE_DECLARE(decl)     __attribute__ ((noinline)) decl
 #else
 #define JIMI_NOINLINE 
 #define JIMI_NOINLINE_DECLARE(decl)     decl
