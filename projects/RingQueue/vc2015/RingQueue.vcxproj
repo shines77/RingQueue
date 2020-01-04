@@ -182,6 +182,7 @@
     <ClCompile Include="..\..\..\src\RingQueue\sys_timer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\include\RingQueue\Attributes.h" />
     <ClInclude Include="..\..\..\include\RingQueue\console.h" />
     <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueue.h" />
     <ClInclude Include="..\..\..\include\RingQueue\DisruptorRingQueueEx.h" />
