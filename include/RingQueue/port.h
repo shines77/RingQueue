@@ -95,6 +95,10 @@
 #define PACKED_ALIGN_PREFIX(N)  __declspec(align(N))
 #define PACKED_ALIGN_SUFFIX(N)
 
+//
+// inline & noinline
+// See: https://stackoverflow.com/questions/1474030/how-can-i-tell-gcc-not-to-inline-a-function
+//
 #ifdef __cplusplus
 # define JIMI_CRT_INLINE        inline
 #else
@@ -140,9 +144,9 @@
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #define JIMI_NOINLINE                   __declspec(noinline)
 #define JIMI_NOINLINE_DECLARE(decl)     __declspec(noinline) decl
-#elif defined(__GNUC__) || defined(__MINGW32__)
+#elif (defined(__GNUC__) || defined(__MINGW32__)) && __has_attribute(noinline)
 #define JIMI_NOINLINE                   __attribute__ ((noinline))
-#define JIMI_NOINLINE_DECLARE(decl)     __attribute__ ((noinline)) decl
+#define JIMI_NOINLINE_DECLARE(decl)     decl __attribute__ ((noinline))
 #else
 #define JIMI_NOINLINE 
 #define JIMI_NOINLINE_DECLARE(decl)     decl
