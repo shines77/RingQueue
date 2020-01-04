@@ -31,6 +31,7 @@
 #define __STDC_FORMAT_MACROS
 #include "vs_inttypes.h"
 
+#include "port.h"
 #include "q3.h"
 //#include "q.h"
 //#include "qlock.h"
@@ -2941,8 +2942,9 @@ unsigned long linux_mktime(unsigned int year, unsigned int month,
         ) * 60 + second;    /* finally seconds */
 }
 
-static JIMI_NOINLINE
-unsigned long linux_mktime(struct tm * time)
+static
+JIMI_NOINLINE_DECLARE(unsigned long)
+linux_mktime(struct tm * time)
 {
     unsigned int year = time->tm_year + 1900;
     unsigned int month = time->tm_mon + 1;
@@ -2984,7 +2986,8 @@ unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static JIMI_NOINLINE
+static
+JIMI_NOINLINE_DECLARE(unsigned long)
 unsigned long fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3023,7 +3026,8 @@ unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static JIMI_NOINLINE
+static
+JIMI_NOINLINE_DECLARE(unsigned long)
 unsigned long fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3053,7 +3057,8 @@ unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static JIMI_NOINLINE
+static
+JIMI_NOINLINE_DECLARE(unsigned long)
 unsigned long fast_mktime_v3(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3083,7 +3088,8 @@ unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static JIMI_NOINLINE
+static
+JIMI_NOINLINE_DECLARE(unsigned long)
 unsigned long fast_mktime_v4(struct tm * time)
 {
     int yindex = time->tm_year - 70;
