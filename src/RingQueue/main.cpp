@@ -3100,16 +3100,7 @@ fast_mktime_v1(unsigned int year, unsigned int month,
 {
     int yindex = year - 1970;
     unsigned int year_days = s_year_days[yindex].total_days;
-
-#if 0
-    unsigned int is_leap;
-    if (month >= 3)
-        is_leap = (1 - s_year_days[yindex].is_leap)
-    else
-        is_leap = 1;
-#else
     unsigned int is_leap = s_year_days[yindex].is_leap;
-#endif
 
     return (((
         (unsigned long)(year_days + s_month_ydays[is_leap][month] + day)
@@ -3123,16 +3114,7 @@ fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
-
-#if 0
-    unsigned int is_leap;
-    if (time->tm_mon >= 2)
-        is_leap = (1 - s_year_days[yindex].is_leap);
-    else
-        is_leap = 1;
-#else
     unsigned int is_leap = s_year_days[yindex].is_leap;
-#endif
 
     return (((
         (unsigned long)(year_days + s_month_ydays_0[is_leap][time->tm_mon] + time->tm_mday)
@@ -3143,66 +3125,6 @@ fast_mktime_v1(struct tm * time)
 
 JIMI_NOINLINE unsigned long
 fast_mktime_v2(unsigned int year, unsigned int month,
-               unsigned int day, unsigned int hour,
-               unsigned int minute, unsigned int second)
-{
-    int yindex = year - 1970;
-    unsigned int year_days = s_year_days[yindex].total_days;
-    unsigned int is_leap = s_year_days[yindex].is_leap;
-
-    return (((
-        (unsigned long)(year_days + s_month_ydays[is_leap][month] + day)
-        * 24 + hour)        /* now have hours */
-        * 60 + minute)      /* now have minutes */
-        * 60 + second);     /* finally seconds */
-}
-
-JIMI_NOINLINE unsigned long
-fast_mktime_v2(struct tm * time)
-{
-    int yindex = time->tm_year - 70;
-    unsigned int year_days = s_year_days[yindex].total_days;
-    unsigned int is_leap = s_year_days[yindex].is_leap;
-
-    return (((
-        (unsigned long)(year_days + s_month_ydays_0[is_leap][time->tm_mon] + time->tm_mday)
-        * 24 + time->tm_hour)   /* now have hours */
-        * 60 + time->tm_min)    /* now have minutes */
-        * 60 + time->tm_sec);   /* finally seconds */
-}
-
-JIMI_NOINLINE unsigned long
-fast_mktime_v3(unsigned int year, unsigned int month,
-               unsigned int day, unsigned int hour,
-               unsigned int minute, unsigned int second)
-{
-    int yindex = year - 1970;
-    unsigned int year_days = s_year_days[yindex].total_days;
-    unsigned int is_leap = s_year_days[yindex].is_leap;
-
-    return (((
-        (unsigned long)(year_days + s_month_ydays[is_leap][month] + day)
-        * 24 + hour)        /* now have hours */
-        * 60 + minute)      /* now have minutes */
-        * 60 + second);     /* finally seconds */
-}
-
-JIMI_NOINLINE unsigned long
-fast_mktime_v3(struct tm * time)
-{
-    int yindex = time->tm_year - 70;
-    unsigned int year_days = s_year_days[yindex].total_days;
-    unsigned int is_leap = s_year_days[yindex].is_leap;
-
-    return (((
-        (unsigned long)(year_days + s_month_ydays_0[is_leap][time->tm_mon] + time->tm_mday)
-        * 24 + time->tm_hour)   /* now have hours */
-        * 60 + time->tm_min)    /* now have minutes */
-        * 60 + time->tm_sec);   /* finally seconds */
-}
-
-JIMI_NOINLINE unsigned long
-fast_mktime_v4(unsigned int year, unsigned int month,
                unsigned int day, unsigned int hour,
                unsigned int minute, unsigned int second)
 {
@@ -3218,7 +3140,7 @@ fast_mktime_v4(unsigned int year, unsigned int month,
 }
 
 JIMI_NOINLINE unsigned long
-fast_mktime_v4(struct tm * time)
+fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
@@ -3232,7 +3154,7 @@ fast_mktime_v4(struct tm * time)
 }
 
 JIMI_NOINLINE unsigned long
-fast_mktime_v5(struct tm * time)
+fast_mktime_v3(struct tm * time)
 {
     static const int START_YEAR = 1970;
     static const int BASE_YEAR = 1900;
@@ -3272,7 +3194,7 @@ fast_mktime_v5(struct tm * time)
 
     // Adjust the month and year.
 
-    int year = time->tm_mon;
+    int year = time->tm_year;
     int month = time->tm_mon;
     if (unlikely(month < 0 || month >= __MONTHS)) {
         int mon_remainder = month % __MONTHS;
@@ -3280,8 +3202,18 @@ fast_mktime_v5(struct tm * time)
         month = (mon_remainder < 0) ? (mon_remainder + __MONTHS) : mon_remainder;
     }
 
+    year_info_t * year_info;
+    int yindex, is_leap;
+
     // Get the days of year and adjust the month and year.
-    int is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+    yindex = year - (START_YEAR - BASE_YEAR);
+    if (likely(yindex >= 0)) {
+        year_info = (year_info_t *)&s_year_info[yindex];
+        is_leap = year_info->is_leap;
+    }
+    else {
+        is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+    }
     int yday = s_month_ydays[is_leap][month + 1] + mday;
     if (likely(month >= 3)) {
         // The month is after February.
@@ -3366,11 +3298,9 @@ fast_mktime_v5(struct tm * time)
         } while (1);
     }
 
-    year_info_t * year_info;
-
-START_MAKE:
+MKTIME_START:
     // Since 1970 year
-    int yindex = year - (START_YEAR - BASE_YEAR);
+    yindex = year - (START_YEAR - BASE_YEAR);
     if (unlikely(yindex < 0)) return int(-1);
 
     year_info = (year_info_t *)&s_year_info[yindex];
@@ -3385,7 +3315,7 @@ START_MAKE:
             if (unlikely(month < 0 || month >= __MONTHS)) {
                 month = 0;
                 year++;
-                goto START_MAKE;
+                goto MKTIME_START;
             }
         }
         else {
@@ -3540,54 +3470,12 @@ void test_mktime()
     printf("checksum: %u\n", checksum);
     printf("\n");
 
-    // fast_mktime_v3()
-    printf("test: fast_mktime_v3()\n\n");
-
-    startTime = jmc_get_timestamp();
-
-    checksum = 0;
-    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
-        for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v3(test_time[i].year, test_time[i].month, test_time[i].day,
-                                       test_time[i].hour, test_time[i].minute, test_time[i].second);
-            checksum += timestamp;
-        }
-    }
-
-    stopTime = jmc_get_timestamp();
-    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
-
-    printf("time elapsed: %9.3f ms, ", elapsedTime);
-    printf("checksum: %u\n", checksum);
-    printf("\n");
-
-    // fast_mktime_v4()
-    printf("test: fast_mktime_v4()\n\n");
-
-    startTime = jmc_get_timestamp();
-
-    checksum = 0;
-    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
-        for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v4(test_time[i].year, test_time[i].month, test_time[i].day,
-                                       test_time[i].hour, test_time[i].minute, test_time[i].second);
-            checksum += timestamp;
-        }
-    }
-
-    stopTime = jmc_get_timestamp();
-    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
-
-    printf("time elapsed: %9.3f ms, ", elapsedTime);
-    printf("checksum: %u\n", checksum);
-    printf("\n");
-
     // verify
     unsigned long timestamp1, timestamp2;
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
         timestamp1 = linux_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
                                   test_time[i].hour, test_time[i].minute, test_time[i].second);
-        timestamp2 = fast_mktime_v4(test_time[i].year, test_time[i].month, test_time[i].day,
+        timestamp2 = fast_mktime_v2(test_time[i].year, test_time[i].month, test_time[i].day,
                                     test_time[i].hour, test_time[i].minute, test_time[i].second);
 #ifndef NDEBUG
         if (timestamp1 != timestamp2) {
@@ -3754,46 +3642,6 @@ void test_mktime_tm()
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
             timestamp = fast_mktime_v3(&when[i]);
-            checksum += timestamp;
-        }
-    }
-
-    stopTime = jmc_get_timestamp();
-    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
-
-    printf("time elapsed: %9.3f ms, ", elapsedTime);
-    printf("checksum: %u\n", checksum);
-    printf("\n");
-
-    // fast_mktime_v4(tm)
-    printf("test: fast_mktime_v4(tm)\n\n");
-
-    startTime = jmc_get_timestamp();
-
-    checksum = 0;
-    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
-        for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v4(&when[i]);
-            checksum += timestamp;
-        }
-    }
-
-    stopTime = jmc_get_timestamp();
-    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
-
-    printf("time elapsed: %9.3f ms, ", elapsedTime);
-    printf("checksum: %u\n", checksum);
-    printf("\n");
-
-    // fast_mktime_v5(tm)
-    printf("test: fast_mktime_v4(tm)\n\n");
-
-    startTime = jmc_get_timestamp();
-
-    checksum = 0;
-    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
-        for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v5(&when[i]);
             checksum += timestamp;
         }
     }
