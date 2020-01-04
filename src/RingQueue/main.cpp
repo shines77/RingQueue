@@ -3098,7 +3098,9 @@ fast_mktime_v1(unsigned int year, unsigned int month,
                unsigned int day, unsigned int hour,
                unsigned int minute, unsigned int second)
 {
-    int yindex = year - 1970;
+    static const int START_YEAR = 1970;
+
+    int yindex = year - START_YEAR;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
@@ -3112,7 +3114,10 @@ fast_mktime_v1(unsigned int year, unsigned int month,
 JIMI_NOINLINE unsigned long
 fast_mktime_v1(struct tm * time)
 {
-    int yindex = time->tm_year - 70;
+    static const int START_YEAR = 1970;
+    static const int BASE_YEAR = 1900;
+
+    int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
@@ -3128,7 +3133,9 @@ fast_mktime_v2(unsigned int year, unsigned int month,
                unsigned int day, unsigned int hour,
                unsigned int minute, unsigned int second)
 {
-    int yindex = year - 1970;
+    static const int START_YEAR = 1970;
+
+    int yindex = year - START_YEAR;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
     unsigned int year_days = year_info->total_days;
 
@@ -3142,7 +3149,10 @@ fast_mktime_v2(unsigned int year, unsigned int month,
 JIMI_NOINLINE unsigned long
 fast_mktime_v2(struct tm * time)
 {
-    int yindex = time->tm_year - 70;
+    static const int START_YEAR = 1970;
+    static const int BASE_YEAR = 1900;
+
+    int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
     unsigned int year_days = year_info->total_days;
 
@@ -3158,6 +3168,7 @@ fast_mktime_v3(struct tm * time)
 {
     static const int START_YEAR = 1970;
     static const int BASE_YEAR = 1900;
+
     static const int __SECONDS = 60;
     static const int __MINUTES = 60;
     static const int __HOURS = 24;
