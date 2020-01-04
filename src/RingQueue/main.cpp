@@ -2924,10 +2924,10 @@ static const year_info_t s_year_info[] = {
 // See: https://blog.csdn.net/ok2222991/article/details/21019977
 //
 
-unsigned long
+unsigned long __attribute__ ((noinline))
 linux_mktime(unsigned int year, unsigned int month,
                            unsigned int day, unsigned int hour,
-                           unsigned int minute, unsigned int second) __attribute__ ((noinline))
+                           unsigned int minute, unsigned int second)
 {
     if (0 >= (int)(month -= 2)) {   /* 1..12 -> 11,12,1..10 */
         month += 12;                /* Puts Feb last since it has leap day */
@@ -2942,8 +2942,8 @@ linux_mktime(unsigned int year, unsigned int month,
         ) * 60 + second;    /* finally seconds */
 }
 
-unsigned long
-__linux_mktime(struct tm * time) __attribute__ ((noinline))
+unsigned long __attribute__ ((noinline))
+__linux_mktime(struct tm * time)
 {
     unsigned int year = time->tm_year + 1900;
     unsigned int month = time->tm_mon + 1;
