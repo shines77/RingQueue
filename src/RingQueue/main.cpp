@@ -2988,7 +2988,7 @@ unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
 
 static
 JIMI_NOINLINE_DECLARE(unsigned long)
-unsigned long fast_mktime_v1(struct tm * time)
+fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3028,7 +3028,7 @@ unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
 
 static
 JIMI_NOINLINE_DECLARE(unsigned long)
-unsigned long fast_mktime_v2(struct tm * time)
+fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3059,7 +3059,7 @@ unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
 
 static
 JIMI_NOINLINE_DECLARE(unsigned long)
-unsigned long fast_mktime_v3(struct tm * time)
+fast_mktime_v3(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3090,7 +3090,7 @@ unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
 
 static
 JIMI_NOINLINE_DECLARE(unsigned long)
-unsigned long fast_mktime_v4(struct tm * time)
+fast_mktime_v4(struct tm * time)
 {
     int yindex = time->tm_year - 70;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
@@ -3181,7 +3181,7 @@ void test_mktime()
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
             timestamp = linux_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
-                                    test_time[i].hour, test_time[i].minute, test_time[i].second);
+                                     test_time[i].hour, test_time[i].minute, test_time[i].second);
             checksum += timestamp;
         }
     }
@@ -3281,7 +3281,7 @@ void test_mktime()
     unsigned long timestamp1, timestamp2;
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
         timestamp1 = linux_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
-                                 test_time[i].hour, test_time[i].minute, test_time[i].second);
+                                  test_time[i].hour, test_time[i].minute, test_time[i].second);
         timestamp2 = fast_mktime_v4(test_time[i].year, test_time[i].month, test_time[i].day,
                                     test_time[i].hour, test_time[i].minute, test_time[i].second);
 #ifndef NDEBUG
