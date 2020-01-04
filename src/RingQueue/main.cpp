@@ -2924,7 +2924,7 @@ static const year_info_t s_year_info[] = {
 // See: https://blog.csdn.net/ok2222991/article/details/21019977
 //
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 linux_mktime(unsigned int year, unsigned int month,
                            unsigned int day, unsigned int hour,
                            unsigned int minute, unsigned int second)
@@ -2942,7 +2942,7 @@ linux_mktime(unsigned int year, unsigned int month,
         ) * 60 + second;    /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 __linux_mktime(struct tm * time)
 {
     unsigned int year = time->tm_year + 1900;
@@ -2960,7 +2960,7 @@ __linux_mktime(struct tm * time)
         ) * 60 + time->tm_sec;      /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v1(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second)
@@ -2985,7 +2985,7 @@ fast_mktime_v1(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 __fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3008,7 +3008,7 @@ __fast_mktime_v1(struct tm * time)
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v2(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second)
@@ -3024,7 +3024,7 @@ fast_mktime_v2(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 __fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3038,7 +3038,7 @@ __fast_mktime_v2(struct tm * time)
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v3(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second)
@@ -3054,7 +3054,7 @@ fast_mktime_v3(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 __fast_mktime_v3(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3068,7 +3068,7 @@ __fast_mktime_v3(struct tm * time)
         * 60 + time->tm_sec);   /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 fast_mktime_v4(unsigned int year, unsigned int month,
                              unsigned int day, unsigned int hour,
                              unsigned int minute, unsigned int second)
@@ -3084,7 +3084,7 @@ fast_mktime_v4(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-unsigned long __attribute__ ((noinline))
+JIMI_NOINLINE_DECLARE(unsigned long)
 __fast_mktime_v4(struct tm * time)
 {
     int yindex = time->tm_year - 70;
