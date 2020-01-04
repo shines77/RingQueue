@@ -2920,12 +2920,13 @@ static const year_info_t s_year_info[] = {
 // Linux's mktime()
 //
 // See: https://blog.csdn.net/axx1611/article/details/1792827
+// See: https://blog.csdn.net/ok2222991/article/details/21019977
 //
 
 static inline
-unsigned long unix_mktime(unsigned int year, unsigned int month,
-                          unsigned int day, unsigned int hour,
-                          unsigned int minute, unsigned int second)
+unsigned long linux_mktime(unsigned int year, unsigned int month,
+                           unsigned int day, unsigned int hour,
+                           unsigned int minute, unsigned int second)
 {
     if (0 >= (int)(month -= 2)) {   /* 1..12 -> 11,12,1..10 */
         month += 12;                /* Puts Feb last since it has leap day */
@@ -2940,8 +2941,8 @@ unsigned long unix_mktime(unsigned int year, unsigned int month,
         ) * 60 + second;    /* finally seconds */
 }
 
-static inline
-unsigned long unix_mktime(struct tm * time)
+static JIMI_NOINLINE
+unsigned long linux_mktime(struct tm * time)
 {
     unsigned int year = time->tm_year + 1900;
     unsigned int month = time->tm_mon + 1;
@@ -2983,7 +2984,7 @@ unsigned long fast_mktime_v1(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static inline
+static JIMI_NOINLINE
 unsigned long fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3022,7 +3023,7 @@ unsigned long fast_mktime_v2(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static inline
+static JIMI_NOINLINE
 unsigned long fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3052,7 +3053,7 @@ unsigned long fast_mktime_v3(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static inline
+static JIMI_NOINLINE
 unsigned long fast_mktime_v3(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3082,7 +3083,7 @@ unsigned long fast_mktime_v4(unsigned int year, unsigned int month,
         * 60 + second);     /* finally seconds */
 }
 
-static inline
+static JIMI_NOINLINE
 unsigned long fast_mktime_v4(struct tm * time)
 {
     int yindex = time->tm_year - 70;
@@ -3165,15 +3166,15 @@ void test_mktime()
     jmc_timefloat_t elapsedTime = 0.0;
     unsigned long timestamp, checksum;
 
-    // unix_mktime()
-    printf("test: unix_mktime()\n\n");
+    // linux_mktime()
+    printf("test: linux_mktime()\n\n");
 
     startTime = jmc_get_timestamp();
 
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = unix_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
+            timestamp = linux_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
                                     test_time[i].hour, test_time[i].minute, test_time[i].second);
             checksum += timestamp;
         }
@@ -3273,7 +3274,7 @@ void test_mktime()
     // verify
     unsigned long timestamp1, timestamp2;
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
-        timestamp1 = unix_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
+        timestamp1 = linux_mktime(test_time[i].year, test_time[i].month, test_time[i].day,
                                  test_time[i].hour, test_time[i].minute, test_time[i].second);
         timestamp2 = fast_mktime_v4(test_time[i].year, test_time[i].month, test_time[i].day,
                                     test_time[i].hour, test_time[i].minute, test_time[i].second);
@@ -3371,15 +3372,15 @@ void test_mktime_tm()
     printf("\n");
 #endif // _MSC_VER
 
-    // unix_mktime(tm)
-    printf("test: unix_mktime(tm)\n\n");
+    // linux_mktime(tm)
+    printf("test: linux_mktime(tm)\n\n");
 
     startTime = jmc_get_timestamp();
 
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = unix_mktime(&when[i]);
+            timestamp = linux_mktime(&when[i]);
             checksum += timestamp;
         }
     }
@@ -3479,7 +3480,7 @@ void test_mktime_tm()
 #else
         timestamp1 = mktime(&when[i]) + 8 * 3600;
 #endif
-        timestamp2 = unix_mktime(&when[i]);
+        timestamp2 = linux_mktime(&when[i]);
 #ifndef NDEBUG
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
