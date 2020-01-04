@@ -2943,7 +2943,7 @@ linux_mktime(unsigned int year, unsigned int month,
 }
 
 JIMI_NOINLINE_DEC(unsigned long)
-linux_mktime(struct tm * time) JIMI_NOINLINE_SUFFIX
+__linux_mktime(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     unsigned int year = time->tm_year + 1900;
     unsigned int month = time->tm_mon + 1;
@@ -2986,7 +2986,7 @@ fast_mktime_v1(unsigned int year, unsigned int month,
 }
 
 JIMI_NOINLINE_DEC(unsigned long)
-fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
+__fast_mktime_v1(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3025,7 +3025,7 @@ fast_mktime_v2(unsigned int year, unsigned int month,
 }
 
 JIMI_NOINLINE_DEC(unsigned long)
-fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
+__fast_mktime_v2(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3055,7 +3055,7 @@ fast_mktime_v3(unsigned int year, unsigned int month,
 }
 
 JIMI_NOINLINE_DEC(unsigned long)
-fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
+__fast_mktime_v3(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     unsigned int year_days = s_year_days[yindex].total_days;
@@ -3085,7 +3085,7 @@ fast_mktime_v4(unsigned int year, unsigned int month,
 }
 
 JIMI_NOINLINE_DEC(unsigned long)
-fast_mktime_v4(struct tm * time) JIMI_NOINLINE_SUFFIX
+__fast_mktime_v4(struct tm * time) JIMI_NOINLINE_SUFFIX
 {
     int yindex = time->tm_year - 70;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
@@ -3381,7 +3381,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = linux_mktime(&when[i]);
+            timestamp = __linux_mktime(&when[i]);
             checksum += timestamp;
         }
     }
@@ -3401,7 +3401,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v1(&when[i]);
+            timestamp = __fast_mktime_v1(&when[i]);
             checksum += timestamp;
         }
     }
@@ -3421,7 +3421,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v2(&when[i]);
+            timestamp = __fast_mktime_v2(&when[i]);
             checksum += timestamp;
         }
     }
@@ -3441,7 +3441,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v3(&when[i]);
+            timestamp = __fast_mktime_v3(&when[i]);
             checksum += timestamp;
         }
     }
@@ -3461,7 +3461,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
-            timestamp = fast_mktime_v4(&when[i]);
+            timestamp = __fast_mktime_v4(&when[i]);
             checksum += timestamp;
         }
     }
@@ -3481,7 +3481,7 @@ void test_mktime_tm()
 #else
         timestamp1 = mktime(&when[i]) + 8 * 3600;
 #endif
-        timestamp2 = linux_mktime(&when[i]);
+        timestamp2 = __linux_mktime(&when[i]);
 #ifndef NDEBUG
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
