@@ -3517,7 +3517,7 @@ fast_mktime_v3(struct tm * time)
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
 
-    return (timestamp + adjust_dst_time(year, timestamp));
+    return (timestamp - adjust_dst_time(year, timestamp));
 }
 
 struct date_time_t {
@@ -3733,6 +3733,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            when[i].tm_isdst = 0;
             timestamp = (unsigned long)_mktime32(&when[i]) + 8 * 3600;
             checksum += timestamp;
         }
@@ -3754,6 +3755,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            when[i].tm_isdst = 0;
             timestamp = linux_mktime(&when[i]);
             checksum += timestamp;
         }
@@ -3774,6 +3776,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            when[i].tm_isdst = 0;
             timestamp = fast_mktime_v1(&when[i]);
             checksum += timestamp;
         }
@@ -3794,6 +3797,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            when[i].tm_isdst = 0;
             timestamp = fast_mktime_v2(&when[i]);
             checksum += timestamp;
         }
@@ -3814,6 +3818,7 @@ void test_mktime_tm()
     checksum = 0;
     for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            when[i].tm_isdst = 0;
             timestamp = fast_mktime_v3(&when[i]);
             checksum += timestamp;
         }
@@ -3829,6 +3834,7 @@ void test_mktime_tm()
     // verify
     unsigned long timestamp1, timestamp2;
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
+        when[i].tm_isdst = 0;
 #if defined(_MSC_VER) || ((defined(__INTER_COMPILER) || defined(__ICC)) && !(defined(GNUC) || defined(__linux__)))
         timestamp1 = _mktime32(&when[i]) + 8 * 3600;
 #else
