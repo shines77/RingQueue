@@ -3219,113 +3219,115 @@ fast_mktime_v3(struct tm * time)
     // Get the days of year and adjust the month and year.
     yindex = year - (START_YEAR - BASE_YEAR);
     if (likely(yindex >= 0)) {
-        year_info = (year_info_t *)&s_year_info[yindex];
+        year_info = (year_info_t *)&s_year_info_0[yindex];
         is_leap = year_info->is_leap;
     }
     else {
         is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
     }
-    int yday = s_month_ydays[is_leap][month + 1] + mday;
-    if (likely(month >= 3)) {
-        // The month is after February.
-        do {
-            if (unlikely(yday >= (__YEARS + is_leap))) {
-                year++;
-                if (likely(is_leap == 0)) {
-                    // It's a normal years.
-                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
-                    mday -= __YEARS + is_leap;
-                    yday -= __YEARS + is_leap;
+    int yday = s_month_ydays_0[is_leap][month] + mday;
+    if (unlikely(yday < 0 || yday >= (__YEARS + is_leap))) {
+        if (likely(month >= 3)) {
+            // The month is after February.
+            do {
+                if (unlikely(yday >= (__YEARS + is_leap))) {
+                    year++;
+                    if (likely(is_leap == 0)) {
+                        // It's a normal years.
+                        is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                        mday -= __YEARS + is_leap;
+                        yday -= __YEARS + is_leap;
+                    }
+                    else {
+                        // It's a leap years, and the next year's February must be 28 days,
+                        // and must be a normal years.
+                        is_leap = 0;
+                        mday -= __YEARS;
+                        yday -= __YEARS;
+                    }
+                }
+                else if (unlikely(yday < 0)) {
+                    year--;
+                    if (likely(is_leap == 0)) {
+                        // It's a normal years.
+                        is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                        mday += __YEARS;
+                        yday += __YEARS;
+                    }
+                    else {
+                        // It's a leap years, the previous year must have 366 days (through February 29),
+                        // and must be a normal years.
+                        is_leap = 0;
+                        mday += (__YEARS + 1);
+                        yday += (__YEARS + 1);
+                    }
                 }
                 else {
-                    // It's a leap years, and the next year's February must be 28 days,
-                    // and must be a normal years.
-                    is_leap = 0;
-                    mday -= __YEARS;
-                    yday -= __YEARS;
+                    break;
                 }
-                // Next year is leap year?
-            }
-            else if (unlikely(yday < 0)) {
-                year--;
-                if (likely(is_leap == 0)) {
-                    // It's a normal years.
-                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
-                    mday += __YEARS;
-                    yday += __YEARS;
+            } while (1);
+        }
+        else {
+            // The month is February or before February.
+            do {
+                if (unlikely(yday >= (__YEARS + is_leap))) {
+                    year++;
+                    if (likely(is_leap == 0)) {
+                        // It's a normal years.
+                        is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                        mday -= __YEARS;
+                        yday -= __YEARS;
+                    }
+                    else {
+                        // It's a leap years, and the next year's February must be 28 days,
+                        // and must be a normal years.
+                        is_leap = 0;
+                        mday -= (__YEARS + 1);
+                        yday -= (__YEARS + 1);
+                    }
+                    // Next year is leap year?
                 }
-                else {
-                    // It's a leap years, the previous year must have 366 days (through February 29),
-                    // and must be a normal years.
-                    is_leap = 0;
-                    mday += (__YEARS + 1);
-                    yday += (__YEARS + 1);
-                }
-            }
-            else {
-                break;
-            }
-        } while (1);
-    }
-    else {
-        // The month is February or before February.
-        do {
-            if (unlikely(yday >= (__YEARS + is_leap))) {
-                year++;
-                if (likely(is_leap == 0)) {
-                    // It's a normal years.
-                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
-                    mday -= __YEARS;
-                    yday -= __YEARS;
-                }
-                else {
-                    // It's a leap years, and the next year's February must be 28 days,
-                    // and must be a normal years.
-                    is_leap = 0;
-                    mday -= (__YEARS + 1);
-                    yday -= (__YEARS + 1);
-                }
-                // Next year is leap year?
-            }
-            else if (unlikely(yday < 0)) {
-                year--;
-                if (likely(is_leap == 0)) {
-                    // It's a normal years.
-                    is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
-                    mday += __YEARS + is_leap;
-                    yday += __YEARS + is_leap;
+                else if (unlikely(yday < 0)) {
+                    year--;
+                    if (likely(is_leap == 0)) {
+                        // It's a normal years.
+                        is_leap = ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0));
+                        mday += __YEARS + is_leap;
+                        yday += __YEARS + is_leap;
+                    }
+                    else {
+                        // It's a leap years, the previous year must have 365 days (have no February 29),
+                        // and must be a normal years.
+                        is_leap = 0;
+                        mday += __YEARS;
+                        yday += __YEARS;
+                    }
                 }
                 else {
-                    // It's a leap years, the previous year must have 365 days (have no February 29),
-                    // and must be a normal years.
-                    is_leap = 0;
-                    mday += __YEARS;
-                    yday += __YEARS;
+                    break;
                 }
-            }
-            else {
-                break;
-            }
-        } while (1);
+            } while (1);
+        }
     }
 
-MKTIME_START:
     // Since 1970 year
     yindex = year - (START_YEAR - BASE_YEAR);
     if (unlikely(yindex < 0)) return int(-1);
 
-    year_info = (year_info_t *)&s_year_info[yindex];
+    year_info = (year_info_t *)&s_year_info_0[yindex];
+
+MKTIME_START:
     is_leap = year_info->is_leap;
-    unsigned int year_total_days = year_info->total_days;
 
     do {
-        int mon_days = s_month_days[is_leap][month + 1];
+        int mon_days = s_month_days_0[is_leap][month];
         if (unlikely(mday <= 0 || mday > mon_days)) {
             mday -= mon_days;
             month++;
             if (unlikely(month < 0 || month >= __MONTHS)) {
                 month = 0;
                 year++;
+                year_info++;
                 goto MKTIME_START;
             }
         }
@@ -3341,8 +3343,10 @@ MKTIME_START:
     if (year != time->tm_year)
         time->tm_year = year;
 
+    unsigned int year_total_days = year_info->total_days;
+
     // Get the days of this year.
-    yday = year_info->month_ydays[month + 1] + mday;
+    yday = year_info->month_ydays[month] + mday;
     time->tm_yday = (int)yday;
 
     // 1970-01-01 is Thusday (wday = 4)
