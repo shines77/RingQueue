@@ -3230,7 +3230,7 @@ fast_mktime_v3(struct tm * time)
         if (likely(month >= 3)) {
             // The month is after February.
             do {
-                if (unlikely(yday >= (__YEARS + is_leap))) {
+                if (likely(yday >= (__YEARS + is_leap))) {
                     year++;
                     if (likely(is_leap == 0)) {
                         // It's a normal years.
@@ -3246,7 +3246,7 @@ fast_mktime_v3(struct tm * time)
                         yday -= __YEARS;
                     }
                 }
-                else if (unlikely(yday < 0)) {
+                else if (likely(yday < 0)) {
                     year--;
                     if (likely(is_leap == 0)) {
                         // It's a normal years.
@@ -3270,7 +3270,7 @@ fast_mktime_v3(struct tm * time)
         else {
             // The month is February or before February.
             do {
-                if (unlikely(yday >= (__YEARS + is_leap))) {
+                if (likely(yday >= (__YEARS + is_leap))) {
                     year++;
                     if (likely(is_leap == 0)) {
                         // It's a normal years.
@@ -3287,7 +3287,7 @@ fast_mktime_v3(struct tm * time)
                     }
                     // Next year is leap year?
                 }
-                else if (unlikely(yday < 0)) {
+                else if (likely(yday < 0)) {
                     year--;
                     if (likely(is_leap == 0)) {
                         // It's a normal years.
@@ -3315,8 +3315,6 @@ fast_mktime_v3(struct tm * time)
     if (unlikely(yindex < 0)) return int(-1);
 
     year_info = (year_info_t *)&s_year_info_0[yindex];
-
-MKTIME_START:
     is_leap = year_info->is_leap;
 
     do {
@@ -3327,20 +3325,20 @@ MKTIME_START:
         else {
             mday -= mon_days;
             month++;
-            if (unlikely(month < 0 || month >= __MONTHS)) {
+            if (likely(month < 0 || month >= __MONTHS)) {
                 month = 0;
                 year++;
                 year_info++;
-                goto MKTIME_START;
+                is_leap = year_info->is_leap;
             }
         }
     } while (1);
 
-    if (mday != time->tm_mday)
+    if (unlikely(mday != time->tm_mday))
         time->tm_mday = mday;
-    if (month != time->tm_mon)
+    if (unlikely(month != time->tm_mon))
         time->tm_mon = month;
-    if (year != time->tm_year)
+    if (unlikely(year != time->tm_year))
         time->tm_year = year;
 
     unsigned int year_total_days = year_info->total_days;
