@@ -3064,18 +3064,18 @@ static const int BASE_YEAR = 1900;
 #define N_MONTH_11      304
 #define N_MONTH_12      334
 
-#define Y_MONTH_01      0
-#define Y_MONTH_02      31
-#define Y_MONTH_03      60
-#define Y_MONTH_04      91
-#define Y_MONTH_05      121
-#define Y_MONTH_06      152
-#define Y_MONTH_07      182
-#define Y_MONTH_08      213
-#define Y_MONTH_09      244
-#define Y_MONTH_10      274
-#define Y_MONTH_11      305
-#define Y_MONTH_12      335
+#define L_MONTH_01      0
+#define L_MONTH_02      31
+#define L_MONTH_03      60
+#define L_MONTH_04      91
+#define L_MONTH_05      121
+#define L_MONTH_06      152
+#define L_MONTH_07      182
+#define L_MONTH_08      213
+#define L_MONTH_09      244
+#define L_MONTH_10      274
+#define L_MONTH_11      305
+#define L_MONTH_12      335
 
 struct dst_range_t {
     short startYear;
@@ -3133,8 +3133,8 @@ static const dst_info_t s_zone_02_dst_info[] = {
     /* 100 days + 2 hours  ~  253 days + 2 hour */
     // { 8643600,  21938400 },
     {
-        (6574 + N_MONTH_04 + 10 - 1) * __DAY__ +  2 * __HOUR__,
-        (6574 + N_MONTH_09 + 11 - 1) * __DAY__ +  2 * __HOUR__
+        (6574 + L_MONTH_04 + 10 - 1) * __DAY__ +  2 * __HOUR__,
+        (6574 + L_MONTH_09 + 11 - 1) * __DAY__ +  2 * __HOUR__
     },
 
     /* 1989-04-16 02:00    ~  1989-09-17 02:00  */
