@@ -3035,6 +3035,167 @@ static const year_info_t s_year_info_0[] = {
     /* 2097 */ { 46387, 0, { -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 0, } },
 };
 
+static unsigned int s_zone_area = 2;            /* P.R. China */
+static unsigned int s_zone_time = 8 * 3600;     /* UTC +08:00 */
+
+#define __SECONDS__         1
+#define __MINUTE_SECONDS__  60
+#define __HOUR_MINUTES__    60
+#define __DAY_HOURS__       24
+
+#define __SECOND__      1
+#define __MINUTE__      (__MINUTE_SECONDS__ * __SECOND__)
+#define __HOUR__        (__HOUR_MINUTES__ * __MINUTE__)
+#define __DAY__         (__DAY_HOURS__ * __HOUR__)
+
+#define N_MONTH_01      0
+#define N_MONTH_02      31
+#define N_MONTH_03      59
+#define N_MONTH_04      90
+#define N_MONTH_05      120
+#define N_MONTH_06      151
+#define N_MONTH_07      181
+#define N_MONTH_08      212
+#define N_MONTH_09      243
+#define N_MONTH_10      273
+#define N_MONTH_11      304
+#define N_MONTH_12      334
+
+#define Y_MONTH_01      0
+#define Y_MONTH_02      31
+#define Y_MONTH_03      60
+#define Y_MONTH_04      91
+#define Y_MONTH_05      121
+#define Y_MONTH_06      152
+#define Y_MONTH_07      182
+#define Y_MONTH_08      213
+#define Y_MONTH_09      244
+#define Y_MONTH_10      274
+#define Y_MONTH_11      305
+#define Y_MONTH_12      335
+
+struct dst_range_t {
+    short startYear;
+    short endYear;
+};
+
+//
+// P.R. China: http://www.timeofdate.com/city/China/Beijing/timezone/change?start=1980
+// HongKong: http://www.timeofdate.com/city/Hong%20Kong/Hong%20Kong/timezone/change?start=1970
+// TaiWan: http://www.timeofdate.com/city/Taiwan/Taipei/timezone/change?start=1970
+//
+static const dst_range_t s_zone_dst_range[] = {
+    /* England */       {    0, 9999 },
+    /* U.S.A. */        {    0,    0 },
+    /* P.R. China */    { 1986, 1991 },
+    /* HongKong */      { 1970, 1979 },
+    /* TaiWan */        { 1974, 1979 },
+    /* Last Country */  {    0,    0 },
+};
+
+struct dst_info_t {
+    unsigned int startTime;
+    unsigned int endTime;
+};
+
+struct dst_info_list_t {
+    dst_info_t list[2];
+};
+
+static const dst_info_t s_zone_02_dst_info[] = {
+    /* 1986-05-04 01:00    ~  1986-09-13 23:00   */
+    /* 123 days + 1 hours  ~  255 days + 22 hour */
+    // { 10630800, 22111200 },
+    {
+        (5844 + N_MONTH_05 +  4 - 1) * __DAY__ +  1 * __HOUR__,
+        (5844 + N_MONTH_09 + 13 - 1) * __DAY__ + 22 * __HOUR__
+    },
+
+    /* 1987-04-12 01:00    ~  1987-09-12 23:00   */
+    /* 101 days + 1 hours  ~  254 days + 22 hour */
+    // { 8730000,  22024800 },
+    {
+        (6209 + N_MONTH_04 + 12 - 1) * __DAY__ +  1 * __HOUR__,
+        (6209 + N_MONTH_09 + 12 - 1) * __DAY__ + 22 * __HOUR__
+    },
+
+    /* 1988-04-10 01:00    ~  1988-09-10 23:00   */
+    /* 100 days + 1 hours  ~  253 days + 22 hour */
+    // { 8643600,  21938400 },
+    {
+        (6574 + N_MONTH_04 + 10 - 1) * __DAY__ +  1 * __HOUR__,
+        (6574 + N_MONTH_09 + 10 - 1) * __DAY__ + 22 * __HOUR__
+    },
+
+    /* 1989-04-16 01:00    ~  1989-09-16 23:00   */
+    /* 105 days + 1 hours  ~  258 days + 22 hour */
+    // { 9075600,  22370400 },
+    {
+        (6940 + N_MONTH_04 + 16 - 1) * __DAY__ +  1 * __HOUR__,
+        (6940 + N_MONTH_09 + 16 - 1) * __DAY__ + 22 * __HOUR__
+    },
+
+    /* 1990-04-15 01:00    ~  1990-09-15 23:00   */
+    /* 104 days + 1 hours  ~  257 days + 22 hour */
+    // { 8989200,  22284000 },
+    {
+        (7305 + N_MONTH_04 + 15 - 1) * __DAY__ +  1 * __HOUR__,
+        (7305 + N_MONTH_09 + 15 - 1) * __DAY__ + 22 * __HOUR__
+    },
+
+    /* 1991-04-14 01:00    ~  1991-09-14 23:00   */
+    /* 103 days + 1 hours  ~  256 days + 22 hour */
+    // { 8902800,  22197600 },
+    {
+        (7670 + N_MONTH_04 + 14 - 1) * __DAY__ +  1 * __HOUR__,
+        (7670 + N_MONTH_09 + 14 - 1) * __DAY__ + 22 * __HOUR__
+    }
+};
+
+JIMI_NOINLINE unsigned long
+adjust_dst_time(int year, unsigned long timestamp)
+{
+#if defined(_MSC_VER)
+    return 0;
+#else
+    static const unsigned long DST_OFFSET_TIME = 1 * 3600;
+    unsigned long dst_offset = 0;
+
+    unsigned short zone_id = (unsigned short)s_zone_area;
+    switch (zone_id) {
+    case 0:
+        {
+            return 0;
+        }
+    case 1:
+        {
+            return 0;
+        }
+    case 2:
+        {
+            if (year >= 1986 && year <= 1991) {
+                int n = year - 1986;
+                assert(n >= 0 && n < 6);
+                if (timestamp >= s_zone_02_dst_info[n].startTime &&
+                    timestamp <  s_zone_02_dst_info[n].endTime)
+                    return DST_OFFSET_TIME;
+            }
+            return 0;
+        }
+    case 3:
+        {
+            return 0;
+        }
+    default:
+        {
+            return 0;
+        }
+    }
+
+    return dst_offset;
+#endif
+}
+
 static inline
 int get_day_of_week(int year, int month, int day)
 {
@@ -3353,11 +3514,13 @@ fast_mktime_v3(struct tm * time)
 
     int is_dst = 1;
 
-    return (((
+    unsigned long timestamp = (((
         (unsigned long)(year_total_days + yday)
         * 24 + time->tm_hour)   /* now have hours */
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
+
+    return (timestamp + adjust_dst_time(year, timestamp));
 }
 
 struct date_time_t {
