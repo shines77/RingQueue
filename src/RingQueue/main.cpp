@@ -3662,6 +3662,8 @@ void test_mktime()
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    test_time[i].year, test_time[i].month, test_time[i].day,
                    test_time[i].hour, test_time[i].minute, test_time[i].second);
+            printf("[%u] -- timestamp1: %u, timestamp2: %u, diff: %d\n", i, timestamp1, timestamp2,
+                    (timestamp1 - timestamp2));
         }
 #endif
     }
@@ -3846,8 +3848,8 @@ void test_mktime_tm()
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    when[i].tm_year + BASE_YEAR, when[i].tm_mon + 1, when[i].tm_mday,
                    when[i].tm_hour, when[i].tm_min, when[i].tm_sec);
-            printf("[%u] -- timestamp1: %u, timestamp2: %u, diff: %u\n", i, timestamp1, timestamp2,
-                    (timestamp1 >= timestamp2) ? (timestamp1 - timestamp2) : (timestamp2 - timestamp1));
+            printf("[%u] -- timestamp1: %u, timestamp2: %u, diff: %d\n", i, timestamp1, timestamp2,
+                    (timestamp1 - timestamp2));
         }
 #endif
     }
