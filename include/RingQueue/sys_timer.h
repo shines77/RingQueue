@@ -31,8 +31,9 @@
   #else
     #include <time.h>   // for clock_gettime()
   #endif
+  #include <sys/time.h>   // for gettimeofday()
 #else  /* generic Unix */
-#include <sys/time.h>
+#include <sys/time.h>   // for gettimeofday()
 #endif  /* (choice of OS) */
 
 #include "port.h"
