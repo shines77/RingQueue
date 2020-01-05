@@ -3083,6 +3083,13 @@ struct dst_range_t {
 };
 
 //
+// 1970 年 1 月 1 日午夜到 2038 年 1 月 19 日 03 时 14 分 07 秒之间的日期
+//
+// 英国夏令时: 3月的最后一个周日 01:00 ~ 10月的最后一个周日 01:00
+// 中国夏令时: 1986年 ~ 1991年, 四月中旬第一个星期日的凌晨 2 时开始 ~ 九月中旬第一个星期日的凌晨 2 时结束. 
+//
+
+//
 // P.R. China: http://www.timeofdate.com/city/China/Beijing/timezone/change?start=1980
 // HongKong: http://www.timeofdate.com/city/Hong%20Kong/Hong%20Kong/timezone/change?start=1970
 // TaiWan: http://www.timeofdate.com/city/Taiwan/Taipei/timezone/change?start=1970
@@ -3106,52 +3113,52 @@ struct dst_info_list_t {
 };
 
 static const dst_info_t s_zone_02_dst_info[] = {
-    /* 1986-05-04 01:00    ~  1986-09-13 23:00   */
-    /* 123 days + 1 hours  ~  255 days + 22 hour */
+    /* 1986-05-04 02:00    ~  1986-09-14 02:00  */
+    /* 123 days + 2 hours  ~  255 days + 2 hour */
     // { 10630800, 22111200 },
     {
-        (5844 + N_MONTH_05 +  4 - 1) * __DAY__ +  1 * __HOUR__,
-        (5844 + N_MONTH_09 + 13 - 1) * __DAY__ + 22 * __HOUR__
+        (5844 + N_MONTH_05 +  4 - 1) * __DAY__ +  2 * __HOUR__,
+        (5844 + N_MONTH_09 + 14 - 1) * __DAY__ +  2 * __HOUR__
     },
 
-    /* 1987-04-12 01:00    ~  1987-09-12 23:00   */
-    /* 101 days + 1 hours  ~  254 days + 22 hour */
+    /* 1987-04-12 02:00    ~  1987-09-13 23:00  */
+    /* 101 days + 2 hours  ~  254 days + 2 hour */
     // { 8730000,  22024800 },
     {
-        (6209 + N_MONTH_04 + 12 - 1) * __DAY__ +  1 * __HOUR__,
-        (6209 + N_MONTH_09 + 12 - 1) * __DAY__ + 22 * __HOUR__
+        (6209 + N_MONTH_04 + 12 - 1) * __DAY__ +  2 * __HOUR__,
+        (6209 + N_MONTH_09 + 13 - 1) * __DAY__ +  2 * __HOUR__
     },
 
-    /* 1988-04-10 01:00    ~  1988-09-10 23:00   */
-    /* 100 days + 1 hours  ~  253 days + 22 hour */
+    /* 1988-04-10 02:00    ~  1988-09-11 02:00  */
+    /* 100 days + 2 hours  ~  253 days + 2 hour */
     // { 8643600,  21938400 },
     {
-        (6574 + N_MONTH_04 + 10 - 1) * __DAY__ +  1 * __HOUR__,
-        (6574 + N_MONTH_09 + 10 - 1) * __DAY__ + 22 * __HOUR__
+        (6574 + N_MONTH_04 + 10 - 1) * __DAY__ +  2 * __HOUR__,
+        (6574 + N_MONTH_09 + 11 - 1) * __DAY__ +  2 * __HOUR__
     },
 
-    /* 1989-04-16 01:00    ~  1989-09-16 23:00   */
-    /* 105 days + 1 hours  ~  258 days + 22 hour */
+    /* 1989-04-16 02:00    ~  1989-09-17 02:00  */
+    /* 105 days + 2 hours  ~  258 days + 2 hour */
     // { 9075600,  22370400 },
     {
-        (6940 + N_MONTH_04 + 16 - 1) * __DAY__ +  1 * __HOUR__,
-        (6940 + N_MONTH_09 + 16 - 1) * __DAY__ + 22 * __HOUR__
+        (6940 + N_MONTH_04 + 16 - 1) * __DAY__ +  2 * __HOUR__,
+        (6940 + N_MONTH_09 + 17 - 1) * __DAY__ +  2 * __HOUR__
     },
 
-    /* 1990-04-15 01:00    ~  1990-09-15 23:00   */
-    /* 104 days + 1 hours  ~  257 days + 22 hour */
+    /* 1990-04-15 02:00    ~  1990-09-16 02:00  */
+    /* 104 days + 2 hours  ~  257 days + 2 hour */
     // { 8989200,  22284000 },
     {
-        (7305 + N_MONTH_04 + 15 - 1) * __DAY__ +  1 * __HOUR__,
-        (7305 + N_MONTH_09 + 15 - 1) * __DAY__ + 22 * __HOUR__
+        (7305 + N_MONTH_04 + 15 - 1) * __DAY__ +  2 * __HOUR__,
+        (7305 + N_MONTH_09 + 16 - 1) * __DAY__ +  2 * __HOUR__
     },
 
-    /* 1991-04-14 01:00    ~  1991-09-14 23:00   */
-    /* 103 days + 1 hours  ~  256 days + 22 hour */
+    /* 1991-04-14 02:00    ~  1991-09-15 02:00  */
+    /* 103 days + 2 hours  ~  256 days + 2 hour */
     // { 8902800,  22197600 },
     {
-        (7670 + N_MONTH_04 + 14 - 1) * __DAY__ +  1 * __HOUR__,
-        (7670 + N_MONTH_09 + 14 - 1) * __DAY__ + 22 * __HOUR__
+        (7670 + N_MONTH_04 + 14 - 1) * __DAY__ +  2 * __HOUR__,
+        (7670 + N_MONTH_09 + 15 - 1) * __DAY__ +  2 * __HOUR__
     }
 };
 
@@ -3663,13 +3670,6 @@ void test_mktime()
 
     //jimi_console_readkeyln(false, true, false);
 }
-
-//
-// 1970 年 1 月 1 日午夜到 2038 年 1 月 19 日 03 时 14 分 07 秒之间的日期
-//
-// 英国夏令时: 3月的最后一个周日 01:00 ~ 10月的最后一个周日 01:00
-// 中国夏令时: 1986年至1991年, 四月中旬第一个星期日的凌晨 2 时开始 ~ 九月中旬第一个星期日的凌晨 2 时结束. 
-//
 
 void test_mktime_tm()
 {
