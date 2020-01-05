@@ -3153,11 +3153,11 @@ fast_mktime_v2(struct tm * time)
     static const int BASE_YEAR = 1900;
 
     int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
-    year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
+    year_info_t * year_info = (year_info_t *)&s_year_info_0[yindex];
     unsigned int year_days = year_info->total_days;
 
     return (((
-        (unsigned long)(year_days + year_info->month_ydays[time->tm_mon + 1] + time->tm_mday)
+        (unsigned long)(year_days + year_info->month_ydays[time->tm_mon] + time->tm_mday)
         * 24 + time->tm_hour)   /* now have hours */
         * 60 + time->tm_min)    /* now have minutes */
         * 60 + time->tm_sec);   /* finally seconds */
@@ -3176,7 +3176,7 @@ fast_mktime_v3(struct tm * time)
     static const int __MONTHS = 12;
     static const int __YEARS = 365;
 
-    // Adjust the second, minute, hour and month_day at first.
+    // Adjust the second, minute, hour and mday at first.
 
     int second = time->tm_sec;
     int minute = time->tm_min;
@@ -3321,7 +3321,10 @@ MKTIME_START:
 
     do {
         int mon_days = s_month_days_0[is_leap][month];
-        if (unlikely(mday <= 0 || mday > mon_days)) {
+        if (likely(mday > 0 || mday <= mon_days)) {
+            break;
+        }
+        else {
             mday -= mon_days;
             month++;
             if (unlikely(month < 0 || month >= __MONTHS)) {
@@ -3330,9 +3333,6 @@ MKTIME_START:
                 year_info++;
                 goto MKTIME_START;
             }
-        }
-        else {
-            break;
         }
     } while (1);
 
