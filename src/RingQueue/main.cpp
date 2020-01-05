@@ -3588,7 +3588,75 @@ void test_mktime()
 
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;
-    unsigned long timestamp, checksum;
+    unsigned long timestamp, checksum, now;
+
+    // time(NULL)
+    printf("test: time(NULL)\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            timestamp = (unsigned long)time(NULL);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+#if defined(__linux__)
+    // clock_gettime()
+    printf("test: clock_gettime()\n\n");
+    struct timespec ts;
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            clock_gettime(CLOCK_REALTIME, &ts);
+            timestamp = ts.tv_nsec;
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+#endif // __linux__
+
+#if defined(__GNUC__) || defined(__clang__)
+    // gettimeofday()
+    printf("test: gettimeofday()\n\n");
+    struct timeval tv;
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            gettimeofday(&tv, NULL);
+            timestamp = tv.tv_usec;
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+#endif // __GNUC__
 
     // linux_mktime()
     printf("test: linux_mktime()\n\n");
