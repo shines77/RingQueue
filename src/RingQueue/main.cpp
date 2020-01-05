@@ -3834,8 +3834,8 @@ void test_mktime_tm()
 #else
         timestamp1 = mktime(&when[i]) + 8 * 3600;
 #endif
-        timestamp2 = linux_mktime(&when[i]);
-#ifndef NDEBUG
+        timestamp2 = fast_mktime_v3(&when[i]);
+#ifndef NDEBUG_
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    when[i].tm_year + BASE_YEAR, when[i].tm_mon + 1, when[i].tm_mday,
