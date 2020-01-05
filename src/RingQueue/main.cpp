@@ -3038,6 +3038,9 @@ static const year_info_t s_year_info_0[] = {
 static unsigned int s_zone_area = 2;            /* P.R. China */
 static unsigned int s_zone_time = 8 * 3600;     /* UTC +08:00 */
 
+static const int START_YEAR = 1970;
+static const int BASE_YEAR = 1900;
+
 #define __SECONDS__         1
 #define __MINUTE_SECONDS__  60
 #define __HOUR_MINUTES__    60
@@ -3165,6 +3168,13 @@ adjust_dst_time(int year, unsigned long timestamp)
     switch (zone_id) {
     case 0:
         {
+            if (year >= (1970 - BASE_YEAR) && year <= (2050 - BASE_YEAR)) {
+                int n = year - (1970 - BASE_YEAR);
+                assert(n >= 0 && n < 80);
+                if (timestamp >= s_zone_02_dst_info[n].startTime &&
+                    timestamp <  s_zone_02_dst_info[n].endTime)
+                    return DST_OFFSET_TIME;
+            }
             return 0;
         }
     case 1:
@@ -3173,8 +3183,8 @@ adjust_dst_time(int year, unsigned long timestamp)
         }
     case 2:
         {
-            if (year >= 1986 && year <= 1991) {
-                int n = year - 1986;
+            if (year >= (1986 - BASE_YEAR) && year <= (1991 - BASE_YEAR)) {
+                int n = year - (1986 - BASE_YEAR);
                 assert(n >= 0 && n < 6);
                 if (timestamp >= s_zone_02_dst_info[n].startTime &&
                     timestamp <  s_zone_02_dst_info[n].endTime)
@@ -3199,7 +3209,7 @@ adjust_dst_time(int year, unsigned long timestamp)
 static inline
 int get_day_of_week(int year, int month, int day)
 {
-    int yindex = year - 1970;
+    int yindex = year - START_YEAR;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
@@ -3239,7 +3249,7 @@ linux_mktime(unsigned int year, unsigned int month,
 JIMI_NOINLINE unsigned long
 linux_mktime(struct tm * time)
 {
-    unsigned int year = time->tm_year + 1900;
+    unsigned int year = time->tm_year + BASE_YEAR;
     unsigned int month = time->tm_mon + 1;
     if (0 >= (int)(month -= 2)) {   /* 1..12 -> 11,12,1..10 */
         month += 12;                /* Puts Feb last since it has leap day */
@@ -3259,8 +3269,6 @@ fast_mktime_v1(unsigned int year, unsigned int month,
                unsigned int day, unsigned int hour,
                unsigned int minute, unsigned int second)
 {
-    static const int START_YEAR = 1970;
-
     int yindex = year - START_YEAR;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
@@ -3275,9 +3283,6 @@ fast_mktime_v1(unsigned int year, unsigned int month,
 JIMI_NOINLINE unsigned long
 fast_mktime_v1(struct tm * time)
 {
-    static const int START_YEAR = 1970;
-    static const int BASE_YEAR = 1900;
-
     int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
@@ -3294,8 +3299,6 @@ fast_mktime_v2(unsigned int year, unsigned int month,
                unsigned int day, unsigned int hour,
                unsigned int minute, unsigned int second)
 {
-    static const int START_YEAR = 1970;
-
     int yindex = year - START_YEAR;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
     unsigned int year_days = year_info->total_days;
@@ -3310,9 +3313,6 @@ fast_mktime_v2(unsigned int year, unsigned int month,
 JIMI_NOINLINE unsigned long
 fast_mktime_v2(struct tm * time)
 {
-    static const int START_YEAR = 1970;
-    static const int BASE_YEAR = 1900;
-
     int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
     year_info_t * year_info = (year_info_t *)&s_year_info_0[yindex];
     unsigned int year_days = year_info->total_days;
@@ -3327,9 +3327,6 @@ fast_mktime_v2(struct tm * time)
 JIMI_NOINLINE unsigned long
 fast_mktime_v3(struct tm * time)
 {
-    static const int START_YEAR = 1970;
-    static const int BASE_YEAR = 1900;
-
     static const int __SECONDS = 60;
     static const int __MINUTES = 60;
     static const int __HOURS = 24;
@@ -3565,7 +3562,7 @@ void test_mktime()
 {
     date_time_t test_time[kMaxTestTime];
     for (unsigned int i = 0; i < kMaxTestTime; i++) {
-        int year = 1970 + random(67);
+        int year = START_YEAR + random(67);
         test_time[i].year = year;
         int month = random(1, 12);
         test_time[i].month = month;
@@ -3681,8 +3678,8 @@ void test_mktime_tm()
         // Zero initialize
         memset((void *)&when[i], 0, sizeof(struct tm));
         // Limit is 23:59:59 January 18, 2038
-        int year = 1970 + random(67);
-        when[i].tm_year = year - 1900;
+        int year = START_YEAR + random(67);
+        when[i].tm_year = year - BASE_YEAR;
         int month = random(1, 12);
         when[i].tm_mon = month - 1;
         int day = random(1, s_month_days[0][month]);
@@ -3841,7 +3838,7 @@ void test_mktime_tm()
 #ifndef NDEBUG
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
-                   when[i].tm_year + 1900, when[i].tm_mon + 1, when[i].tm_mday,
+                   when[i].tm_year + BASE_YEAR, when[i].tm_mon + 1, when[i].tm_mday,
                    when[i].tm_hour, when[i].tm_min, when[i].tm_sec);
             printf("[%u] -- timestamp1: %u, timestamp2: %u, diff: %u\n", i, timestamp1, timestamp2,
                     (timestamp1 >= timestamp2) ? (timestamp1 - timestamp2) : (timestamp2 - timestamp1));
@@ -3856,7 +3853,7 @@ void test_mktime_tm()
 
 void print_year_info()
 {
-    static const unsigned int kStartYear = 1970;
+    static const unsigned int kStartYear = START_YEAR;
     static const unsigned int kYearStep = 128;
     unsigned int year;
     unsigned int years, days, is_leap;
