@@ -1,0 +1,7 @@
+_mktime32(tm) vs fast_mktime_v3(tm):
+
+[3665] -- year: 1970, month: 1, day: 1, hour: 5, minute: 18, second: 8
+[3665] -- timestamp1: 28799, timestamp2: 19088, diff: 9711
+
+[9066] -- year: 1970, month: 1, day: 1, hour: 3, minute: 9, second: 18
+[9066] -- timestamp1: 28799, timestamp2: 11358, diff: 17441

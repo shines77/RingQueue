@@ -3660,7 +3660,7 @@ void test_mktime()
                                   test_time[i].hour, test_time[i].minute, test_time[i].second);
         timestamp2 = fast_mktime_v2(test_time[i].year, test_time[i].month, test_time[i].day,
                                     test_time[i].hour, test_time[i].minute, test_time[i].second);
-#ifndef NDEBUG
+#ifndef NDEBUG_
         if (timestamp1 != timestamp2) {
             printf("[%u] -- year: %u, month: %u, day: %u, hour: %u, minute: %u, second: %u\n", i,
                    test_time[i].year, test_time[i].month, test_time[i].day,
