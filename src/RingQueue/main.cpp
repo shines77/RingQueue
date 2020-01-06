@@ -3274,12 +3274,46 @@ linux_mktime(struct tm * time)
         ) * 60 + time->tm_sec;      /* finally seconds */
 }
 
+/*
+ * This is like mktime, but without normalization of tm_wday and tm_yday.
+ *
+ * From: https://github.com/git/git/blob/master/date.c
+ *
+ */
+JIMI_NOINLINE unsigned long
+git_mktime(const struct tm * time)
+{
+	static const int mdays[] = {
+	    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+	};
+	int year = time->tm_year - 70;
+	int month = time->tm_mon;
+	int day = time->tm_mday;
+
+	if (year < 0 || year > 129) /* algo only works for 1970-2099 */
+		return -1;
+	if (month < 0 || month > 11) /* array bounds */
+		return -1;
+	if (month < 2 || (year + 2) % 4)
+		day--;
+	if (time->tm_hour < 0 || time->tm_min < 0 || time->tm_sec < 0)
+		return -1;
+	return (year * 365 + (year + 1) / 4 + mdays[month] + day) * 24 * 60 * 60UL +
+		time->tm_hour * 60 * 60 + time->tm_min * 60 + time->tm_sec;
+}
+
 JIMI_NOINLINE unsigned long
 fast_mktime_v1(unsigned int year, unsigned int month,
                unsigned int day, unsigned int hour,
                unsigned int minute, unsigned int second)
 {
     int yindex = year - START_YEAR;
+	if (yindex < 0 || yindex > 136) /* algo only works for 1970-2106 */
+		return -1;
+	if (month <= 0 || month > 12) /* array bounds */
+		return -1;
+	if ((int)hour < 0 || (int)minute < 0 || (int)second < 0)
+		return -1;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
@@ -3294,6 +3328,12 @@ JIMI_NOINLINE unsigned long
 fast_mktime_v1(struct tm * time)
 {
     int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
+	if (yindex < 0 || yindex > 136) /* algo only works for 1970-2106 */
+		return -1;
+	if (time->tm_mon < 0 || time->tm_mon > 11) /* array bounds */
+		return -1;
+	if (time->tm_hour < 0 || time->tm_min < 0 || time->tm_sec < 0)
+		return -1;
     unsigned int year_days = s_year_days[yindex].total_days;
     unsigned int is_leap = s_year_days[yindex].is_leap;
 
@@ -3310,6 +3350,12 @@ fast_mktime_v2(unsigned int year, unsigned int month,
                unsigned int minute, unsigned int second)
 {
     int yindex = year - START_YEAR;
+	if (yindex < 0 || yindex > 136) /* algo only works for 1970-2106 */
+		return -1;
+	if (month <= 0 || month > 12) /* array bounds */
+		return -1;
+	if ((int)hour < 0 || (int)minute < 0 || (int)second < 0)
+		return -1;
     year_info_t * year_info = (year_info_t *)&s_year_info[yindex];
     unsigned int year_days = year_info->total_days;
 
@@ -3324,6 +3370,12 @@ JIMI_NOINLINE unsigned long
 fast_mktime_v2(struct tm * time)
 {
     int yindex = time->tm_year - (START_YEAR - BASE_YEAR);
+	if (yindex < 0 || yindex > 136) /* algo only works for 1970-2106 */
+		return -1;
+	if (time->tm_mon < 0 || time->tm_mon > 11) /* array bounds */
+		return -1;
+	if (time->tm_hour < 0 || time->tm_min < 0 || time->tm_sec < 0)
+		return -1;
     year_info_t * year_info = (year_info_t *)&s_year_info_0[yindex];
     unsigned int year_days = year_info->total_days;
 
@@ -3480,7 +3532,8 @@ fast_mktime_v3(struct tm * time)
 
     // Since 1970 year
     yindex = year - (START_YEAR - BASE_YEAR);
-    if (unlikely(yindex < 0)) return int(-1);
+	if (unlikely(yindex < 0 || yindex > 136)) /* algo only works for 1970-2106 */
+		return (int)(-1);
 
     year_info = (year_info_t *)&s_year_info_0[yindex];
     is_leap = year_info->is_leap;
@@ -3588,7 +3641,7 @@ void test_mktime()
 
     jmc_timestamp_t startTime, stopTime;
     jmc_timefloat_t elapsedTime = 0.0;
-    unsigned long timestamp, checksum, now;
+    unsigned long timestamp, checksum;
 
     // time(NULL)
     printf("test: time(NULL)\n\n");
@@ -3830,6 +3883,27 @@ void test_mktime_tm()
         for (unsigned int i = 0; i < kMaxTestTime; i++) {
             when[i].tm_isdst = 0;
             timestamp = linux_mktime(&when[i]);
+            checksum += timestamp;
+        }
+    }
+
+    stopTime = jmc_get_timestamp();
+    elapsedTime = jmc_get_interval_millisecf(stopTime - startTime);
+
+    printf("time elapsed: %9.3f ms, ", elapsedTime);
+    printf("checksum: %u\n", checksum);
+    printf("\n");
+
+    // git_mktime(tm)
+    printf("test: git_mktime(tm)\n\n");
+
+    startTime = jmc_get_timestamp();
+
+    checksum = 0;
+    for (unsigned int repeat = 0; repeat < kMaxRepeatTime; repeat++) {
+        for (unsigned int i = 0; i < kMaxTestTime; i++) {
+            when[i].tm_isdst = 0;
+            timestamp = git_mktime(&when[i]);
             checksum += timestamp;
         }
     }
