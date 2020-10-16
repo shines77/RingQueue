@@ -4122,13 +4122,13 @@ int main(int argn, char * argv[])
 #endif
 
     //print_year_info();
-    test_mktime();
-    test_mktime_tm();
+    //test_mktime();
+    //test_mktime_tm();
 
     // 单线程顺序执行的版本, 每次push(), pop()的消息数量(即步长)由max_step决定, 最大步长为QSIZE
     SerialRingQueue_Test();
 
-#if 0
+#if 1
     // Test (Single Producer + Single Consumer) RingQueue
     SingleProducerSingleConsumer_Test();
 
